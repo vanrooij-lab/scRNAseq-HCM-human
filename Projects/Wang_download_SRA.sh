@@ -1,19 +1,53 @@
 #!/bin/bash
+#
+#SBATCH --job-name=GoFetch
+#SBATCH --time=12:00:00
+#SBATCH --mem=10G 
 
-cd /Volumes/workdrive_m.wehrens_hubrecht/Fastq__raw_files/Wang/
+# This script will use the SRA toolkit to download data of interest.
+#
+# It will require that you make directory with the name <IDENTIFIER>,
+# which contains an accession list containing the SRA IDs (obtain
+# them from [https://www.ncbi.nlm.nih.gov/Traces/study/?]), accession list should
+# be named like <IDENTIFIER>_SRR_Acc_List.txt.
+#
+# @HPC, use e.g. to execute:
+# sbatch Wang_download_SRA.sh
+#
+# Locally, use 
+# sh /Users/m.wehrens/Documents/git_repos/SCS_More_analyses/Projects/Wang_download_SRA.sh
+#
+# Edit basepath appropriately below
 
-filename=GSM3449619_SRR_Acc_List.txt
+for IDENTIFIER in GSM2970361_N1_LV GSM2970358_N2_LV GSM2970362_N3_LV GSM2970366_N4_LV GSM2970360_N5_LV GSM2970359_N6_LA GSM2970369_N7_LA GSM2970368_N8_LA GSM2970365_N9_LA GSM2970363_N10_LA GSM2970364_N11_LA GSM2970367_N12_LA GSM3449619_N13 GSM3449620_N14
+do
 
-linecount=$(cat $filename | wc -l)
+    #sh load_SRA_files.sh
 
-n=1
-while read line; do
-  
-  # reading each line
-  echo "Line No. $n/$linecount"
-  n=$((n+1))
-  
-  # executing command
-  fasterq-dump $line
-  
-done < $filename
+    #basepath='/hpc/hub_oudenaarden/mwehrens/fastq/WANG/'
+    basepath='/Volumes/workdrive_m.wehrens_hubrecht/Fastq__raw_files/Wang/'
+
+    cd $basepath/${IDENTIFIER}/
+
+    filename=${IDENTIFIER}_SRR_Acc_List.txt
+
+    linecount=$(cat $filename | wc -l)
+
+    n=1
+    while read line; do
+      
+      # reading each line
+      echo "Line No. $n/$linecount"
+      n=$((n+1))
+      
+      # executing command
+      #fasterq-dump $line 
+      fastq-dump $line
+      
+    done < $filename
+
+done
+
+
+
+
