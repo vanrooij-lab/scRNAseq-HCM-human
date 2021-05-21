@@ -29,7 +29,8 @@ shorthand_loadRawData = function(filepath) {
     # now make sure gene names are also compatible
     # For old data
     # rownames(countTable_scaled)
-    rownames(countTable_scaled) = sapply(strsplit(rownames(countTable_scaled),'_'), function(X){X[1]})
+    #rownames(countTable_scaled) = sapply(strsplit(rownames(countTable_scaled),'_'), function(X){X[1]})
+    rownames(countTable_scaled) = sapply(strsplit(rownames(countTable_scaled),'_'), function(X){X[2]})
     #rownames(countTable) = sapply(strsplit(rownames(countTable),'_'), function(X){X[1]})
     
     return(list(countTable=countTable,countTable_scaled=countTable_scaled,readsPerWell=readsPerWell,GenesHowManyCells=GenesHowManyCells))
@@ -41,34 +42,12 @@ shorthand_loadRawData = function(filepath) {
 ###############################################################
 ###############################################################
 
+# Load new data
 # all
-# JE7_new_data = shorthand_loadRawData('/Users/m.wehrens/Data/_2019_02_HCM_SCS/2021_rebuttal_analysis/new_count_tables/run2-GRCh38.81/final_tsv/JE7_AHFL7NBGX5_S16_cat_pT_total.TranscriptCounts.tsv')
-# unique mappers only
-JE7_new_data = shorthand_loadRawData('/Users/m.wehrens/Data/_2019_02_HCM_SCS/2021_rebuttal_analysis/new_count_tables/run2-GRCh38.81/final_tsv/HUB-AL-s002_HG25TBGXF_S6_cat_nc_uniaggGenes_total.UFICounts.tsv')
+JE7_new_data = shorthand_loadRawData('/Users/m.wehrens/Data/_2019_02_HCM_SCS/2021_rebuttal_analysis/new_count_tables/run2-GRCh38.81/final_tsv/JE7_AHFL7NBGX5_S16_cat_pT_total.TranscriptCounts.tsv')
 
-#JE7_new_CountTable=read.table('/Users/m.wehrens/Data/_2019_02_HCM_SCS/2021_rebuttal_analysis/new_count_tables/run2-GRCh38.81/final_tsv/JE7_AHFL7NBGX5_S16_cat_pT_total.TranscriptCounts.tsv')
-#View(JE7_new_CountTable[1:100,1:100])
-
-# some minimal processing
-#JE7_readsPerWell      = apply(JE7_new_CountTable,2,sum)
-#JE7_median_readsPerWell = median(JE7_readsPerWell)
-#JE7_GenesHowManyCells = apply(JE7_new_CountTable>0,1,sum)
-#gene_selection = sum(JE7_GenesHowManyCells>3)
-
-#JE7_new_CountTable_scaled = 
-#    sapply(1:dim(JE7_new_CountTable)[2], function(X) {
-#        JE7_new_CountTable[,X]/JE7_readsPerWell[X]*JE7_median_readsPerWell})
-#rownames(JE7_new_CountTable_scaled) = rownames(JE7_new_CountTable)
-#colnames(JE7_new_CountTable_scaled) = colnames(JE7_new_CountTable)
-
-#JE7_new_CountTable_scaled = scale(JE7_new_CountTable, center = F, scale = JE7_readsPerWell)
-
-rownames(JE7_new_data$countTable_scaled)
-
-################################################################################
-# Let's also load old count table manually
-
-oldfilepath='/Users/m.wehrens/Data/_2019_02_HCM_SCS/_countdata/files_sent_by_anne_2020-08/Datafiles/JE7_TranscriptCounts.tsv'
+# load old data 
+JE7_old_data = shorthand_loadRawData('/Users/m.wehrens/Data/_2019_02_HCM_SCS/_countdata/files_sent_by_anne_2020-08/Datafiles/JE7_TranscriptCounts.tsv')
 
 JE7_old_CountTable=read.table(oldfilepath, row.names = 1, header=1)
 View(JE7_old_CountTable[1:100,1:100])
