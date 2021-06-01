@@ -1,20 +1,193 @@
-
-library(ggplot2)
+library(dplyr)
 library(umap)
+library(ggplot2)
 library(Rtsne)
 
-###############################################################
+data_dir1='/Volumes/fastq_m.wehrens/Mapping/HCM_SCS/mapping.93.may25/counttables/'
+data_dir2='/Volumes/fastq_m.wehrens/Mapping/WANG2/counttables/'
+dataset_list_paths=list('AL1'=paste0(data_dir1, 'HUB-AL-s001_HG25TBGXF_S5_cat_pT_total.TranscriptCounts.tsv'),
+                        'AL2'=paste0(data_dir1, 'HUB-AL-s002_HG25TBGXF_S6_cat_pT_total.TranscriptCounts.tsv'),
+                        'WANG13'=paste0(data_dir2, 'GSM3449619_N13_cat_nc_total.TranscriptCounts.tsv'))
+# unique and spliced reads only:
+dataset_list_paths=list('AL1'=paste0(data_dir1, 'HUB-AL-s001_HG25TBGXF_S5_cat_pT_uniaggGenes_spliced.TranscriptCounts.tsv'),
+                        'JE5'=paste0(data_dir1, 'JE5_AHFL77BGX5_S6_cat_pT_uniaggGenes_spliced.TranscriptCounts.tsv'),
+                        'WANG13'=paste0(data_dir2, 'GSM3449619_N13_cat_nc_uniaggGenes_spliced.TranscriptCounts.tsv'),
+                        'WANG14'=paste0(data_dir2, 'GSM3449620_N14_cat_nc_uniaggGenes_spliced.TranscriptCounts.tsv'))
 
-shorthand_loadRawData = function(filepath) {
+
+# let's take those for now
+groupedData_mw = 
+    loadData_MW(dataset_list_paths)
+
+lapply(groupedData_mw, dim)
+
+rn1 = rownames(groupedData_mw$AL1)
+rn2 = rownames(groupedData_mw$AL2)
+rn3 = rownames(groupedData_mw$WANG13)
+
+rn123 = unique(c(rn1, rn2, rn3))
+
+test = 
+    groupedData_mw$AL1[rn123,]
+rownames(test) = rn12
+
+pooled_df =
+    do.call(cbind, lapply(groupedData_mw, function(df) {df[rn123,]}))
+
+testdata = list(s1=data.frame(s1.c1=c(1,2,3),s1.c2=c(5,2,1), row.names = c('gene1','gene2','gene3')),
+                s2=data.frame(s2.c1=c(1,2,2),s2.c2=c(4,2,4), row.names = c('gene2','gene3','gene4')),
+                s3=data.frame(s3.c1=c(2,2,3),s3.c2=c(5,2,12), row.names = c('gene3','gene4','gene5')))
+
+merge(testdata[[1]], testdata[[2]], all.x = T, )
+merge(testdata[[1]], testdata[[2]], by.x=0, by.y=0, all=TRUE)
+
+#####
+
+test_pool=
+    merge(groupedData_mw$AL1, groupedData_mw$AL2, by.x=0, by.y=0, all=TRUE)
+
+test_pool2 = Reduce(
+      function(x,y) {
+        x <- merge(x,y,by.x=0,by.y=0,all=TRUE)
+        rownames(x) <- x[,1]
+        x[,"Row.names"] <- NULL
+        x[is.na(x)] = 0
+        return(x)
+      },
+      list(groupedData_mw$AL1, groupedData_mw$JE5, groupedData_mw$WANG13, groupedData_mw$WANG14)
+    )
+
+test_pool2_scaled_out = 
+    manual_scale_table(test_pool2)
+
+# let's look at potential to throw some stuff out
+sum(test_pool2_scaled_out$GenesHowManyCells>4)
+sum(test_pool2_scaled_out$GenesHowManyCells<5)
+
+# create annotations for cells
+annotations = rep(NA, dim(test_pool2_scaled_out$countTable_scaled)[2])
+annotations[grepl('AL1.',colnames(test_pool2_scaled_out$countTable_scaled))] = 'AL1'
+annotations[grepl('JE5.',colnames(test_pool2_scaled_out$countTable_scaled))] = 'JE5'
+annotations[grepl('WANG13.',colnames(test_pool2_scaled_out$countTable_scaled))] = 'WANG13'
+annotations[grepl('WANG14.',colnames(test_pool2_scaled_out$countTable_scaled))] = 'WANG14'
+
+# let's plot some stats
+ggplot(data.frame(counts=test_pool2_scaled_out$readsPerWell))+
+  geom_freqpoly(aes(x=log10(.1+counts), color=annotations))+theme_bw()+
+  geom_vline(xintercept = log10(3000+.1))
+  
+# make a selection
+test_pool2_scaled_out$countTable_scaled_sel = 
+  test_pool2_scaled_out$countTable_scaled[test_pool2_scaled_out$GenesHowManyCells>4,test_pool2_scaled_out$readsPerWell>3000]
+annotation_sel = annotations[test_pool2_scaled_out$readsPerWell>3000]
+
+# now create umap of the selection
+umap_out = t(umap(t(test_pool2_scaled_out$countTable_scaled_sel)))
+# plot
+ggplot(data.frame(u1=umap_out[[1]][,1], u2=umap_out[[1]][,2], source=annotation_sel))+
+    geom_point(aes(x=u1, y=u2, col=source))+theme_bw()
+
+# also create a tsne 
+Rtsne_out = t(Rtsne(t(test_pool2_scaled_out$countTable_scaled_sel), check_duplicates = F))
+# plot
+p1=ggplot(data.frame(tsne1=Rtsne_out[[2]][,1], tsne2=Rtsne_out[[2]][,2], source=annotation_sel))+
+    geom_point(aes(x=tsne1, y=tsne2, col=source))+theme_bw()
+print(p1)
+
+library("RColorBrewer")
+myPalette <- colorRampPalette(rev(brewer.pal(11, "Spectral")))
+
+
+shorthand_expression_plot = function(which_gene) {
+  expr=test_pool2_scaled_out$countTable_scaled_sel[which_gene,]
+  
+  p=ggplot(data.frame(tsne1=Rtsne_out[[2]][,1], tsne2=Rtsne_out[[2]][,2], source=annotation_sel, 
+              expr=expr))+
+    geom_point(aes(x=tsne1, y=tsne2, col=expr))+theme_bw()+
+    scale_colour_gradientn(colours = myPalette(100), limits=c(0,max(expr)))+
+    ggtitle(which_gene)
     
-    countTable=read.table(filepath, row.names = 1, header=1)
-    #View(countTable[1:100,1:100])
+  return(p)
+
+}
+
+rownames(test_pool2_scaled_out$countTable_scaled_sel)[grepl('NPPB',rownames(test_pool2_scaled_out$countTable_scaled_sel))]
+
+library(patchwork)
+p1+shorthand_expression_plot('ENSG00000155657_TTN_ProteinCoding')
+p1+shorthand_expression_plot('ENSG00000092054_MYH7_ProteinCoding')
+p1+shorthand_expression_plot('ENSG00000175206_NPPA_ProteinCoding')
+p1+shorthand_expression_plot('ENSG00000120937_NPPB_ProteinCoding')
+
+####
+# Also without mitochondrial genes
+rownames(test_pool2)[grepl('_MT\\.',rownames(test_pool2))]
+mito_remove_sel = !grepl('_MT\\.',rownames(test_pool2))
+test_pool2_selM=test_pool2[mito_remove_sel,]
+
+test_pool2_selM_scaled_out = 
+    manual_scale_table(test_pool2_selM)
+
+# make a selection again on the mito-removed table
+test_pool2_selM_scaled_out$countTable_scaled_sel = 
+  test_pool2_selM_scaled_out$countTable_scaled[test_pool2_selM_scaled_out$GenesHowManyCells>4,test_pool2_selM_scaled_out$readsPerWell>3000]
+annotation_selM = annotations[test_pool2_selM_scaled_out$readsPerWell>3000]
+
+# Let's also determine mitochondrial contents
+mitochondrial_Percentage = apply(test_pool2[!mito_remove_sel,],2,sum)/apply(test_pool2, 2, sum)
+  # note this is an estimate, since we're also taking into account thrown out genes for sum
+  # though probably pretty accurate, because unlikely we threw out mito genes
+
+Rtsne_out_selM = t(Rtsne(t(test_pool2_selM_scaled_out$countTable_scaled), check_duplicates = F))
+p1m=ggplot(data.frame(tsne1=Rtsne_out_selM[[2]][,1], tsne2=Rtsne_out_selM[[2]][,2], source=annotation_sel))+
+    geom_point(aes(x=tsne1, y=tsne2, col=source))+theme_bw()
+print(p1m)
+
+# now create umap of the selection
+umap_out_selM = t(umap(t(test_pool2_selM_scaled_out$countTable_scaled)))
+# plot
+ggplot(data.frame(u1=umap_out_selM[[1]][,1], u2=umap_out_selM[[1]][,2], source=annotation_sel))+
+    geom_point(aes(x=u1, y=u2, col=source))+theme_bw()
+
+# plot of mitochondrial percentage
+ggplot(data.frame(u1=umap_out_selM[[1]][,1], u2=umap_out_selM[[1]][,2], source=annotation_sel, mito_perc=mitochondrial_Percentage))+
+  geom_point(aes(x=u1, y=u2, col=mito_perc))+theme_bw()+
+  scale_colour_gradientn(colours = myPalette(100), limits=c(0,1))
+
+ggplot(data.frame(tsne1=Rtsne_out_selM[[2]][,1], tsne2=Rtsne_out_selM[[2]][,2], source=annotation_sel, mito_perc=mitochondrial_Percentage))+
+  geom_point(aes(x=tsne1, y=tsne2, col=mito_perc))+theme_bw()+
+  scale_colour_gradientn(colours = myPalette(100), limits=c(0,1))
+
+
+
+#####
+rnames_all = unique(unlist(lapply(groupedData_mw, rownames)))
+ldf=lapply(groupedData_mw, function(df) {df[rnames_all,]})
+#####
+
+#####
+
+pool_df_mw = function(multiple_dfs) {
+
+    print('update this with above!!')
     
-    # some minimal processing
+    rnames_all = unique(unlist(lapply(multiple_dfs, rownames)))
+    pooled_df =
+        # do.call(cbind, lapply(multiple_dfs, function(df) {df[rnames_all,]}))
+        bind_cols(lapply(multiple_dfs, function(df) {df[rnames_all,]}))
+    rownames(pooled_df) = rnames_all
+    
+    return(pooled_df)
+
+}
+
+# some minimal processing
+manual_scale_table = function(countTable) {
+    
     readsPerWell      = apply(countTable,2,sum)
     median_readsPerWell = median(readsPerWell)
     GenesHowManyCells = apply(countTable>0,1,sum)
-    gene_old_selection = sum(GenesHowManyCells>3)
+    #gene_old_selection = sum(GenesHowManyCells>3)
     
     countTable_scaled = 
         sapply(1:dim(countTable)[2], function(X) {
@@ -22,290 +195,16 @@ shorthand_loadRawData = function(filepath) {
     rownames(countTable_scaled) = rownames(countTable)
     colnames(countTable_scaled) = colnames(countTable)
     
-    apply(countTable_scaled,2,sum)
-    
-    #View(countTable_scaled)
-    
-    # now make sure gene names are also compatible
-    # For old data
-    # rownames(countTable_scaled)
-    #rownames(countTable_scaled) = sapply(strsplit(rownames(countTable_scaled),'_'), function(X){X[1]})
-    rownames(countTable_scaled) = sapply(strsplit(rownames(countTable_scaled),'_'), function(X){X[2]})
-    #rownames(countTable) = sapply(strsplit(rownames(countTable),'_'), function(X){X[1]})
-    
-    return(list(countTable=countTable,countTable_scaled=countTable_scaled,readsPerWell=readsPerWell,GenesHowManyCells=GenesHowManyCells))
+    # apply(countTable_scaled,2,sum)
+    return(list(countTable_scaled=countTable_scaled, readsPerWell=readsPerWell,
+            median_readsPerWell=median_readsPerWell, GenesHowManyCells=GenesHowManyCells ))
 }
 
-###############################################################
-###############################################################
-# Comparing JE HCM SCS old/new
-###############################################################
-###############################################################
 
-# Load new data
-# all
-JE7_new_data = shorthand_loadRawData('/Users/m.wehrens/Data/_2019_02_HCM_SCS/2021_rebuttal_analysis/new_count_tables/run2-GRCh38.81/final_tsv/JE7_AHFL7NBGX5_S16_cat_pT_total.TranscriptCounts.tsv')
+groupedData_mw_pooled = 
+    pool_df_mw(groupedData_mw)
 
-# load old data 
-JE7_old_data = shorthand_loadRawData('/Users/m.wehrens/Data/_2019_02_HCM_SCS/_countdata/files_sent_by_anne_2020-08/Datafiles/JE7_TranscriptCounts.tsv')
+#####
 
-JE7_old_CountTable=read.table(oldfilepath, row.names = 1, header=1)
-View(JE7_old_CountTable[1:100,1:100])
 
-# some minimal processing
-JE7_old_readsPerWell      = apply(JE7_old_CountTable,2,sum)
-JE7_old_median_readsPerWell = median(JE7_old_readsPerWell)
-JE7_old_GenesHowManyCells = apply(JE7_old_CountTable>0,1,sum)
-gene_old_selection = sum(JE7_old_GenesHowManyCells>3)
-
-JE7_old_CountTable_scaled = 
-    sapply(1:dim(JE7_old_CountTable)[2], function(X) {
-        JE7_old_CountTable[,X]/JE7_old_readsPerWell[X]*JE7_old_median_readsPerWell})
-rownames(JE7_old_CountTable_scaled) = rownames(JE7_old_CountTable)
-colnames(JE7_old_CountTable_scaled) = colnames(JE7_old_CountTable)
-
-apply(JE7_old_CountTable_scaled,2,sum)
-
-View(JE7_old_CountTable_scaled)
-
-# now make sure gene names are also compatible
-# For old data
-# rownames(JE7_old_CountTable_scaled)
-rownames(JE7_old_CountTable_scaled) = sapply(strsplit(rownames(JE7_old_CountTable_scaled),'_'), function(X){X[1]})
-
-
-
-
-################################################################################
-
-# now get some data out to compare
-
-# simple stats
-sum(JE7_old_CountTable)/sum(JE7_new_CountTable)
-
-# first test, TTN gene
-cnames= intersect(colnames(JE7_old_CountTable_scaled), colnames(JE7_new_CountTable_scaled))
-ggplot(data.frame(old=JE7_old_CountTable_scaled['TTN',cnames], new=JE7_new_CountTable_scaled['TTN',cnames],
-                totalReadsPerWell = JE7_readsPerWell[cnames]))+
-    geom_point(aes(x=old, y=new, color=totalReadsPerWell>1000))+theme_bw()+ggtitle('TTN gene counts')+
-    coord_fixed(ratio = 1)+geom_abline(intercept = 0, slope = 1)
-
-GENE='MYH7'
-ggplot(data.frame(old=JE7_old_CountTable_scaled[GENE,cnames], new=JE7_new_CountTable_scaled[GENE,cnames],
-                totalReadsPerWell = JE7_readsPerWell[cnames]))+
-    geom_point(aes(x=old, y=new, color=totalReadsPerWell>1000))+theme_bw()+ggtitle(paste0(GENE,' gene counts'))+
-    coord_fixed(ratio = 1)+geom_abline(intercept = 0, slope = 1)
-
-
-################################################################################
-
-# combine old and new
-
-# find shared gene names
-geneSeenOld = apply(JE7_old_CountTable_scaled>0,1,sum)
-geneSeenNew = apply(JE7_new_CountTable_scaled>0,1,sum)
-shared_gene_names = intersect(rownames(JE7_old_CountTable_scaled)[geneSeenOld>2], rownames(JE7_new_CountTable_scaled)[geneSeenNew>2])
-
-newcolnames = c(paste0('o.',cnames), paste0('n.',cnames))
-combined_df = 
-    cbind(JE7_old_CountTable_scaled[shared_gene_names,cnames], JE7_new_CountTable_scaled[shared_gene_names,cnames])
-colnames(combined_df) = newcolnames
-
-library(umap)
-library(Rtsne)
-#library(tsne)
-
-umap_out = t(umap(t(combined_df)))
-Rtsne_out = t(Rtsne(t(combined_df), check_duplicates = F))
-
-source=c( rep('old', length(cnames)), rep('new', length(cnames)) )
-pairs=rep(cnames,2)
-
-ggplot(data.frame(u1=umap_out[[1]][,1], u2=umap_out[[1]][,2], source=annotation))+
-    geom_point(aes(x=u1, y=u2, col=source))
-
-
-plot_df = data.frame(u1=umap_out[[1]][,1], u2=umap_out[[1]][,2], 
-                    tsne1=Rtsne_out[[2]][,1], tsne2=Rtsne_out[[2]][,2],
-                     pairs=as.factor(pairs), source=as.factor(source),
-                     totalReads=rep(JE7_old_readsPerWell[cnames],2))
-ggplot(plot_df[plot_df$totalReads>1000,])+
-    geom_point(aes(x=u1, y=u2, color=pairs))+
-    geom_line(aes(x=u1, y=u2, color=pairs))+theme_bw()+theme(legend.position='none')
-ggplot(plot_df[plot_df$totalReads>1000,])+
-    geom_line(aes(x=tsne1, y=tsne2, color=pairs))+
-    geom_point(aes(x=tsne1, y=tsne2, color=pairs))+
-    theme_bw()+theme(legend.position='none')
-
-
-#ggplot(data.frame(x=c(10,2,3,4,100,200),y=c(3,7,5,1.3,100,100), cat=as.factor(c(1,1,2,2,3,3))))+
-#    geom_line(aes(x=x, y=y, color=cat))+theme_bw()
-
-
-plot_df$MALAT1 = c(JE7_old_CountTable_scaled['MALAT1',cnames], JE7_new_CountTable_scaled['MALAT1',cnames])
-ggplot(plot_df)+
-    geom_point(aes(x=tsne1, y=tsne2, color=MALAT1))
-    #geom_line(aes(x=tsne1, y=tsne2, color=pairs))+theme_bw()+theme(legend.position='none')
-
-
-################################################################################
-
-# Let's compare X160, a cell which has many reads
-
-df_compare_HCM_singleCell = data.frame(combined_df[,c('n.X160', 'o.X160')])
-
-ggplot(df_compare_HCM_singleCell, aes(x=n.X160, y=o.X160))+
-    geom_point()+ggtitle('Comparing single cell')+theme_bw()
-
-###############################################################
-###############################################################
-# Comparing Wang old/new
-###############################################################
-
-
-###############################################################
-
-# Cells we've mapped again:
-# - SC_92563_0_12  SRR6641031
-
-CURRENT_CELL_NAME = 'SC_92563_0_12'
-
-# Their mapped and processed data
-Wang_Data1 = read.table('/Volumes/workdrive_m.wehrens_hubrecht/data/2020_04_Wang-heart/GSE109816_normal_heart_umi_matrix.csv',row.names = 1, header=1, sep=',')
-
-data_WangTest =
-    shorthand_loadRawData(
-    #        '/Users/m.wehrens/Data/_2019_02_HCM_SCS/2021_rebuttal_analysis/wang_count_tables/test_1SRA/SRR6640430_nc_total.UFICounts.tsv')
-        # only single mappers
-             '/Users/m.wehrens/Data/_2019_02_HCM_SCS/2021_rebuttal_analysis/wang_count_tables/test_1SRA/SRR6640920_nc_uniaggGenes_total.UFICounts.tsv')
-             #'/Users/m.wehrens/Data/_2019_02_HCM_SCS/2021_rebuttal_analysis/wang_count_tables/test_1SRA/SRR6641031_nc_total.UFICounts.tsv')
-
-#View(data_WangTest$countTable_scaled)
-View(data_WangTest$countTable)
-sum(data_WangTest$countTable)
-
-# Compare totals
-sum(Wang_Data1[,CURRENT_CELL_NAME,drop=F])
-sum(data_WangTest$countTable)
-# SC_92563_0_12 SRR6641031: 52103 & 60124
-# SC_92563_0_23
-
-# previous stuff
-#data_WangTest =
-#    shorthand_loadRawData(
-#        #'/Users/m.wehrens/Data/_2019_02_HCM_SCS/2021_rebuttal_analysis/wang_count_tables/test_1SRA/SRR6640920_nc_total.UFICounts.tsv')
-#        '/Users/m.wehrens/Data/_2019_02_HCM_SCS/2021_rebuttal_analysis/wang_count_tables/test_1SRA/SRR6640430_nc_uniaggGenes_total.UFICounts.tsv')
-
-#data_WangTest =
-#    shorthand_loadRawData(
-#        # unstranded
-#        #'/Users/m.wehrens/Data/_2019_02_HCM_SCS/2021_rebuttal_analysis/wang_count_tables/test_1SRA/mapping_unstranded/SRR6640920_nc_total.UFICounts.tsv'
-#        # assuming stranded
-#        '/Users/m.wehrens/Data/_2019_02_HCM_SCS/2021_rebuttal_analysis/wang_count_tables/test_1SRA/SRR6640920_nc_total.UFICounts.tsv')
-
-# Compare with original processed table (see other script for loading)
-Current_Cell_Original = Wang_Data1[,CURRENT_CELL_NAME,drop=F]
-# Make rownames consistent with Anna
-rownames(Current_Cell_Original) = gsub(pattern = '-', replacement = '.', x = rownames(Current_Cell_Original))
-
-# Initialize new cell
-Current_Cell_New = data_WangTest$countTable
-
-# determine initial new names, but these will have doubles
-simpler_GeneNames_New =
-    sapply(strsplit(rownames(Current_Cell_New),'_'), function(X){X[2]})
-simpler_GeneNames_New_Cnts = table(simpler_GeneNames_New)
-double_collection = names(simpler_GeneNames_New_Cnts[simpler_GeneNames_New_Cnts>1])    
-
-# calculate totals for the doubles
-thecolname = colnames(Current_Cell_New)
-Current_Cell_New_Update = data.frame(double())
-colnames(Current_Cell_New_Update) = colnames(Current_Cell_New)
-for (double_name in double_collection) {
-    
-    # calculating sum and just merging them
-    current_totalCount = data.frame(
-        row.names=double_name,
-        sum(Current_Cell_New[simpler_GeneNames_New==double_name,]))
-    colnames(current_totalCount) = thecolname
-    Current_Cell_New_Update = rbind(Current_Cell_New_Update, current_totalCount)
-    
-# renaming   
-#    simpler_GeneNames_New[simpler_GeneNames_New==double_name] = 
-#        paste0(simpler_GeneNames_New[simpler_GeneNames_New==double_name],'__nr',1:length(simpler_GeneNames_New[simpler_GeneNames_New==double_name]))
-}
-
-# remove doubules
-Current_Cell_New=Current_Cell_New[!(simpler_GeneNames_New %in% double_collection),,drop=F]
-# now update rownames
-rownames(Current_Cell_New) = sapply(strsplit(rownames(Current_Cell_New),'_'), function(X){X[2]})
-
-# add merged entries
-Current_Cell_New=rbind(Current_Cell_New,Current_Cell_New_Update)
-
-#rownames(Current_Cell_New) = simpler_GeneNames_New
-View(Current_Cell_New)
-
-# by intersecting genes
-matching_genes = 
-    intersect(rownames(Current_Cell_New), rownames(Current_Cell_Original))
-
-df_toPlotWangComp = data.frame(n=1:length(matching_genes), gene=matching_genes, ct.wang.byme=Current_Cell_New[matching_genes,1],ct.wang.bywang=Current_Cell_Original[matching_genes,1])
-df_toPlotWangComp$mismatch = df_toPlotWangComp$ct.wang.byme-df_toPlotWangComp$ct.wang.bywang
-
-# just merging any positive count
-newNames = rownames(Current_Cell_New[Current_Cell_New[,1]>0,,drop=F])
-oriNames = rownames(Current_Cell_Original[Current_Cell_Original[,1]>0,,drop=F])
-sel_genes = unique(c(newNames,oriNames))
-df_toPlotWangComp_all = data.frame(n=1:length(sel_genes), gene=sel_genes, ct.wang.byme=Current_Cell_New[sel_genes,1],ct.wang.bywang=Current_Cell_Original[sel_genes,1])
-df_toPlotWangComp_all[is.na(df_toPlotWangComp_all)] = 0
-df_toPlotWangComp_all$mismatch = df_toPlotWangComp_all$ct.wang.byme-df_toPlotWangComp_all$ct.wang.bywang
-df_toPlotWangComp_all$max=sapply(1:dim(df_toPlotWangComp_all)[1], function(X) {max(df_toPlotWangComp_all$ct.wang.byme[X], df_toPlotWangComp_all$ct.wang.bywang[X])})
-df_toPlotWangComp_all$mismatch_rel = (df_toPlotWangComp_all$ct.wang.byme-df_toPlotWangComp_all$ct.wang.bywang)/df_toPlotWangComp_all$max
-
-View(df_toPlotWangComp_all)
-
-ggplot(df_toPlotWangComp, aes(x=ct.wang.byme,y=ct.wang.bywang))+
-    geom_point()
-
-# for intersect
-library(ggplot2)
-library(ggrepel)
-ggplot(df_toPlotWangComp, aes(x=ct.wang.byme,y=ct.wang.bywang))+
-    geom_point()+theme_bw()+
-    geom_point(data=df_toPlotWangComp[df_toPlotWangComp$mismatch>20,], color='red')+
-    geom_text_repel(data=df_toPlotWangComp[df_toPlotWangComp$mismatch>20,], aes(label=gene), color='red')+
-    geom_text_repel(data=df_toPlotWangComp[df_toPlotWangComp$ct.new>60&!df_toPlotWangComp$mismatch>20,], aes(label=gene), color='blue')+
-    geom_abline(slope = 1, intercept = 0)
-
-# for all
-library(ggplot2)
-library(ggrepel)
-weird_genes = df_toPlotWangComp_all$max>100&abs(df_toPlotWangComp_all$mismatch_rel)>.95
-ggplot(df_toPlotWangComp_all, aes(x=ct.wang.byme+1,y=ct.wang.bywang+1))+
-    geom_point()+theme_bw()+
-    geom_point(data=df_toPlotWangComp_all[weird_genes,], color='purple')+
-    #geom_text_repel(data=df_toPlotWangComp_all[df_toPlotWangComp$mismatch>20,], aes(label=gene), color='red')+
-    geom_text_repel(data=df_toPlotWangComp_all[df_toPlotWangComp_all$max>100 & !weird_genes,], aes(label=gene), color='blue')+
-    geom_text_repel(data=df_toPlotWangComp_all[weird_genes,], aes(label=gene,x=ct.wang.byme+1,y=ct.wang.bywang+1), color='purple')+
-    geom_abline(slope = 1, intercept = 0)+
-    scale_x_log10()+scale_y_log10() 
-
-
-# conclusion:
-# for some genes it has worked, while for other genes it has not..
-
-ggplot(df_toPlotWangComp, aes(x=n, y=mismatch))+
-    geom_point()+theme_bw()
-
-
-View(Current_Cell_New)
-
-# amount of genes that have more than 10 reads
-sum(df_toPlotWangComp_all$max>20)
-# calculate how many genes that have >10 reads have a >.95 rel. mismatch 
-sum(df_toPlotWangComp_all$max>20&abs(df_toPlotWangComp_all$mismatch_rel)>.95)
-
-# Buuuuut .. the ratio of total reads between old and new is not so far off ..
-sum(Current_Cell_New)/sum(Current_Cell_Original)
 
