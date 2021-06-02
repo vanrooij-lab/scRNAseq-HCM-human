@@ -167,38 +167,6 @@ ldf=lapply(groupedData_mw, function(df) {df[rnames_all,]})
 
 #####
 
-pool_df_mw = function(multiple_dfs) {
-
-    print('update this with above!!')
-    
-    rnames_all = unique(unlist(lapply(multiple_dfs, rownames)))
-    pooled_df =
-        # do.call(cbind, lapply(multiple_dfs, function(df) {df[rnames_all,]}))
-        bind_cols(lapply(multiple_dfs, function(df) {df[rnames_all,]}))
-    rownames(pooled_df) = rnames_all
-    
-    return(pooled_df)
-
-}
-
-# some minimal processing
-manual_scale_table = function(countTable) {
-    
-    readsPerWell      = apply(countTable,2,sum)
-    median_readsPerWell = median(readsPerWell)
-    GenesHowManyCells = apply(countTable>0,1,sum)
-    #gene_old_selection = sum(GenesHowManyCells>3)
-    
-    countTable_scaled = 
-        sapply(1:dim(countTable)[2], function(X) {
-            countTable[,X]/readsPerWell[X]*median_readsPerWell})
-    rownames(countTable_scaled) = rownames(countTable)
-    colnames(countTable_scaled) = colnames(countTable)
-    
-    # apply(countTable_scaled,2,sum)
-    return(list(countTable_scaled=countTable_scaled, readsPerWell=readsPerWell,
-            median_readsPerWell=median_readsPerWell, GenesHowManyCells=GenesHowManyCells ))
-}
 
 
 groupedData_mw_pooled = 
