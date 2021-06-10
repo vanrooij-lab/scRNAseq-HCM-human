@@ -150,7 +150,18 @@ shorthand_expression_plot_Teich('NPPB')
 # Looking at mitochondrial reads is a bit useless, since these are nuclei (does confirm we're looking at nuclei)
 rownames(Teichmann_Sampled_scaledMan_out$countTable_scaled_sel)[grepl('MT-',rownames(Teichmann_Sampled_scaledMan_out$countTable_scaled_sel))]
 expr_MT = apply(Teichmann_Sampled[grepl('MT-',rownames(Teichmann_Sampled)),], 2, sum)
-                
+
+################################################################################                
+################################################################################
+# Let's now not take a random selection, but instead take all vCM cells
+
+# Well .. actually, the file I'm using (hca_heart_ventricular_CM_raw)
+# of course only contains ventricular cardiomyocytes.
+# 
+# So, it's probably most convenient to later just add the other
+# data to this data
+
+
 
 
 

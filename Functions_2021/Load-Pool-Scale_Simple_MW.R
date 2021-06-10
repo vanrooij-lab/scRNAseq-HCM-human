@@ -1,4 +1,8 @@
 
+library(stringr)
+
+
+
 loadData_MW = function(dataset_list_paths, toPool = NULL) {
     # input: 
     # - dataset_list_paths: c(sample_name=path1, sample2_name=path2, ..)
@@ -16,6 +20,9 @@ loadData_MW = function(dataset_list_paths, toPool = NULL) {
             read.table(dataset_list_paths[[idx]], row.names = 1, header=1)
         colnames(output[[sample_names[idx]]]) = 
             paste0(sample_names[idx],'.',colnames(output[[sample_names[idx]]]))
+        
+        print(paste0('Loaded: ', sample_names[idx]))
+        
     }
     
     if (!is.null(toPool)) {
@@ -71,7 +78,48 @@ manual_scale_table = function(countTable) {
 }
 
 
+# So we'll only take along uniquely mapped genes for now ..
+# And we'll convert those names to only the symbol
+preprocess_convertAAnames_toSymbol = function(df) {
+    # df = SCS_df_list_data$AL1
+    # Take only uniquely identified genes
+    the_duplicity=(sapply(rownames(df), str_count, pattern='-')+1)
+    df=df[the_duplicity==1,]
+    # Now take the symbol name
+    symbol_names=sapply(strsplit(rownames(df),'_'), function(x) {x[[2]]})
+    
+    # For now we'll just sum the duplicates that remain
+    # (Note: those will have e.g. a different ENSG ID, 
+    # probably due to nomenclature issues.)
+    # (Note2: presumably, their mapping also was different, so 
+    # they will be different molecules, and their UMIs can be
+    # added to each other.)
+    # (Note3: the issue might also arise due to different mappings
+    # in different samples, which is another argument for adding them)
+    table_symbol_names_freq = table(symbol_names)
+    symbol_names_plus_duplicity = data.frame(name=symbol_names, freq=as.vector(table_symbol_names_freq[symbol_names]))
 
+    # first already update the names that have duplicity one
+    new_df_names = rownames(df)
+    new_df_names[symbol_names_plus_duplicity$freq==1] = symbol_names[symbol_names_plus_duplicity$freq==1]
+    rownames(df) = new_df_names
+    
+    # then correct the ones that are present dupl>1
+    for (name_to_correct in unique(symbol_names_plus_duplicity$name[symbol_names_plus_duplicity$freq>1])) {
+        
+        current_rows = grepl(paste0('_',name_to_correct,'_'), rownames(df))
+        if (sum(current_rows)<1) { stop('Error, ',name_to_correct,' not found or <1..') }
+        
+        summed_data = apply(df[current_rows,,drop=F],2,sum)
+        df=df[!current_rows,]
+        df[name_to_correct,]=summed_data
+        print(paste0('Correct: ',name_to_correct,' (count=',sum(summed_data),')'))
+        
+    }
+    
+    return(df)
+    
+}
 
 
 # pool_df_mw = function(multiple_dfs) {
