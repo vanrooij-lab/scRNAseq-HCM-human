@@ -135,6 +135,7 @@ Teichmann_rawcounts = Teichmann@assays$RNA@counts
 Teichmann_new_rownames = gsub(pattern = '-',replacement = '\\.',x = rownames(Teichmann_rawcounts))
 rownames(Teichmann_rawcounts) = Teichmann_new_rownames
 Teichmann_new = CreateSeuratObject(counts = Teichmann_rawcounts, project = 'TEICH')
+rm(c('Teichmann','Teichmann_rawcounts'))
 
 ##########
 
@@ -163,7 +164,6 @@ head(colnames(WRL_object_bigbig))
 head(rownames(WRL_object_bigbig))
 
 # add some annotation
-
 WRL_annotation_samples=unlist(lapply(  strsplit(colnames(WRL_object_bigbig), split='_'), 
     function(splitted_string) {splitted_string[1]}))
 WRL_object_bigbig[["annotation_sample_fct"]]     <- as.factor(WRL_annotation_samples)

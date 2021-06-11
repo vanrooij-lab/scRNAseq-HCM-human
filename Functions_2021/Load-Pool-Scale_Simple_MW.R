@@ -1,9 +1,8 @@
 
 library(stringr)
+library(parallel)
 
-
-
-loadData_MW = function(dataset_list_paths, toPool = NULL) {
+loadData_MW = function(dataset_list_paths, toPool = NULL, prefix=T) {
     # input: 
     # - dataset_list_paths: c(sample_name=path1, sample2_name=path2, ..)
     # - toPool: list of vectors that list datasets that should be pooled, e.g.
@@ -18,21 +17,43 @@ loadData_MW = function(dataset_list_paths, toPool = NULL) {
     
         output[[sample_names[idx]]] =
             read.table(dataset_list_paths[[idx]], row.names = 1, header=1)
-        colnames(output[[sample_names[idx]]]) = 
-            paste0(sample_names[idx],'.',colnames(output[[sample_names[idx]]]))
+        if (prefix) { # prefix colnames with sample name
+          colnames(output[[sample_names[idx]]]) = 
+              paste0(sample_names[idx],'.',colnames(output[[sample_names[idx]]]))
+        }
         
         print(paste0('Loaded: ', sample_names[idx]))
         
     }
     
-    if (!is.null(toPool)) {
-     
-        #for (idx in 1:length(toPool)) {
-        #    output[[names(toPool)[idx]]] = 
-        #        
-        #}
+    return(output)
+    
+}
+
+loadData_MW_parallel = function(dataset_list_paths, mc.cores=1, prefix=T) {
+    # input: 
+    # - dataset_list_paths: c(sample_name=path1, sample2_name=path2, ..)
+    # - toPool: list of vectors that list datasets that should be pooled, e.g.
+    # list(group1=c('sample1', 'sample2'), ..)
+    # output:
+    # groupedData[[groupName]]
+
+    sample_names = names(dataset_list_paths)
+    
+    output = mclapply(X = 1:length(dataset_list_paths), FUN=function(idx) {
+    
+        sample_output = 
+            read.table(dataset_list_paths[[idx]], row.names = 1, header=1)
+        if (prefix) { # prefix colnames with sample name
+          colnames(sample_output) = 
+              paste0(sample_names[idx],'.',colnames(sample_output))
+        }
+          
+        print(paste0('Loaded: ', sample_names[idx]))
+        return(sample_output)
         
-    }
+    })
+    names(output) = sample_names
     
     return(output)
     
@@ -80,7 +101,9 @@ manual_scale_table = function(countTable) {
 
 # So we'll only take along uniquely mapped genes for now ..
 # And we'll convert those names to only the symbol
-preprocess_convertAAnames_toSymbol = function(df) {
+preprocess_convertAAnames_toSymbol = function(df, revert_to_hgnc=F, script_dir=NULL) {
+  # set revert_to_hgnc and script_dir to convert names back to hgnc names
+  
     # df = SCS_df_list_data$AL1
     # Take only uniquely identified genes
     the_duplicity=(sapply(rownames(df), str_count, pattern='-')+1)
@@ -117,9 +140,61 @@ preprocess_convertAAnames_toSymbol = function(df) {
         
     }
     
+    if (revert_to_hgnc) {
+      
+      lookup_table = name_conversion_anna(script_dir=script_dir)
+      newnames = lookup_table[rownames(df)]
+      if (any(is.na(newnames))) {
+        print(paste0('Keeping unknown names: ',toString(rownames(df)[is.na(newnames)]))) 
+        newnames[is.na(newnames)] = rownames(df)[is.na(newnames)]
+      }
+      rownames(df) = newnames
+      
+    }
+    
     return(df)
     
 }
+
+
+
+name_conversion_anna = function(script_dir) {
+    
+    if (file.exists(paste0(script_dir, 'Resources/Anna_name_conversion.Rdata'))) {
+        
+        print('Using saved name conversion lib ..')
+        load(file=paste0(script_dir, 'Resources/Anna_name_conversion.Rdata'))
+        
+    } else {
+        
+        print('Generating name conversion lib using biomart ..')
+        
+        library(biomaRt)
+        
+        mart <- useMart("ensembl", dataset = "hsapiens_gene_ensembl")
+        all_gene_symbols <- getBM(
+          attributes=c("hgnc_symbol"),
+          mart = mart)
+        head(all_gene_symbols)
+        
+        length(all_gene_symbols$hgnc_symbol)
+        length(unique(all_gene_symbols$hgnc_symbol))
+        
+        write.table(file='/Users/m.wehrens/Data/__resources/biomaRt_all_hgnc_symbol.csv', x=all_gene_symbols, quote = F, col.names = F, row.names=F)
+        
+        #Anna_name_conversion = data.frame(hgnc_symbol=all_gene_symbols$hgnc_symbol, anna_name=gsub(pattern='-','\\.',x = all_gene_symbols$hgnc_symbol))
+        #rownames(Anna_name_conversion) = Anna_name_conversion$anna_name
+        
+        Anna_name_conversion = all_gene_symbols$hgnc_symbol
+        names(Anna_name_conversion) = anna_name=gsub(pattern='-','\\.',x = all_gene_symbols$hgnc_symbol)
+        
+        
+        save(file=paste0(script_dir, 'Resources/Anna_name_conversion.Rdata'), list =c('Anna_name_conversion'))
+    }
+    
+    return(Anna_name_conversion)
+}
+
 
 
 # pool_df_mw = function(multiple_dfs) {

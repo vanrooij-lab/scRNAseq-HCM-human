@@ -1,14 +1,17 @@
 
 
-# base_dir = '/Users/m.wehrens/Data/_2020_03_Wang/'
-base_dir = '/Volumes/workdrive_m.wehrens_hubrecht/data/2020_04_Wang-heart/'
-# base_dir = '/hpc/hub_oudenaarden/mwehrens/data/Wang/'
+
+# base_dir = '/Volumes/workdrive_m.wehrens_hubrecht/data/2020_04_Wang-heart/'
+# base_dir = '/Users/m.wehrens/Data/_2020_03_Wang/' # old
+
+######################################################################
+
+base_dir = '/hpc/hub_oudenaarden/mwehrens/data/Wang/'
 
 library(plyr)
 
+######################################################################
 # The Wang data is split into two batches
-
-
 
 # First batch of cells, patients N1-N12
 # Conveniently, there's also RSA numbers in Wang_MetaData_GSE109816
@@ -21,13 +24,11 @@ length(unique(Wang_MetaData_GSE109816$ID)) # checking whether IDs are unique (l=
 sort(unique(Wang_MetaData_GSE109816$characteristics..individual)) # "N1"  "N10" "N11" "N12" "N2"  "N3"  "N4"  "N5"  "N6"  "N7"  "N8"  "N9" 
 colnames(Wang_MetaData_GSE109816)
 
-
 # Second batch of cells, HF and N13 and N14
 Wang_Info_GSE121893  = read.csv(paste0(base_dir,'Metadata/MW_GSE121893_human_heart_sc_info.txt'), sep='\t', comment.char = '#') 
 dim(Wang_Info_GSE121893) # 4933   35
 length(unique(Wang_Info_GSE121893$ID)) # checking whether IDs are unique (l=4933, yes)
 sort(unique(Wang_Info_GSE121893$Individual)) # "C1"  "C2"  "D1"  "D2"  "D4"  "D5"  "N13" "N14"
-
 
 # Let's merge the two tables into one metadata table, which I'll call combined_metadata_Wang
 ###
@@ -87,17 +88,16 @@ desired_cellnames = metadata_Wang_full_table[desired_celltypes&desired_individua
 sum(is.na(metadata_Wang_full_table$Barcode)) # just checking
 desired_cells_mwName = paste0(metadata_Wang_full_table[desired_selection,]$Individual, '-', metadata_Wang_full_table[desired_selection,]$Barcode)
 
-
 save(list = c('desired_cells_mwName'),file = paste0(base_dir,'Rdata/desired_cells_mwName.Rdata'))
 
-# Done with stuff that's also needed @HPC
-########################################################################
-########################################################################
-########################################################################
 
 
+######################################################################
+# We're done; some random other stuff:
+
 ########################################################################
-# double checking barcodes
+# Double checking whether the barcodes I used for mapping are indeed
+# the Takara Bio barcodes I think they've used.
 
 # assmeble barcodes that were used
 unique(Wang_Info_GSE121893$Barcode)
