@@ -2,6 +2,14 @@
 library(stringr)
 library(parallel)
 
+# For convenience, little fn to change text size ggplot in one go
+give_better_textsize_plot <- function(TEXTSIZE){
+  theme(#legend.position="none",
+        text = element_text(size=TEXTSIZE),
+        axis.text = element_text(size=TEXTSIZE),
+        plot.title = element_text(size=TEXTSIZE))
+}
+
 loadData_MW = function(dataset_list_paths, toPool = NULL, prefix=T) {
     # input: 
     # - dataset_list_paths: c(sample_name=path1, sample2_name=path2, ..)

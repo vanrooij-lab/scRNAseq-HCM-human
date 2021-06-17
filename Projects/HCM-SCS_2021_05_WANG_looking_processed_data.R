@@ -2,7 +2,7 @@
 
 
 # base_dir = '/Volumes/workdrive_m.wehrens_hubrecht/data/2020_04_Wang-heart/'
-# base_dir = '/Users/m.wehrens/Data/_2020_03_Wang/' # old
+## base_dir = '/Users/m.wehrens/Data/_2020_03_Wang/' # old
 
 ######################################################################
 
@@ -53,7 +53,7 @@ dim(Wang_ClusterInfo_GSE121893) # 11377     8
 length(unique(Wang_ClusterInfo_GSE121893$ID)) # checking whether IDs are unique
 sort(unique(Wang_ClusterInfo_GSE121893$sample)) # "C1"  "C2"  "D1"  "D2"  "D4"  "D5"  "N1"  "N10" "N11" "N12" "N13" "N14" "N2"  "N3"  "N4"  "N5"  "N6"  "N7"  "N8"  "N9" 
 colnames(Wang_ClusterInfo_GSE121893)
-View(Wang_ClusterInfo_GSE121893)
+# View(Wang_ClusterInfo_GSE121893)
 
 # Let's look at those cell types
 sort(unique(Wang_ClusterInfo_GSE121893$ident))
@@ -89,6 +89,7 @@ sum(is.na(metadata_Wang_full_table$Barcode)) # just checking
 desired_cells_mwName = paste0(metadata_Wang_full_table[desired_selection,]$Individual, '-', metadata_Wang_full_table[desired_selection,]$Barcode)
 
 save(list = c('desired_cells_mwName'),file = paste0(base_dir,'Rdata/desired_cells_mwName.Rdata'))
+save(list = c('metadata_Wang_full_table'),file = paste0(base_dir,'Rdata/metadata_Wang_full_table.Rdata'))
 
 
 

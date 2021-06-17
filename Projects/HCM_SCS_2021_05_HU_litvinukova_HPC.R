@@ -1,4 +1,13 @@
-# Commands that I ran on the HPC
+
+# Converting Litviňuková et al. data to something I can read in with
+# Seurat.
+
+# Data downloaded from 
+# https://www.heartcellatlas.org/
+# >> "Heart Ventricular Cardiomyocytes", h5ad file
+#
+# Data described in paper: 
+# Litviňuková, M., Talavera-López, C., Maatz, H., Reichart, D., Worth, C. L., Lindberg, E. L., … Teichmann, S. A. (2020). Cells of the adult human heart. Nature, (September). https://doi.org/10.1038/s41586-020-2797-4
 
 # After installation, I followed:
 # - https://mojaveazure.github.io/seurat-disk/articles/convert-anndata.html
@@ -6,6 +15,8 @@
 # Convert(source, dest, assay, overwrite = FALSE, verbose = TRUE, ...)
 
 # Goal: load the h5ad file into R for further processing
+
+# m.wehrens@hubrecht.eu
 
 ################################################################################
 # libs
@@ -45,11 +56,29 @@ Teichmann
 Teichmann$index()
 Teichmann$close_all()
 
+################################################################################
+# OK we're done.
+
+################################################################################
+# We can test it:
+
 Teichmann <- LoadH5Seurat('/hpc/hub_oudenaarden/mwehrens/data/Teichmann/hca_heart_ventricular_CM_raw.h5seurat')
 Teichmann
 
 # > object_size(Teichmann)
 # 5.02 GB
+
+
+
+
+################################################################################
+# The rest of the code is old code I used to play around with data;
+# but not part of final analysis
+################################################################################
+
+
+
+# Playing around a bit more
 
 # To access the raw data:
 Teichmann@assays$RNA[1:100,1:100]
