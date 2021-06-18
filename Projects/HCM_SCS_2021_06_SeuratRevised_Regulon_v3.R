@@ -1,13 +1,6 @@
 
-
-
 # Applying the regulon analysis to all of the different datasets separately,
 # separately to each donor/patient.
-
-# Maybe I should use Joep's functions?? --> at least the ones used in the 
-# submitted manuscript..
-
-
 
 # OK, convenient to again use the already made Seurat objects,
 # this time, I will use the ones that aren't corrected, since
@@ -18,78 +11,17 @@ library(Seurat)
 library(SeuratDisk)
 
 # For reference, this was what we got from the previous analysis:
-load('/Users/m.wehrens/Data/_2019_02_HCM_SCS/2021_HPC_analysis/Previous_analysis_for_reference/JoepAnalysis_Regulons.Rdata')
-# regulons_README_objects_saved
-
-################################################################################
-# Load the objects
-
-OBJECTS_TO_ANALYZE = c('ROOIJonly_default', 'HUonly_default')
-OBJECTS_TO_ANALYZE = c('ROOIJonly_RID2l', 'HUonly_RID2l')
-
-current_analysis=list()
-for (analysis_name in OBJECTS_TO_ANALYZE) {
-
-    # analysis_name = 'HUonly_RID2l'
-    
-    current_analysis[[analysis_name]] = 
-        LoadH5Seurat(file = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_',analysis_name,'.h5seurat'))
-
-}
-
-################################################################################
-
-# Previousy, we got, e.g. for patient 1:
-regulons$patient1Mod
-length(unlist(regulons$patient1Mod$regulons)) # 475 genes
-sapply(regulons$patient1Mod$regulons, length)
-
-################################################################################
-
-# Try first for one patient
-
-# unique(current_analysis[['ROOIJonly_default']]$annotation_patient_str)
-ANALYSIS_NAME = 'ROOIJonly_RID2l'
-CURRENT_PATIENT = 'R.P1'
-
-current_analysis[[paste0(ANALYSIS_NAME, CURRENT_PATIENT)]]=
-    subset(current_analysis[[ANALYSIS_NAME]], annotation_patient_str == CURRENT_PATIENT)
-
-current_matrix = 
-    current_analysis[[paste0(ANALYSIS_NAME, CURRENT_PATIENT)]]@assays$RNA@data
-    # expression matrix now in
-    # current_anaysis_temp@assays$RNA@data
-
-# MORE DEBUGGING:
-cell_names_Joep_inSeuratstyle_present =
-    cell_names_Joep_inSeuratstyle[cell_names_Joep_inSeuratstyle %in% colnames(current_analysis[[paste0(ANALYSIS_NAME, CURRENT_PATIENT)]]@assays$RNA@data)]
-current_matrix = 
-    current_analysis[[paste0(ANALYSIS_NAME, CURRENT_PATIENT)]]@assays$RNA@data[,cell_names_Joep_inSeuratstyle_present]
-
-
-# DEBUGGING, CHANGE BELOW
-# Let's try doing it for the old data, should give the same result
-# as before ..
-# Note: this object needs RaceID2_StemID_class to function
-if (F) {
-    load('/Users/m.wehrens/Data/_2019_02_HCM_SCS/2021_HPC_analysis/Previous_analysis_for_reference/export_groupedSCS_patient1mod_only.Rdata')
-    source("/Users/m.wehrens/Documents/git_repos/SCS_Joep/Functions/RaceID2_StemID_class.R")
-    current_matrix = groupedSCS_patient1mod@ndata
-}
-# END DEBUGGING, CHANGE 
-
-# Joep's scripts were written for use with the groupedSCS structure, which
-# is a bit inconvenient; perhaps I can better use the Tomoseq regulon
-# analysis now
-#CorrelationMatrix =  
-#    generateCorrelationMatrix(config=NULL, groupedSCS, groupNames, excludeOutlierCells=T, minCellFraction=0, minCellExpression=0.1, desiredPValue=0.00001, adjustP=T, saveMatrices=F, overrideDir=F, outputMode='pdf', which_genes_to_select=T, filename_precursor='')
-
-# Test run of regulon analysis, using my Tomo seq code
+# load('/Users/m.wehrens/Data/_2019_02_HCM_SCS/2021_HPC_analysis/Previous_analysis_for_reference/JoepAnalysis_Regulons.Rdata')
+# See regulons_README_objects_saved
+# See exporatory analyses for comparison earlier and current data analyses
 
 ######################################################################
+# libraries
 
 # local base dir
-base_dir = '/Users/m.wehrens/Data/_2019_02_HCM_SCS/2021_HPC_analysis/'
+# base_dir = '/Users/m.wehrens/Data/_2019_02_HCM_SCS/2021_HPC_analysis/'
+# base_dir_secondary = '/Volumes/workdrive_m.wehrens_hubrecht/R-sessions/2021_SCS_HCM_Seurat/'
+base_dir_secondary = base_dir # change if desired to put some less important and/or big files
 
 library(ggdendro)
 library(gplots) # heatmap.2
@@ -105,123 +37,228 @@ cfg$species='human'
 source('/Users/m.wehrens/Documents/git_repos/Tomoseq_mw/sub_functions/MW_load_libraries.R') # doesn't work completely ?
     # file.edit('/Users/m.wehrens/Documents/git_repos/Tomoseq_mw/sub_functions/MW_load_libraries.R')
 
-#cfg=list()
-cfg$outputDir='/Users/m.wehrens/Data/_2019_02_HCM_SCS/2021_HPC_analysis/regulon/'
+################################################################################
 
-# # Calibrate some settings (Rooij)
-# CURRENT_RUNNAME = paste0('ROOIJ','only_','RID2l')
-# cell_selection = current_analysis_temp$annotation_patient_str=='R.P1'
-# GROUP_NAME = 'test_Rooij_pt1' # choose from names(data_container$groups)
-# dir.create(paste0(cfg$outputDir,'analysis_',GROUP_NAME,'/regulon/'), recursive = T)
-# 
-# # Calibrate some settings (Hu)
-# CURRENT_RUNNAME = paste0('HU','only_','RID2l')
-# cell_selection = current_analysis_temp$annotation_patient_str=='H.N1'
-# GROUP_NAME = 'test_Hu_pt1' # choose from names(data_container$groups)
-# dir.create(paste0(cfg$outputDir,'analysis_',GROUP_NAME,'/regulon/'), recursive = T)
+# Execute for all patients in a specific analysis
+
+# unique(current_analysis[['ROOIJonly_default']]$annotation_patient_str)
+ANALYSIS_NAME = 'ROOIJonly_RID2l' #  c('ROOIJonly_RID2l', 'HUonly_RID2l')
+ANALYSIS_NAME = 'HUonly_RID2l' #  c('ROOIJonly_RID2l', 'HUonly_RID2l')
+
+current_analysis=list()
+current_analysis[[ANALYSIS_NAME]] = 
+        LoadH5Seurat(file = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_',ANALYSIS_NAME,'.h5seurat'))
+
+all_patients  = unique(current_analysis[[ANALYSIS_NAME]]$annotation_patient_str)
+    
+collected_regulon_objects = list()
+for (current_patient in all_patients) {
+
+    current_analysis[[paste0(ANALYSIS_NAME, current_patient)]]=
+        subset(current_analysis[[ANALYSIS_NAME]], annotation_patient_str == current_patient)
+    
+    current_matrix = 
+        current_analysis[[paste0(ANALYSIS_NAME, current_patient)]]@assays$RNA@data
+        # expression matrix now in
+        # current_anaysis_temp@assays$RNA@data
+
+    collected_regulon_objects[[ANALYSIS_NAME]][[current_patient]] = 
+        giveMeRegulons_SeuratVersion(run_name=paste0(ANALYSIS_NAME,'_',current_patient),base_dir=base_dir,current_matrix=current_matrix)
+}
+save(list='collected_regulon_objects', file = paste0(base_dir_secondary,'Rdata/RooijRidlRegulonsOldstyle.Rdata'))
+
+regulon_gene_names=
+    do.call(c, 
+        lapply(collected_regulon_objects$ROOIJonly_RID2l, function(x) {names(x$the_regulons) = paste0('R.',1:length(x$the_regulons)); x$the_regulons})
+    )
+
+save(list='regulon_gene_names', file = paste0(base_dir,'Rdata/RooijRidlRegulonsOldstyle_regulon_gene_names.Rdata'))
+
+# Now make the little comparison again
+
+overlap_output=
+    regulon_overlap_heatmap(regulon_gene_names, base_dir=base_dir, run_name =ANALYSIS_NAME)
+
+####XXXXX
+regulon_overlap_heatmap = function(pooled_regulons, base_dir, run_name) {
+    
+    # Create pairs to compare
+    df_compare = tidyr::expand_grid(x=names(pooled_regulons), y=names(pooled_regulons))
+    
+    # Calculate overlaps
+    df_compare$overlap = sapply(1:dim(df_compare)[1], function(X) { 
+        sum(pooled_regulons[[df_compare$x[X]]] %in% pooled_regulons[[df_compare$y[X]]]) /
+            min(length(pooled_regulons[[df_compare$x[X]]]), length(pooled_regulons[[df_compare$y[X]]]))
+        })
+    
+    # Create matrix
+    matrix_compare <- reshape2::acast(df_compare, x~y, value.var="overlap")
+    
+    # Show heatmap
+    pheatmap(matrix_compare, clustering_method = 'ward.D2')
+    
+    hclust_out = hclust(dist(matrix_compare), method='ward.D2')
+    plot(as.dendrogram(hclust_out))
+    cutree_out = cutree(hclust_out, h = 2)
+    cutree_df  = as.data.frame(as.factor(cutree_out)); colnames(cutree_df) = c('group')
+    #annotation_colors = col_Dark2[1:max(cutree_out)]
+    # Create a little heatmap
+    annotation_colors = col_vector_60[1:max(cutree_out)]
+    names(annotation_colors) = unique(cutree_out)
+    annotation_colors=list(group=annotation_colors)
+    p=pheatmap(matrix_compare, cluster_rows = hclust_out,cluster_cols = hclust_out, 
+        annotation_col = cutree_df, annotation_row = cutree_df, annotation_colors = annotation_colors)
+        #annotation_colors = list(colors=col_Dark2[1:max(cutree_out)])))
+    print(p)
+    ggsave(filename = paste0(base_dir,'Rplots/',run_name,'_7_Regulons.png'), plot = p, width=10, height=10, units='cm')
+    
+    return(list(cutree_df=cutree_df))
+    
+    #View(df_compare)
+    #ggplot(df_compare)+
+    #    geom_tile(aes(x=x, y=y, fill=overlap))
+    
+    #pheatmap(matrix_compare, cluster_rows = F, cluster_cols = F)
+    
+}
+
+
+core_regulons=list()
+
+cutree_df = overlap_output$cutree_df
+pooled_regulons=regulon_gene_names
+for (group_idx in unique(cutree_df$group)) {
+    # rownames(cutree_df[cutree_df$group==group_idx,,drop=F])
+    
+    # Now calculate how often each gene occurs in the joined regulons
+    
+    regulon_group = rownames(cutree_df[cutree_df$group==group_idx,,drop=F])
+    
+    genes_in_current_group = unique(unlist(pooled_regulons[regulon_group]))
+    gene_table_regulon_group = data.frame(sapply(regulon_group, function(x) {1*(genes_in_current_group %in% pooled_regulons[[x]])}))
+    rownames(gene_table_regulon_group) = genes_in_current_group
+    
+    gene_table_regulon_group$total_occurence = apply(gene_table_regulon_group, 1, sum)
+    
+    core_regulons[[paste0('s.R.',group_idx)]] = rownames(gene_table_regulon_group)[gene_table_regulon_group$total_occurence>=3]
+
+    print(paste0('s.R.',group_idx,': ',toString(core_regulons[[paste0('s.R.',group_idx)]])))
+    
+}
+
+sapply(core_regulons, length)
+
+
 
 ######################################################################
 
-EXPRESSION_ZERO_CUTOFF = 0 # 0.1
-ANALYSIS_NAME # ANALYSIS_NAME = 'groupedSCS_Patient1Mod'
-# ANALYSIS_NAME = 'ROOIJonly_RID2l_test_J_intersect' # DEBUG
-
-
-dir.create(paste0(cfg$outputDir,'analysis_',ANALYSIS_NAME,'/regulon/'), recursive = T)
-
-# Note that we can either take @data or @scaled.data, the latter only contains the 
-
-# current_analysis_temp
-
-genes_expressed_in_cells = rowSums(current_matrix>EXPRESSION_ZERO_CUTOFF)
-genes_expr_in_cells_fraction = genes_expressed_in_cells/dim(current_matrix)[2]
-gene_selection = genes_expr_in_cells_fraction>0.1
-print(paste0('Genes in run: ',sum(gene_selection)))
-
-# Select genes first based on how many 
-# current_analysis_temp@misc$genes_expr_in_cells =
-#     rowSums(current_analysis_temp@assays$RNA@data>0)
-# current_analysis_temp@misc$genes_expr_in_cells_fraction =
-#     current_analysis_temp@misc$genes_expr_in_cells/
-#         dim(current_analysis_temp@assays$RNA@data)[2]
-    # length(current_analysis_temp@misc$genes_expr_in_cells_fraction)
-#gene_selection = current_analysis_temp@misc$genes_expr_in_cells_fraction>0.1
-# print(paste0('Genes in run: ',sum(gene_selection)))
-
-
-regulon_object = MW_determine_regulons_part1(
-    expression_matrix = current_matrix[gene_selection,], 
-    calculate_p = T,
-    outputDir = cfg$outputDir,
-    analysis_name = ANALYSIS_NAME)
-
-# Next, we can assess which 'connectedness' cutoff we want.
-# With connectedness, I mean with how many other genes a gene is significantly
-# correlated. 
-# In principle, any gene that has a few connections might be of interest to
-# take along in the analysis. However, to narrow down the analysis to
-# genes that are most interesting, it can be usefull to only take along
-# genes that have many connections to other genes. 
-# This function provides plots with statistics on with how many other
-# genes genes are significantely correlated.
-regulon_object = MW_determine_regulons_part2(regulon_object=regulon_object, 
-    chosen_cutoff_parameter='p',
-    # this parameter should be 'r' or 'p', respectively selection of 
-    # genes based on r-value or p-value cutoff (r being the correlation 
-    # coefficient value itself)
-    #p_or_r_cutoff=.25
-    p_or_r_cutoff=0.00001) # 1/100000
-    # this parameter provides the cutoff you have chosen earlier,
-    # e.g. consider r-values (correlation coefficients) >.35 or <-.35 
-    # significant.
-
-# Now, we can already create a correlation heatmap, which shows the structure
-# of correlation between genes. 
-# Per default, I don't show the heatmap here, because we can later determine
-# some parameters and set a cutoff to perform clustering on this correlation
-# matrix.
-regulon_object = MW_determine_regulons_part3(regulon_object, 
-                connectedness_cutoff = 40, 
-                min_expression_fraction_genes=.1,
-                show_heatmap=F,
-                chosen_cutoff_parameter = 'p')
-
-# To further quantify the pattern of correlations, we can sort the 
-# correlation data using hierarchical clustering, and also classify clusters 
-# based on this method.
-# To create the clustering, a cutoff should be determined. This can be done
-# based on the observed distances between points that are joined during the
-# hierarchical clustering procedure. The plot that is shown by this function
-# looks for a sudden change in length scales in the points which are joined,
-# and tries to suggest a good cutoff
-# (Given to the user in regulon_object$auto_cutoff1 and 
-# regulon_object$auto_cutoff2.) Also the dendrogram is shown, such that you
-# can inspect whether the suggested cutoff makes sense.
-regulon_object = MW_determine_regulons_part4(regulon_object = regulon_object)
-
-# Finally, we can create a plot which shows the correlation coefficient matrix
-# and also the hierarchical clustering dendrogram and cluster classification
-# performed on it.
-# Choose a cutoff value, e.g.:
-cfg$regulon_dendogram_cutoff[[ANALYSIS_NAME]] = regulon_object$auto_cutoff2
-# cfg$regulon_dendogram_cutoff[[ANALYSIS_NAME]] = 3
-regulon_object = MW_determine_regulons_part5(regulon_object = regulon_object,
-    hierarchical_cutoff = cfg$regulon_dendogram_cutoff[[ANALYSIS_NAME]])
-
-# Now we can add some information about the genes (are they TF, ligand, receptor?)
-data_container=list() # Change this to get TF ligand stuff (should be easily doable)
-warning('See above: add TF/ligand stuff')
-regulon_object = MW_regulon_add_TF_RL_flags(regulon_object, data_container)
-# And we can export the regulon analysis to an excel file:
-MW_regulon_final_export(regulon_object)
-
-# GO analysis
-# Additionally, we can export the classification of genes to clusters to an
-# excel file.
-# Additionally, we can perform a GO analysis on these genes, with all genes
-# taken along in the matrix as background (TODO: perhaps reconsider which
-# genes to use as background panel??-- perhaps all genes in the expression
-# matrix would make more sense). 
-# This function also exports the GO term for each of the clusters to an 
-# excel file.
-regulon_object = MW_determine_regulons_part6(regulon_object = regulon_object)
+# Using Tomo code!
+giveMeRegulons_SeuratVersion = function(run_name, base_dir, current_matrix, get_GO_terms=F) {
+    
+    EXPRESSION_ZERO_CUTOFF = 0 # 0.1
+    run_name # run_name = 'groupedSCS_Patient1Mod'
+    # run_name = 'ROOIJonly_RID2l_test_J_intersect' # DEBUG
+    
+    dir.create(paste0(base_dir,'regulon/analysis_',run_name,'/regulon/'), recursive = T)
+    
+    # Note that we can either take @data or @scaled.data, the latter only contains the 
+    
+    # current_analysis_temp
+    
+    genes_expressed_in_cells = rowSums(current_matrix>EXPRESSION_ZERO_CUTOFF)
+    genes_expr_in_cells_fraction = genes_expressed_in_cells/dim(current_matrix)[2]
+    gene_selection = genes_expr_in_cells_fraction>0.1
+    print(paste0('Genes in run: ',sum(gene_selection)))
+    
+    # Select genes first based on how many 
+    # current_analysis_temp@misc$genes_expr_in_cells =
+    #     rowSums(current_analysis_temp@assays$RNA@data>0)
+    # current_analysis_temp@misc$genes_expr_in_cells_fraction =
+    #     current_analysis_temp@misc$genes_expr_in_cells/
+    #         dim(current_analysis_temp@assays$RNA@data)[2]
+        # length(current_analysis_temp@misc$genes_expr_in_cells_fraction)
+    #gene_selection = current_analysis_temp@misc$genes_expr_in_cells_fraction>0.1
+    # print(paste0('Genes in run: ',sum(gene_selection)))
+    
+    
+    regulon_object = MW_determine_regulons_part1(
+        expression_matrix = current_matrix[gene_selection,], 
+        calculate_p = T,
+        outputDir = paste0(base_dir,'regulon/'),
+        analysis_name = run_name)
+    
+    # Next, we can assess which 'connectedness' cutoff we want.
+    # With connectedness, I mean with how many other genes a gene is significantly
+    # correlated. 
+    # In principle, any gene that has a few connections might be of interest to
+    # take along in the analysis. However, to narrow down the analysis to
+    # genes that are most interesting, it can be usefull to only take along
+    # genes that have many connections to other genes. 
+    # This function provides plots with statistics on with how many other
+    # genes genes are significantely correlated.
+    regulon_object = MW_determine_regulons_part2(regulon_object=regulon_object, 
+        chosen_cutoff_parameter='p',
+        # this parameter should be 'r' or 'p', respectively selection of 
+        # genes based on r-value or p-value cutoff (r being the correlation 
+        # coefficient value itself)
+        #p_or_r_cutoff=.25
+        p_or_r_cutoff=0.00001) # 1/100000
+        # this parameter provides the cutoff you have chosen earlier,
+        # e.g. consider r-values (correlation coefficients) >.35 or <-.35 
+        # significant.
+    
+    # Now, we can already create a correlation heatmap, which shows the structure
+    # of correlation between genes. 
+    # Per default, I don't show the heatmap here, because we can later determine
+    # some parameters and set a cutoff to perform clustering on this correlation
+    # matrix.
+    regulon_object = MW_determine_regulons_part3(regulon_object, 
+                    connectedness_cutoff = 40, 
+                    min_expression_fraction_genes=.1,
+                    show_heatmap=F,
+                    chosen_cutoff_parameter = 'p')
+    
+    # To further quantify the pattern of correlations, we can sort the 
+    # correlation data using hierarchical clustering, and also classify clusters 
+    # based on this method.
+    # To create the clustering, a cutoff should be determined. This can be done
+    # based on the observed distances between points that are joined during the
+    # hierarchical clustering procedure. The plot that is shown by this function
+    # looks for a sudden change in length scales in the points which are joined,
+    # and tries to suggest a good cutoff
+    # (Given to the user in regulon_object$auto_cutoff1 and 
+    # regulon_object$auto_cutoff2.) Also the dendrogram is shown, such that you
+    # can inspect whether the suggested cutoff makes sense.
+    regulon_object = MW_determine_regulons_part4(regulon_object = regulon_object)
+    
+    # Finally, we can create a plot which shows the correlation coefficient matrix
+    # and also the hierarchical clustering dendrogram and cluster classification
+    # performed on it.
+    # Choose a cutoff value, e.g.:
+    # current_cutoff = regulon_object$auto_cutoff2
+    regulon_object = MW_determine_regulons_part5(regulon_object = regulon_object,
+        hierarchical_cutoff = NULL) # current_cutoff)
+        # With hierarchical_cutoff = NULL, gap_stat will be used
+    
+    # Now we can add some information about the genes (are they TF, ligand, receptor?)
+    data_container=list() # Change this to get TF ligand stuff (should be easily doable)
+    warning('See above: add TF/ligand stuff')
+    regulon_object = MW_regulon_add_TF_RL_flags(regulon_object, data_container)
+    # And we can export the regulon analysis to an excel file:
+    MW_regulon_final_export(regulon_object)
+    
+    # GO analysis
+    # Additionally, we can export the classification of genes to clusters to an
+    # excel file.
+    # Additionally, we can perform a GO analysis on these genes, with all genes
+    # taken along in the matrix as background (TODO: perhaps reconsider which
+    # genes to use as background panel??-- perhaps all genes in the expression
+    # matrix would make more sense). 
+    # This function also exports the GO term for each of the clusters to an 
+    # excel file.
+    if (get_GO_terms) {
+        regulon_object = MW_determine_regulons_part6(regulon_object = regulon_object)
+    }
+    
+    return(regulon_object)
+}
