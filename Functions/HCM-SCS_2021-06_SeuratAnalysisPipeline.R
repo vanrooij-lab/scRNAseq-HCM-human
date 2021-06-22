@@ -101,12 +101,39 @@ mySeuratCommonPlots = function(mySeuratObject,
         # marker = 'KCNQ1OT1'
         # marker = 'ACTC1'
         
+        # marker projection on umaps
         p_cm = FeaturePlot(mySeuratObject, features = marker, cols = rainbow_colors)
         ggsave(filename = paste0(base_dir,'Rplots/',run_name,'_2_umap_markers_',marker,'.png'), plot = p_cm, height=5, width=5)
         
+        # Violins
         pViol_m = VlnPlot(object = mySeuratObject, features = marker, group.by = 'annotation_paper_str') #, group.by = 'from_paper')
         ggsave(filename = paste0(base_dir,'Rplots/',run_name,'_4_Violin_markers_',marker,'.png'), plot = pViol_m, height=7.5, width=7.5)
 
+        # Also create histograms
+        pHist=ggplot(data.frame(expression=mySeuratObject@assays[[mySeuratObject@active.assay]]@data[marker,], 
+                                source=mySeuratObject$annotation_paper_fct))+
+            geom_histogram(aes(x=expression, fill=source, after_stat(density)))+
+            facet_grid(rows='source')+theme_bw()+theme(legend.position = 'none', )+give_better_textsize_plot(10)
+        ggsave(filename = paste0(base_dir,'Rplots/',run_name,'_4_histogram_markers_',marker,'.png'), plot = pHist, height=10, width=7.5, units='cm')
+        
+        # More complicated histogram, split, x-lims @98% of data, such that shape of curve is visible in case of outliers
+        currentlims=list()
+        for (source in unique(mySeuratObject$annotation_paper_fct)) {
+            currentlims[[source]]=calc_limits(mySeuratObject@assays[[mySeuratObject@active.assay]]@data[marker,mySeuratObject$annotation_paper_fct==source], percentile = .02)
+        }
+        # then calculate breaks
+        max_val = max(sapply(currentlims, function(x) {x[2]}))
+        currentbreaks = seq(from=-(max_val/29)/2,by=(max_val/29),to=max_val+(max_val/29)/2) 
+        # And make histogram, use density as y-value
+        pHist=ggplot(data.frame(expression=mySeuratObject@assays[[mySeuratObject@active.assay]]@data[marker,],
+                           source=mySeuratObject$annotation_paper_fct),
+                     )+
+            geom_histogram(aes(x=expression, y=..density.., fill=source), breaks=currentbreaks)+
+            give_better_textsize_plot(10)+
+            facet_grid(rows='source')+theme_bw()+theme(legend.position = 'none')+ggtitle(marker)
+        ggsave(filename = paste0(base_dir,'Rplots/',run_name,'_4_histogram98Lim_markers_',marker,'.png'), plot = pHist, height=10, width=7.5, units='cm')
+
+        
     }
     
     # Custom plot that shows distribution of patients over clusters

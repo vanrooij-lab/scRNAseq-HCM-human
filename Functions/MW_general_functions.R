@@ -140,32 +140,22 @@ venn_simple_plot_mw = function(venn_list) {
     vennDiagram(my_ven, cex=1) 
 }
 
-# plot_Venn_MW_2lists_v3 = function(list1, list2, name1='list1', name2='list2') {
-#     
-#     # Create overlap matrix
-#     all_genes = unique(c(list1, list2))
-#     gene_overlap_df=as.matrix(1*data.frame(list1=all_genes %in% list1, 
-#                                            list2=all_genes %in% list2))
-#     
-#     # Now plot this with Venn
-#     
-#     # library 1
-#     # library("limma")
-#     my_ven <- vennCounts(gene_overlap_df)
-#     vennDiagram(my_ven, cex=1, names = c(name1,name2)) # note: cex is general text scaling parameter
-#     
-#     # library 2
-#     #library(venneuler)
-#     #v<-venneuler::venneuler(gene_overlap_df)
-#     #v$labels=c(paste0(name1,'\n(',sum(gene_overlap_df[,1]),')'),
-#     #           paste0(name2,'\n(',sum(gene_overlap_df[,2]),')'))
-#     #par(cex = 1.4) 
-#     #p=plot(v, main = paste0("Overlap\n",sum(gene_overlap_df[,1]&gene_overlap_df[,2])), cex.main = 1)
-# 
-#     #return(p)
-#     
-# }
+################################################################################
 
+# Copy of calc_limits
+calc_limits <- function(values, percentile=.01) {
+    
+        min<-values[order(values,decreasing = F)][ceiling(length(values)*percentile)]
+        max<-values[order(values,decreasing = F)][ceiling(length(values)*(1-percentile))]
+        mylimits<-c(min,max)
+    
+}
  
+################################################################################
 
+
+# copy of strip__chrXX
+strip__chrXX = function(gene_query) {
+    return(gsub("__chr(\\d+|[MXY])", '', gene_query))
+}
 

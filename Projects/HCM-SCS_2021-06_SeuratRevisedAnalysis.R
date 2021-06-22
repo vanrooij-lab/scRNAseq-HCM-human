@@ -59,11 +59,12 @@
 
 args = commandArgs(trailingOnly = T)
 
+library(stringr)
 if (!exists('desired_command')) {
-    if (length(args)>0) {
-        desired_command = args
+    if (length(args)==1) {
+        desired_command = unlist(str_split(string = args, pattern = '-'))
         print(paste0('Sections to execute: ',paste0(desired_command,collapse = ', ')))
-    } else {stop('Please pass 1 or more arguments, to give what section(s) to execute..')}
+    } else {stop('Please pass 1 string, in the form \'arg1-arg2-arg3\' to give what section(s) to execute.')}
 }
 
 ########################################################################
@@ -71,7 +72,7 @@ if (!exists('desired_command')) {
 
 # Note: always execute this library loading
 
-MYMCCORES = 4 # not always used properly, currently
+MYMCCORES = 8 # not always used properly, currently
 script_dir = '/hpc/hub_oudenaarden/mwehrens/scripts/SCS_HCM_analysis/'
 base_dir = '/hpc/hub_oudenaarden/mwehrens/data/Wang/'
 # Local  use
@@ -90,6 +91,7 @@ library(stringr)
 
 source(paste0(script_dir,'Functions/Load-Pool-Scale_Simple_MW.R'))
 source(paste0(script_dir,'Functions/HCM-SCS_2021-06_SeuratAnalysisPipeline.R'))
+source(paste0(script_dir,'Functions/MW_general_functions.R'))
 
 # Some colors
 library(RColorBrewer)
@@ -445,14 +447,18 @@ if ('runf_all_default' %in% desired_command) {
     
     load(file = paste0(base_dir,'Rdata/RHL_SeuratObject_merged_noMito_sel.Rdata'))
     
-    RHL_SeuratObject_merged_noMito_sel.default = mySeuratAnalysis(RHL_SeuratObject_merged_noMito_sel, run_name = CURRENT_RUNNAME)
+    # Run analysis
+    if (!('plotsonly' %in% desired_command)) {
+        RHL_SeuratObject_merged_noMito_sel.default = mySeuratAnalysis(RHL_SeuratObject_merged_noMito_sel, run_name = CURRENT_RUNNAME)
+    }
+    # Create plots
     mySeuratCommonPlots(RHL_SeuratObject_merged_noMito_sel.default, run_name = CURRENT_RUNNAME)
     # save(list = c('RHL_SeuratObject_merged_noMito_sel.default'), file = paste0(base_dir,'Rdata/RHL_SeuratObject_merged_noMito_sel.default.Rdata'))
     # load(file = paste0(base_dir,'Rdata/RHL_SeuratObject_merged_noMito_sel.default.Rdata'))
     
     SaveH5Seurat(object = RHL_SeuratObject_merged_noMito_sel.default, overwrite = T,
         filename = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_merged_noMito_sel.default.h5seurat'))
-    #RHL_SeuratObject_merged_noMito_sel.default = LoadH5Seurat(filename = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_merged_noMito_sel.default.h5seurat'))
+    #RHL_SeuratObject_merged_noMito_sel.default = LoadH5Seurat(file = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_merged_noMito_sel.default.h5seurat'))
 
 }    
 
@@ -463,9 +469,12 @@ if ('runf_all_default_cl' %in% desired_command) {
     H5_RHL_SeuratObject_merged_noMito_sel.default = 
         LoadH5Seurat(file = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_merged_noMito_sel.default.h5seurat'))
     
-    # perhaps change var names?
-    all_default_clusters = diff_express_clusters(H5_RHL_SeuratObject_merged_noMito_sel.default, mc.cores = 8)
-    save(list = c('all_default_clusters'), file = paste0(base_dir,'Rdata/DE_cluster_',CURRENT_RUNNAME,'.Rdata'))
+    DE_cluster=list()
+    DE_cluster[[CURRENT_RUNNAME]] = diff_express_clusters(H5_RHL_SeuratObject_merged_noMito_sel.default, mc.cores = 20)
+    save(list = c('DE_cluster'), file = paste0(base_dir,'Rdata/DE_cluster_',CURRENT_RUNNAME,'.Rdata'))
+    
+    # all_default_clusters = diff_express_clusters(H5_RHL_SeuratObject_merged_noMito_sel.default, mc.cores = 8)
+    # save(list = c('all_default_clusters'), file = paste0(base_dir,'Rdata/DE_cluster_',CURRENT_RUNNAME,'.Rdata'))
     
     
 }
@@ -473,6 +482,7 @@ if ('runf_all_default_cl' %in% desired_command) {
 ################################################################################
 # Run the analysis for ALL sets, with RACEID2 like params
 
+# NOTE THAT THIS WAS NEVER EXECUTED, BECAUSE FEATURES ALL IS VERY INTENSIVE AND NOT NECESSARY
 if ('runf_all_RID2l' %in% desired_command) {
     CURRENT_RUNNAME='all_RID2l'
     
@@ -488,8 +498,7 @@ if ('runf_all_RID2l' %in% desired_command) {
     
     SaveH5Seurat(object = RHL_SeuratObject_merged_noMito_sel.rid2like, overwrite = T,
         filename = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_merged_noMito_sel.rid2like.h5seurat'))
-    #LoadH5Seurat(object = RHL_SeuratObject_merged_noMito_sel.rid2like, 
-    #    filename = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_merged_noMito_sel.rid2like.h5seurat'))
+    #RHL_SeuratObject_merged_noMito_sel.rid2like = LoadH5Seurat(file = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_merged_noMito_sel.rid2like.h5seurat'))
     
 }
 
@@ -514,7 +523,7 @@ if ('runf_all_RID2l_VAR' %in% desired_command) {
     
 }
 
-# desired_command='runf_all_default_cl'
+# desired_command='runf_all_RID2l_VAR_cl'
 if ('runf_all_RID2l_VAR_cl' %in% desired_command) {
     CURRENT_RUNNAME='all_RID2l_VAR'
     
@@ -567,6 +576,9 @@ if ('split_datasets' %in% desired_command) {
 # Note to self: for local testing, e.g. set # base_dir='/Users/m.wehrens/Data/_2019_02_HCM_SCS/2021_HPC_analysis/'
 # and # desired_command=c('run_separate','ROOIJ','SETTINGS_RID2l')
 
+# Note to self, to run on the HPC, e.g. use:
+# commands="run_separate-TEICHMANN-SETTINGS_RID2l"
+
 if ('run_separate' %in% desired_command) {
     
     # slightly convoluted, but one of the commands should be one of the separate datasets,
@@ -606,21 +618,28 @@ if ('run_separate' %in% desired_command) {
     
     print('Plotting done')
     
-    ##########
+}
     
-    if ('for_separate_also_cl' %in% desired_command) {
+# clustering    
+# commands="run_separate_nowclusterDE-TEICHMANNonly_RID2l"
+if ('run_separate_nowclusterDE' %in% desired_command) {
+    
+        CURRENT_RUNNAME=desired_command[2]
+    
+        print('Loading data')
+    
+        current_analysis=list()
+        current_analysis[[CURRENT_RUNNAME]]=
+            LoadH5Seurat(file = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_',CURRENT_RUNNAME,'.h5seurat'))
     
         print('Starting DE analysis of clusters')
         
-        # perhaps change var names?
         DE_cluster=list()
         DE_cluster[[CURRENT_RUNNAME]] = diff_express_clusters(current_analysis[[CURRENT_RUNNAME]], mc.cores = MYMCCORES)
         save(list = c('DE_cluster'), file = paste0(base_dir,'Rdata/DE_cluster_',CURRENT_RUNNAME,'.Rdata'))
         #load(file = paste0(base_dir,'Rdata/DE_cluster_',CURRENT_RUNNAME,'.Rdata'))
     
         print('DE analysis of clusters done')
-    
-    }
     
 }
 
@@ -634,41 +653,49 @@ if ('run_separate' %in% desired_command) {
 # Apply batch corrections to generated datasets 
 # (the ones with default settings)
 
-DATASET_TO_INTEGRATE = c('HUonly_default')
-MYMCCORES=1
+# E.g. commands="run_batch_corr_sep,TEICHMANNonly"
 
 if ('run_batch_corr_sep' %in% desired_command) {
 
+    DATASET_TO_INTEGRATE=desired_command[2]
+    
     Seurat_batch_correction_1c(set_name = DATASET_TO_INTEGRATE, base_dir = base_dir)
     
     corrected_set_name = paste0(set_name, '_Int1c')
     
-    if ('plots_n_enrichment_after_batch' %in% desired_command) {
+}
+
+# E.g. commands="run_batch_corr_sep_nowplot_and_DE,TEICHMANNonly_Int1c"
+
+if ('run_batch_corr_sep_nowplot_and_DE' %in% desired_command) {
      
-        # Load corrected pre-processed analysis object 
-        current_analysis=list()
-        current_analysis[[corrected_set_name]] = LoadH5Seurat(file = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_',corrected_set_name,'.h5seurat'))   
+    corrected_set_name=desired_command[2]
     
-        # Plots
-        mySeuratCommonPlots(current_analysis[[corrected_set_name]], run_name = corrected_set_name)
+    # Load corrected pre-processed analysis object 
+    current_analysis=list()
+    current_analysis[[corrected_set_name]] = LoadH5Seurat(file = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_',corrected_set_name,'.h5seurat'))   
+
+    # Plots
+    mySeuratCommonPlots(current_analysis[[corrected_set_name]], run_name = corrected_set_name)
+    
+    # Differential cluster analysis
+    DE_cluster=list()
+    DE_cluster[[corrected_set_name]] = diff_express_clusters(current_analysis[[corrected_set_name]], mc.cores = MYMCCORES)
+    # Save & export results 
+    save(list = c('DE_cluster'), file = paste0(base_dir,'Rdata/DE_cluster_',corrected_set_name,'.Rdata'))
+    diff_express_clusters_save_results(all_markers = DE_cluster[[corrected_set_name]], 
+        run_name = corrected_set_name, base_dir = base_dir, topX = 30)
         
-        # Differential cluster analysis
-        DE_cluster=list()
-        DE_cluster[[corrected_set_name]] = diff_express_clusters(current_analysis[[corrected_set_name]], mc.cores = MYMCCORES)
-        # Save & export results 
-        save(list = c('DE_cluster'), file = paste0(base_dir,'Rdata/DE_cluster_',corrected_set_name,'.Rdata'))
-        diff_express_clusters_save_results(all_markers = DE_cluster[[corrected_set_name]], 
-            run_name = corrected_set_name, base_dir = base_dir, topX = 30)
-        
-    }
     
 }
 
 ################################################################################
 # Some custom stuff (put somewhere else later)
 
-diff_express_clusters_save_results(DE_cluster$all_RID2l_VAR, 'all_RID2l_VAR', base_dir)
-diff_express_clusters_save_results(DE_cluster$ROOIJonly_RID2l, 'all_RID2l_VAR', base_dir)
+if (F) {
+ diff_express_clusters_save_results(DE_cluster$all_RID2l_VAR, 'all_RID2l_VAR', base_dir)
+ diff_express_clusters_save_results(DE_cluster$ROOIJonly_RID2l, 'all_RID2l_VAR', base_dir)
+}
 
 ################################################################################
 
