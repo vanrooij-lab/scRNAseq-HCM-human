@@ -340,6 +340,7 @@ MW_determine_regulons_part2 = function(regulon_object, chosen_cutoff_parameter='
 
 MW_determine_regulons_part3 = function(regulon_object, 
                 connectedness_cutoff = NULL, 
+                max_genes = NULL,
                 min_expression_fraction_genes=.05,
                 show_heatmap=F,
                 chosen_cutoff_parameter='r') {
@@ -356,6 +357,7 @@ MW_determine_regulons_part3 = function(regulon_object,
     expression_matrix=regulon_object$expression_matrix
     # 'saving' some parameters to object for later use
     regulon_object$connectedness_cutoff = connectedness_cutoff
+    regulon_object$max_genes = max_genes
     
     # Let's calculate first in how many cells each gene is expressed
     gene_expressed_in_X_cells<-apply(1*(expression_matrix>min(expression_matrix)),1,sum)
@@ -373,6 +375,11 @@ MW_determine_regulons_part3 = function(regulon_object,
         count_of_high_corrs_per_gene_stringent <- apply(1*(p_val_matrix_adjusted_NA < p_or_r_cutoff), 2, sum, na.rm=T)    
     }
     sel_genes_2<-(count_of_high_corrs_per_gene_stringent>connectedness_cutoff)&sel_genes_05percent_expr
+    # only take along top X connected genes if desired (in case computational burden too high)
+    topX_connected_genes_idxs = order(count_of_high_corrs_per_gene_stringent,decreasing = T)[1:min(max_genes,sum(sel_genes_2))]
+    if (!is.null(max_genes)) {
+        sel_genes_2[-topX_connected_genes_idxs] = F
+    }
     sum(1*sel_genes_2)
     
     # show an updated connectedness plot with selection criteria applied
@@ -485,7 +492,7 @@ MW_determine_regulons_part5 = function(regulon_object, hierarchical_cutoff=NULL)
         
         # Using the hierarchical clustering we did previously
         gap_stat <- cluster::clusGap(cor_out_selected_2, FUN = function(matrix, k, mytree) {return(list(cluster=(cutree(mytree, k = k))))}, 
-            mytree=hclust_out, K.max = 20)
+            mytree=hclust_out, K.max = min(20, nrow(cor_out_selected_2)))
         
         # Joep used kmeans before 
         # gap_stat <- cluster::clusGap(cor_out_selected_2, FUN = kmeans, nstart = 10, K.max = 20, B = 10) # note: nstart is #random configs to start, B=bootstrapping, K.max=max. # clusters
