@@ -40,6 +40,7 @@ sbatch --dependency=afterany:7707272 --output=slurm-${commands}-%x.%j.out --job-
 # little test (parsable makes output ID only)
 last_jobid=$(sbatch --parsable test.sh)
 
+################################################################################
 # ANALYSIS OF TEICHMANN DATA SEPARATELY
 
 # Note: Analysis "run_separate" not required!
@@ -49,14 +50,17 @@ last_jobid=$(sbatch --parsable test.sh)
 commands="run_batch_corr_sep-TEICHMANNonly"
 processors=1
 script_dir=/hpc/hub_oudenaarden/mwehrens/scripts/SCS_HCM_analysis/
-last_jobid=$(sbatch --parsable --output=slurm-${commands}-%x.%j.out --job-name="${commands}" -c ${processors} --time=2-00:00:00 --mem=150G --export=ALL,commands="${commands}" ${script_dir}/run_SeuratTask.sh)
-#
+mem=250G
+last_jobid=$(sbatch --parsable --output=slurm-${commands}-%x.%j.out --job-name="${commands}" -c ${processors} --time=3-00:00:00 --mem=${mem} --export=ALL,commands="${commands}" ${script_dir}/run_SeuratTask.sh)
+# |
+# V
 # Analysis (plots + DE)
 # Depend on above
-commands="run_batch_corr_sep_nowplot_and_DE-TEICHMANNonly_Int1c"
+commands="run_batch_corr_sep_nowplot_and_DE-TEICHMANNonly_Int1c-CORES=8"
 processors=8
+mem=150G
 script_dir=/hpc/hub_oudenaarden/mwehrens/scripts/SCS_HCM_analysis/
-last_jobid2=$(sbatch --dependency=afterany:${last_jobid} --parsable --output=slurm-${commands}-%x.%j.out --job-name="${commands}" -c ${processors} --time=2-00:00:00 --mem=150G --export=ALL,commands="${commands}" ${script_dir}/run_SeuratTask.sh)
+last_jobid2=$(sbatch --dependency=afterany:${last_jobid} --parsable --output=slurm-${commands}-%x.%j.out --job-name="${commands}" -c ${processors} --time=2-00:00:00 --mem=${mem} --export=ALL,commands="${commands}" ${script_dir}/run_SeuratTask.sh)
 
 
 # CONTINUE BELOW !!!!!
@@ -70,29 +74,38 @@ script_dir=/hpc/hub_oudenaarden/mwehrens/scripts/SCS_HCM_analysis/
 last_jobid=$(sbatch --parsable --output=slurm-${commands}-%x.%j.out --job-name="${commands}" -c ${processors} --time=2-00:00:00 --mem=150G --export=ALL,commands="${commands}" ${script_dir}/run_SeuratTask.sh)
 # |
 # V
-commands="run_separate_nowclusterDE-TEICHMANNonly_RID2l"
+commands="run_separate_nowclusterDE-TEICHMANNonly_RID2l-CORES=8"
 processors=8
 script_dir=/hpc/hub_oudenaarden/mwehrens/scripts/SCS_HCM_analysis/
 last_jobid2=$(sbatch --dependency=afterany:${last_jobid} --parsable --output=slurm-${commands}-%x.%j.out --job-name="${commands}" -c ${processors} --time=2-00:00:00 --mem=150G --export=ALL,commands="${commands}" ${script_dir}/run_SeuratTask.sh)
 #last_jobid2=$(sbatch --parsable --output=slurm-${commands}-%x.%j.out --job-name="${commands}" -c ${processors} --time=2-00:00:00 --mem=150G --export=ALL,commands="${commands}" ${script_dir}/run_SeuratTask.sh)
 
+################################################################################
+# Also do clustering DE for HU
+
+commands="run_separate_nowclusterDE-HUonly_RID2l-CORES=8"
+processors=8
+script_dir=/hpc/hub_oudenaarden/mwehrens/scripts/SCS_HCM_analysis/
+mem=150G
+last_jobid=$(sbatch --parsable --output=slurm-${commands}-%x.%j.out --job-name="${commands}" -c ${processors} --time=2-00:00:00 --mem=${mem} --export=ALL,commands="${commands}" ${script_dir}/run_SeuratTask.sh)
+
 
 ################################################################################
 # Regulons for Hu and Teichmann
-commands="run_regulon_step1-HUonly_RID2l-CORES=4"
-processors=4
+commands="run_regulon_step1-HUonly_RID2l-CORES=6"
+processors=6
 mem=128G
 script_dir=/hpc/hub_oudenaarden/mwehrens/scripts/SCS_HCM_analysis/
 script_name=run_SeuratRegulonTask.sh
 last_jobid=$(sbatch --parsable --output=slurm-${commands}-%x.%j.out --job-name="${commands}" -c ${processors} --time=2-00:00:00 --mem=${mem} --export=ALL,commands="${commands}" ${script_dir}/${script_name})
 
 # Teichmann
-#commands="run_regulon_step1-HUonly_RID2l-CORES=1"
-#processors=1
-#mem=128G
-#script_dir=/hpc/hub_oudenaarden/mwehrens/scripts/SCS_HCM_analysis/
-#script_name=run_SeuratRegulonTask.sh
-#last_jobid=$(sbatch --parsable --output=slurm-${commands}-%x.%j.out --job-name="${commands}" -c ${processors} --time=2-00:00:00 --mem=${mem} --export=ALL,commands="${commands}" ${script_dir}/${script_name})
+commands="run_regulon_step1-TEICHMANNonly_RID2l-CORES=5"
+processors=5
+mem=255G
+script_dir=/hpc/hub_oudenaarden/mwehrens/scripts/SCS_HCM_analysis/
+script_name=run_SeuratRegulonTask.sh
+last_jobid=$(sbatch --parsable --output=slurm-${commands}-%x.%j.out --job-name="${commands}" -c ${processors} --time=3-00:00:00 --mem=${mem} --export=ALL,commands="${commands}" ${script_dir}/${script_name})
 
 # Regulon analysis for Rooij (also did this locally, but convenient as a test)
 commands="run_regulon_step1-ROOIJonly_RID2l-CORES=5"

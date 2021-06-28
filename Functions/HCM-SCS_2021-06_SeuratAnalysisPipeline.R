@@ -190,7 +190,7 @@ diff_express_clusters_save_results = function(all_markers, run_name, base_dir, t
 # (Note to self: See also dev folder, this was tested preliminary under the name "C1b";
 # C1b, now including all genes, but correcting only for the patients.)
 #
-# This follows the tutorial at:
+# This follows the tutorial, section "Performing integration on datasets normalized with SCTransform"
 # https://satijalab.org/seurat/articles/integration_introduction.html
 # Introduction to scRNA-seq integration
 # Compiled: June 14, 2021

@@ -473,6 +473,9 @@ if ('runf_all_default_cl' %in% desired_command) {
     DE_cluster[[CURRENT_RUNNAME]] = diff_express_clusters(H5_RHL_SeuratObject_merged_noMito_sel.default, mc.cores = 20)
     save(list = c('DE_cluster'), file = paste0(base_dir,'Rdata/DE_cluster_',CURRENT_RUNNAME,'.Rdata'))
     
+    diff_express_clusters_save_results(all_markers = DE_cluster[[CURRENT_RUNNAME]], run_name = CURRENT_RUNNAME,
+                base_dir=base_dir, topX = 30)
+
     # all_default_clusters = diff_express_clusters(H5_RHL_SeuratObject_merged_noMito_sel.default, mc.cores = 8)
     # save(list = c('all_default_clusters'), file = paste0(base_dir,'Rdata/DE_cluster_',CURRENT_RUNNAME,'.Rdata'))
     
@@ -536,6 +539,9 @@ if ('runf_all_RID2l_VAR_cl' %in% desired_command) {
     save(list = c('DE_cluster'), file = paste0(base_dir,'Rdata/DE_cluster_',CURRENT_RUNNAME,'.Rdata'))
     #load(file = paste0(base_dir,'Rdata/DE_cluster_',CURRENT_RUNNAME,'.Rdata'))
     
+    diff_express_clusters_save_results(all_markers = DE_cluster[[CURRENT_RUNNAME]], run_name = CURRENT_RUNNAME,
+            base_dir=base_dir, topX = 30)
+
     print('Cluster analysis done')
     
 }
@@ -639,6 +645,9 @@ if ('run_separate_nowclusterDE' %in% desired_command) {
         save(list = c('DE_cluster'), file = paste0(base_dir,'Rdata/DE_cluster_',CURRENT_RUNNAME,'.Rdata'))
         #load(file = paste0(base_dir,'Rdata/DE_cluster_',CURRENT_RUNNAME,'.Rdata'))
     
+        diff_express_clusters_save_results(all_markers = DE_cluster[[CURRENT_RUNNAME]], run_name = CURRENT_RUNNAME,
+                base_dir=base_dir, topX = 30)
+        
         print('DE analysis of clusters done')
     
 }

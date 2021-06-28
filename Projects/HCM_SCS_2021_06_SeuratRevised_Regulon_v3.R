@@ -16,12 +16,15 @@
 # libraries
 
 # local base dir
-# base_dir = '/Users/m.wehrens/Data/_2019_02_HCM_SCS/2021_HPC_analysis/'
-# base_dir_secondary = '/Volumes/workdrive_m.wehrens_hubrecht/R-sessions/2021_SCS_HCM_Seurat/'
-# script_dir = '/Users/m.wehrens/Documents/git_repos/SCS_More_analyses/'
-base_dir = '/hpc/hub_oudenaarden/mwehrens/data/Wang/'
-base_dir_secondary = base_dir # change if desired to put some less important and/or big files
-script_dir = '/hpc/hub_oudenaarden/mwehrens/scripts/SCS_HCM_analysis/'
+if (exists('LOCAL')) {
+    base_dir = '/Users/m.wehrens/Data/_2019_02_HCM_SCS/2021_HPC_analysis/'
+    base_dir_secondary = '/Volumes/workdrive_m.wehrens_hubrecht/R-sessions/2021_SCS_HCM_Seurat/'
+    script_dir = '/Users/m.wehrens/Documents/git_repos/SCS_More_analyses/'
+} else {
+    base_dir = '/hpc/hub_oudenaarden/mwehrens/data/Wang/'
+    base_dir_secondary = base_dir # change if desired to put some less important and/or big files
+    script_dir = '/hpc/hub_oudenaarden/mwehrens/scripts/SCS_HCM_analysis/'
+}
 dir.create(paste0(base_dir_secondary,'Rdata/'))
     
 MYMCCORES=8 # Can be overwritten by using CORES=X argument
@@ -53,8 +56,7 @@ source(paste0(script_dir, 'Functions/MW_regulon_analysis_supportFns_COPIES.R'))
 # Not necessary
 # source('/Users/m.wehrens/Documents/git_repos/SCS_RaceID3/Functions/MW_analysis_functions.R')
 
-# Sort out which of the libs used below are required
-
+# Redundant, libs required are now loaded above
 if (F) {
     cfg=list()
     cfg$SCRIPT_LOCATION_MW = '/Users/m.wehrens/Documents/git_repos/Tomoseq_mw/'
@@ -87,7 +89,9 @@ if (!exists('desired_command')) {
 ######################################################################
 
 # Using Tomo code!
-giveMeRegulons_SeuratVersion = function(run_name, base_dir, current_matrix, get_GO_terms=F, strip_object=F) {
+giveMeRegulons_SeuratVersion = function(run_name, base_dir, current_matrix, 
+    get_GO_terms=F, strip_object=F, MAX_GENES=NULL,
+    required_minCellFraction=.05) {
     
     EXPRESSION_ZERO_CUTOFF = 0 # 0.1
     run_name # run_name = 'groupedSCS_Patient1Mod'
@@ -101,7 +105,7 @@ giveMeRegulons_SeuratVersion = function(run_name, base_dir, current_matrix, get_
     
     genes_expressed_in_cells = rowSums(current_matrix>EXPRESSION_ZERO_CUTOFF)
     genes_expr_in_cells_fraction = genes_expressed_in_cells/dim(current_matrix)[2]
-    gene_selection = genes_expr_in_cells_fraction>0.1
+    gene_selection = genes_expr_in_cells_fraction>required_minCellFraction
     print(paste0('Genes in run: ',sum(gene_selection)))
     
     # Select genes first based on how many 
@@ -148,7 +152,7 @@ giveMeRegulons_SeuratVersion = function(run_name, base_dir, current_matrix, get_
     # matrix.
     regulon_object = MW_determine_regulons_part3(regulon_object, 
                     connectedness_cutoff = 40, 
-                    max_genes = 500,
+                    max_genes = MAX_GENES,
                     min_expression_fraction_genes=.1,
                     show_heatmap=F,
                     chosen_cutoff_parameter = 'p')
@@ -226,7 +230,8 @@ remove_data_regulon_object = function(reg_object) {
     return(reg_object)
 }
 
-regulon_overlap_heatmap = function(pooled_regulons, base_dir, run_name) {
+
+regulon_overlap_heatmap = function(pooled_regulons, base_dir, run_name, MYTREECUTTINGHEIGHT=2) {
     
     # Create pairs to compare
     df_compare = tidyr::expand_grid(x=names(pooled_regulons), y=names(pooled_regulons))
@@ -241,11 +246,13 @@ regulon_overlap_heatmap = function(pooled_regulons, base_dir, run_name) {
     matrix_compare <- reshape2::acast(df_compare, x~y, value.var="overlap")
     
     # Show heatmap
-    pheatmap(matrix_compare, clustering_method = 'ward.D2')
+    p0=pheatmap(matrix_compare, clustering_method = 'ward.D2')
+    p0
+    ggsave(filename = paste0(base_dir,'Rplots/',run_name,'_7_Regulons_noCats.png'), plot = p0, width=nrow(matrix_compare)*.4, height=nrow(matrix_compare)*.4, units='cm')
     
     hclust_out = hclust(dist(matrix_compare), method='ward.D2')
     plot(as.dendrogram(hclust_out))
-    cutree_out = cutree(hclust_out, h = 2)
+    cutree_out = cutree(hclust_out, h = MYTREECUTTINGHEIGHT)
     cutree_df  = as.data.frame(as.factor(cutree_out)); colnames(cutree_df) = c('group')
     #annotation_colors = col_Dark2[1:max(cutree_out)]
     # Create a little heatmap
@@ -256,7 +263,7 @@ regulon_overlap_heatmap = function(pooled_regulons, base_dir, run_name) {
         annotation_col = cutree_df, annotation_row = cutree_df, annotation_colors = annotation_colors)
         #annotation_colors = list(colors=col_Dark2[1:max(cutree_out)])))
     print(p)
-    ggsave(filename = paste0(base_dir,'Rplots/',run_name,'_7_Regulons.png'), plot = p, width=10, height=10, units='cm')
+    ggsave(filename = paste0(base_dir,'Rplots/',run_name,'_7_Regulons.png'), plot = p, width=nrow(matrix_compare)*.4, height=nrow(matrix_compare)*.4, units='cm')
     
     return(list(cutree_df=cutree_df))
     
@@ -278,6 +285,8 @@ regulon_overlap_heatmap = function(pooled_regulons, base_dir, run_name) {
 # unique(current_analysis[['ROOIJonly_default']]$annotation_patient_str)
 # ANALYSIS_NAME = 'ROOIJonly_RID2l' #  c('ROOIJonly_RID2l', 'HUonly_RID2l')
 # ANALYSIS_NAME = 'HUonly_RID2l' #  c('ROOIJonly_RID2l', 'HUonly_RID2l')
+
+MAX_GENES=1000 # previously 500
 
 if ('run_regulon_step1' %in% desired_command) {
     
@@ -324,7 +333,7 @@ if ('run_regulon_step1' %in% desired_command) {
             
                 return( 
                     giveMeRegulons_SeuratVersion(run_name=paste0(ANALYSIS_NAME,'_',current_patient),
-                        base_dir=base_dir,current_matrix=current_matrix, strip_object = T)
+                        base_dir=base_dir,current_matrix=current_matrix, strip_object = T, MAX_GENES = MAX_GENES)
                 )
         
             }, mc.cores = MYMCCORES)
@@ -340,20 +349,26 @@ if ('run_regulon_step1' %in% desired_command) {
     # rm('collected_regulon_objects')
     
     # Save analysis outcome
-    save(list='collected_regulon_objects', file = paste0(base_dir_secondary,'Rdata/',ANALYSIS_NAME,'_regulons_per_patient.Rdata'))
-    # load(file = paste0(base_dir_secondary,'Rdata/',ANALYSIS_NAME,'_regulons_per_patient.Rdata'))
+    save(list='collected_regulon_objects', file = paste0(base_dir,'Rdata/',ANALYSIS_NAME,'_regulons_per_patient.Rdata'))
+    # load(file = paste0(base_dir,'Rdata/',ANALYSIS_NAME,'_regulons_per_patient.Rdata'))
     
 }    
     
 ################################################################################
 
+# ANALYSIS_NAME='ROOIJonly_RID2l'
+# ANALYSIS_NAME='HUonly_RID2l'
+# ANALYSIS_NAME='TEICHMANNonly_RID2l'
+
 if ('XXXXXXX' %in% desired_command) {
+    
+    load(file = paste0(base_dir,'Rdata/',ANALYSIS_NAME,'_regulons_per_patient.Rdata'))
     
     # Create a structure that holds the gene names that were assigned to regulons
     # Make it "flat" for patients, i.e. it will have entries R.P1.R.2 = Rooij patient 1 regulon 2.
     regulon_gene_names=
         do.call(c, 
-            lapply(collected_regulon_objects$ROOIJonly_RID2l, function(x) {names(x$the_regulons) = paste0('R.',1:length(x$the_regulons)); x$the_regulons})
+            lapply(collected_regulon_objects[[ANALYSIS_NAME]], function(x) {names(x$the_regulons) = paste0('R.',1:length(x$the_regulons)); x$the_regulons})
         )
     
     save(list='regulon_gene_names', file = paste0(base_dir,'Rdata/',ANALYSIS_NAME,'_regulons_per_patient_geneNamesOnly.Rdata'))
@@ -373,6 +388,7 @@ if ('XXXXXXX' %in% desired_command) {
     
     # load overlap_output
     load(file = paste0(base_dir,'Rdata/',ANALYSIS_NAME,'_regulons_per_patient_overlapData.Rdata'))
+    load(file = paste0(base_dir,'Rdata/',ANALYSIS_NAME,'_regulons_per_patient_geneNamesOnly.Rdata'))
     
     core_regulons=list()
     
@@ -398,7 +414,7 @@ if ('XXXXXXX' %in% desired_command) {
     }
     
     # show lengths
-    sapply(core_regulons, length)
+    core_regulons_length = sapply(core_regulons, length)
     
     # Create output
     matrix_core_regulons_padded = t(plyr::ldply(core_regulons, rbind))
@@ -407,5 +423,59 @@ if ('XXXXXXX' %in% desired_command) {
     openxlsx::write.xlsx(x= df_core_regulons_padded, file = paste0(base_dir,'Rplots/',ANALYSIS_NAME,'_core_regulons.xlsx'))
     
 }
+
+################################################################################
+
+if (F) {
+    
+    # Comparison with earlier version of this analysis
+    # For reference, this was what we got from the previous analysis:
+    # load('/Users/m.wehrens/Data/_2019_02_HCM_SCS/2021_HPC_analysis/Previous_analysis_for_reference/JoepAnalysis_Regulons.Rdata')
+    # See regulons_README_objects_saved
+    # See exporatory analyses for comparison earlier and current data analyses
+    
+    
+    # Sizes of old regulons 
+    old_regulon_sizes = lapply(joined_regulons, length)
+    ggplot(data.frame(old_regulon_size=unlist(old_regulon_sizes), name=names(old_regulon_sizes)))+
+        geom_bar(aes(x=name,y=old_regulon_size), stat='identity')+theme_bw()+
+        coord_flip()
+    
+    # Sizes of current regulons
+    new_regulon_sizes = lapply(regulon_gene_names, length)
+    ggplot(data.frame(old_regulon_size=unlist(new_regulon_sizes), name=names(new_regulon_sizes)))+
+        geom_bar(aes(x=name,y=old_regulon_size), stat='identity')+theme_bw()+
+        coord_flip()
+    
+    ggplot(data.frame(old_regulon_size=c(unlist(new_regulon_sizes),unlist(old_regulon_sizes)), 
+                      name=c(names(new_regulon_sizes),names(old_regulon_sizes)),
+                      version=rep(c('new','old'),times=c(length(new_regulon_sizes), length(old_regulon_sizes)))
+                ))+
+        geom_bar(aes(x=name,y=old_regulon_size, fill=version), stat='identity')+theme_bw()+
+        coord_flip()
+    
+    
+    #######
+    
+    # comparison core regulons
+    
+    core_regulons_length 
+    old_core_regulons_length = sapply(shared_regulon_core_list, length)
+    
+    ggplot(data.frame(old_regulon_size=c(unlist(core_regulons_length),unlist(old_core_regulons_length)), 
+                      name=c(names(core_regulons_length),names(old_core_regulons_length)),
+                      version=rep(c('new','old'),times=c(length(core_regulons_length), length(old_core_regulons_length)))
+                ))+
+        geom_bar(aes(x=name,y=old_regulon_size, fill=version), stat='identity')+theme_bw()+
+        coord_flip()
+    
+    
+    # All genes old analysis
+    unique(unlist(joined_regulons)) # ±1000 genes
+    unique(unlist(regulon_gene_names)) # ±375 genes
+
+}
+
+
 
 
