@@ -191,18 +191,39 @@ MW_determine_regulons_part1 = function(expression_matrix, calculate_p = F, outpu
     # First, we need a matrix with all p-values
     # See also: https://en.wikipedia.org/wiki/Pearson_correlation_coefficient
     
+    # Function to calculate theoretical p-value
+    my_freedom <- dim(expression_matrix)[2]-2
+    calculate_pvalue <- function(R, df) {
+        t1<-sqrt(df) * R/sqrt(1 - R^2)
+        p_val <- 2*min(pt(t1,df),pt(t1,df,lower.tail = FALSE))
+        return(p_val)
+    }
+    
+    # Let's first also reproduce the above plot, but now with an adjusted axis
+    p_vals = -log10(sapply(X = hist_out_cor$mids, FUN = calculate_pvalue, df=my_freedom))
+    R_sign = sapply(hist_out_cor$mids>=0, function(x) {if(x) {'positive'} else {'negative'}})
+    p_cutoff_decision2 <- ggplot()+
+        geom_line(data=data.frame(x=p_vals[!is.infinite(p_vals)],y=my_false_positives[!is.infinite(p_vals)],R_sign=R_sign[!is.infinite(p_vals)]),     
+            aes(x=x,y=y), color='red')+#,linetype='solid') + # , stat='identity'
+        geom_line(data=data.frame(x=p_vals[!is.infinite(p_vals)],y=low_dist[!is.infinite(p_vals)],R_sign=R_sign[!is.infinite(p_vals)]),     
+            aes(x=x,y=y),color='grey')+#,linetype='longdash') +
+        geom_hline(yintercept=0.01)+geom_hline(yintercept=0.05)+
+        facet_grid(rows = 'R_sign')+
+        theme_bw()+xlab('-log10 Theoretical p-value based on R-value')+ylab('Fraction false positives')+
+        theme(legend.position = c(.8,.8))+give_better_textsize_plot(10)+
+        geom_vline(xintercept = 5)+geom_vline(xintercept = 10)+
+        ggtitle('red=FPR, black,FPR=0.01, 0.05\nblack,p=10^-5,10^-10, grey=FPR for 1 obs')
+    print(p_cutoff_decision2)
+    
+    ggsave(paste0(regulon_object$outputDir_sub,'Correlations_FPR_pvals.pdf'),plot=p_cutoff_decision2,
+            units='mm',width=100,height=75,dpi=600)
+    
+    
+    # Then calculate the p-values (if desired)
     if (calculate_p) {
         
         print('Calculating p-values')
         start_time <- Sys.time() # just to see how long commands below take..
-        
-        # Function to calculate theoretical p-value
-        my_freedom <- dim(expression_matrix)[2]-2
-        calculate_pvalue <- function(R, df) {
-            t1<-sqrt(df) * R/sqrt(1 - R^2)
-            p_val <- 2*min(pt(t1,df),pt(t1,df,lower.tail = FALSE))
-            return(p_val)
-        }
         
         # Calculate p-values
         p_val_matrix<-matrix(sapply(as.vector(cor_out), calculate_pvalue, df=my_freedom),nrow=dim(cor_out)[1])
