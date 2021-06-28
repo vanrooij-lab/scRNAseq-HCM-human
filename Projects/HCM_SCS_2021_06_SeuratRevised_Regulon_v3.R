@@ -140,7 +140,7 @@ giveMeRegulons_SeuratVersion = function(run_name, base_dir, current_matrix,
         # genes based on r-value or p-value cutoff (r being the correlation 
         # coefficient value itself)
         #p_or_r_cutoff=.25
-        p_or_r_cutoff=0.00001) # 1/100000
+        p_or_r_cutoff=10^-5) # 1/100000, value Joep, has pretty high FPR though
         # this parameter provides the cutoff you have chosen earlier,
         # e.g. consider r-values (correlation coefficients) >.35 or <-.35 
         # significant.
@@ -151,11 +151,20 @@ giveMeRegulons_SeuratVersion = function(run_name, base_dir, current_matrix,
     # some parameters and set a cutoff to perform clustering on this correlation
     # matrix.
     regulon_object = MW_determine_regulons_part3(regulon_object, 
-                    connectedness_cutoff = 40, 
+                    connectedness_cutoff = 25, # this is rather arbitrary so let's set to 25 instead of 40
                     max_genes = MAX_GENES,
-                    min_expression_fraction_genes=.1,
+                    #min_expression_fraction_genes=.1,
+                    min_expression_fraction_genes=.05,
                     show_heatmap=F,
                     chosen_cutoff_parameter = 'p')
+                    # Note that when using MAX_GENES, top connected genes are chosen;
+                    # this might be biasing towards larger regulons
+                    # So one might be able to improve this algorithm by e.g.
+                    # picking genes whose average correlation to the X genes 
+                    # it's most correlated with is highest or something.
+                    #   
+                    # genes in analysis: 
+                    # dim(regulon_object$cor_out_selected_2)
     
     # To further quantify the pattern of correlations, we can sort the 
     # correlation data using hierarchical clustering, and also classify clusters 

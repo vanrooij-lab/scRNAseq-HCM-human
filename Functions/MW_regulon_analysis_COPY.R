@@ -554,16 +554,20 @@ MW_determine_regulons_part5 = function(regulon_object, hierarchical_cutoff=NULL)
     #max_val <- max(cor_out_selected_2[cor_out_selected_2<1])
     d_val   <- (max_val-min_val)/100
     
-    png(file = paste0(regulon_object$outputDir_sub,'regulons_gene_corrmatrix.png'),
-        width = 300, height = 200, units = 'mm', res = 600)
-    heatmap.2(cor_out_selected_2, 
-        ColSideColors = gene_clustering_colors,
-        RowSideColors = gene_clustering_colors,
-        Colv=as.dendrogram(hclust_out), Rowv=as.dendrogram(hclust_out), 
-            col = viridis_pal(option = "D")(100),
-        breaks = seq(min_val,max_val,d_val),tracecol=NA)
-    #print(p)
-    dev.off()
+    # png(file = paste0(regulon_object$outputDir_sub,'regulons_gene_corrmatrix.png'),
+    #     width = 300, height = 200, units = 'mm', res = 600)
+    # heatmap.2(cor_out_selected_2, 
+    #     ColSideColors = gene_clustering_colors,
+    #     RowSideColors = gene_clustering_colors,
+    #     Colv=as.dendrogram(hclust_out), Rowv=as.dendrogram(hclust_out), 
+    #         col = viridis_pal(option = "D")(100),
+    #     breaks = seq(min_val,max_val,d_val),tracecol=NA)
+    # #print(p)
+    # dev.off()
+    
+    p=pheatmap(mat = cor_out_selected_2, cluster_rows = hclust_out, cluster_cols = hclust_out, 
+        fontsize_row = 2, fontsize_col = 2,color = viridis_pal(option = "D")(100), breaks = seq(min_val,max_val,d_val))
+    ggsave(filename = paste0(regulon_object$outputDir_sub,'regulons_gene_corrmatrix.png'), plot=p, units = 'cm',height = dim(cor_out_selected_2)[2]*0.06, width = dim(cor_out_selected_2)[2]*0.06, dpi = 1200)
     
     # binary map
     if (regulon_object$chosen_cutoff_parameter=='r') {
