@@ -151,10 +151,10 @@ giveMeRegulons_SeuratVersion = function(run_name, base_dir, current_matrix,
     # some parameters and set a cutoff to perform clustering on this correlation
     # matrix.
     regulon_object = MW_determine_regulons_part3(regulon_object, 
-                    connectedness_cutoff = 25, # this is rather arbitrary so let's set to 25 instead of 40
+                    connectedness_cutoff = 40, # this is rather arbitrary so let's set to 25 instead of 40
                     max_genes = MAX_GENES,
                     #min_expression_fraction_genes=.1,
-                    min_expression_fraction_genes=.05,
+                    min_expression_fraction_genes=.1,
                     show_heatmap=F,
                     chosen_cutoff_parameter = 'p')
                     # Note that when using MAX_GENES, top connected genes are chosen;

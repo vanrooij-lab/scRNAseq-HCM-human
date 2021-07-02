@@ -78,6 +78,7 @@ pool_df_mw = function(multiple_dfs) {
           rownames(x) <- x[,1]
           x[,"Row.names"] <- NULL
           x[is.na(x)] = 0
+          print('.')
           return(x)
         },
         multiple_dfs

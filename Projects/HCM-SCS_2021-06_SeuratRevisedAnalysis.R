@@ -73,14 +73,18 @@ if (!exists('desired_command')) {
 # Note: always execute this library loading
 
 MYMCCORES = 8 # not always used properly, currently
-script_dir = '/hpc/hub_oudenaarden/mwehrens/scripts/SCS_HCM_analysis/'
-base_dir = '/hpc/hub_oudenaarden/mwehrens/data/Wang/'
 # Local  use
-# base_dir = '/Users/m.wehrens/Data/_2019_02_HCM_SCS/2021_HPC_analysis/'
-# script_dir = '/Users/m.wehrens/Documents/git_repos/SCS_More_analyses/'
+if (exists('LOCAL')) {
+    base_dir = '/Users/m.wehrens/Data/_2019_02_HCM_SCS/2021_HPC_analysis/'
+    script_dir = '/Users/m.wehrens/Documents/git_repos/SCS_More_analyses/'
+} else {
+    script_dir = '/hpc/hub_oudenaarden/mwehrens/scripts/SCS_HCM_analysis/'
+    base_dir = '/hpc/hub_oudenaarden/mwehrens/data/Wang/'
+}
 
 data_dir1='/hpc/hub_oudenaarden/mwehrens/fastq/HCM_SCS/mapping.93.may25/counttables/'
 data_dir2='/hpc/hub_oudenaarden/mwehrens/fastq/WANG2/mapping_may25/counttables/'
+# data_dir2 = '/Volumes/fastq_m.wehrens/Mapping/WANG2/counttables/'
 
 library(Seurat)
 library(SeuratDisk)
@@ -139,6 +143,12 @@ samples_Wang=c('N1','N2','N3','N4','N5','N13','N14')
 dataset_list_paths_WANG = paste0(data_dir2, WANG_ids, '_nc_uniaggGenes_spliced.UFICounts.tsv')
 names(dataset_list_paths_WANG) = names(WANG_ids)
 
+# Additionally, Wang patient N2, which will be loaded separately because it was split during mapping
+# (see below)
+W_N2_partlist_string = paste0('part.',0:9,'.')
+W_N2_file_list_parts = paste0(data_dir2, W_N2_partlist_string, 'GSM2970358_N2_LV_cat_nc_uniaggGenes_spliced.UFICounts.tsv')
+names(W_N2_file_list_parts) = W_N2_partlist_string
+
 dataset_list_paths=c(dataset_list_paths_HCM,dataset_list_paths_WANG)
 
 # For annotation purposes
@@ -191,6 +201,49 @@ if ('generate_seurat' %in% desired_command) {
     object_size(RHL_SeuratObject_list) 
     save(list = c('RHL_SeuratObject_list'),file = paste0(base_dir,'Rdata/RHL_SeuratObject_list.Rdata'))
     # load(paste0(base_dir,'Rdata/RHL_object_list.Rdata'))
+    
+}
+
+########################################################################
+# Unfortunately, the N2 patient from Wang was so much data, that I had
+# to split the mapping procedure in 10 parts; so here is a bit of a boiler
+# plate solution where I load the separate parts and merge them according
+# to the same procedure as the separate patients
+
+if ('add_N2_patient' %in% desired_command) {
+
+    # load the different datasets
+    SCS_df_list_data_raw = loadData_MW_parallel(W_N2_file_list_parts, mc.cores=MYMCCORES, prefix=F)   
+    
+    # perform the renaming of gene sets
+    SCS_df_list_data = lapply(SCS_df_list_data_raw, preprocess_convertAAnames_toSymbol, revert_to_hgnc=T, script_dir=script_dir)
+    
+    # load the parts as seurat objects
+    Seurat_object_list_parts = 
+        mclapply(1:length(SCS_df_list_data), 
+                    function(idx) {
+                        object=CreateSeuratObject(counts = SCS_df_list_data[[idx]], project = names(SCS_df_list_data)[idx])
+                        print(paste0(names(SCS_df_list_data)[idx],' done .'))
+                        return(object)
+                        }, mc.cores = MYMCCORES)
+
+    # now merge them into one object
+    Seurat_object_merged <- merge(Seurat_object_list_parts[[1]], y = unlist(Seurat_object_list_parts)[2:length(Seurat_object_list_parts)], add.cell.ids = names(Seurat_object_list_parts), project = "N2")
+    
+    # Now load the list with all of the data
+    load(file = paste0(base_dir,'Rdata/RHL_SeuratObject_list.Rdata'))
+        # RHL_SeuratObject_list
+    
+    # Check whether patient Wang N2 isn't in there already
+    if ("N2" %in% names(RHL_SeuratObject_list)) {
+        stop('N2 already present')
+    }
+    
+    # otherwise, add the patient
+    RHL_SeuratObject_list[['N2']] = Seurat_object_merged
+    
+    # And save the structure
+    save(list = 'RHL_SeuratObject_list', file = paste0(base_dir,'Rdata/RHL_SeuratObject_list.Rdata'))
     
 }
 
@@ -249,7 +302,8 @@ if ('create_merged_seurat' %in% desired_command) {
         # dim(WRL_object_big@assays$RNA@counts)
     
     # Merge Seurat list into one object
-    RHL_SeuratObject_merged <- merge(RHL_SeuratObject_list[[1]], y = unlist(RHL_SeuratObject_list)[2:length(RHL_SeuratObject_list)], add.cell.ids = names(RHL_SeuratObject_list), project = "RHL")
+    RHL_SeuratObject_merged <- merge(RHL_SeuratObject_list[[1]], y = unlist(RHL_SeuratObject_list)[2:length(RHL_SeuratObject_list)], 
+                                        add.cell.ids = names(RHL_SeuratObject_list), project = "RHL")
     object_size(RHL_SeuratObject_merged)
     
     dim(RHL_SeuratObject_merged@assays$RNA@counts)
@@ -295,6 +349,14 @@ if ('create_merged_seurat' %in% desired_command) {
     RHL_annotation_patients[RHL_annotation_patients=='TEICH']=paste0('T.',RHL_SeuratObject_list$TEICH@meta.data$donor)
     RHL_annotation_patients[RHL_annotation_patients %in% names(Rooij_conversion_pts)] = Rooij_conversion_pts[RHL_annotation_patients[RHL_annotation_patients %in% names(Rooij_conversion_pts)]]
     RHL_annotation_patients[RHL_annotation_patients %in% samples_Wang] = paste0('H.', RHL_annotation_patients[RHL_annotation_patients %in% samples_Wang])
+    # Now also retrieve the "region" data for the Teichmann data, which correspond for the vCMs to AX, SP, LV, RV (apex, septum, left ventricle, right v)
+    # For our data, we only have septal cells
+    # For the Wang data, there's both LV and LA cells
+    # XXXX
+    # RHL_SeuratObject_list$TEICH@meta.data$region
+    # 
+    # metadata_Wang_full_table$condition
+    # XXXX
     
     # Add information to Seurat object
     RHL_SeuratObject_merged[["annotation_sample_fct"]]     <- as.factor(RHL_annotation_samples)
