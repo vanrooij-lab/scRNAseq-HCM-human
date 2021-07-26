@@ -97,17 +97,20 @@ if (exists('config')) {
 
 # Local  use
 if (exists('LOCAL')) {
-    base_dir = '/Users/m.wehrens/Data/_2019_02_HCM_SCS/2021_HPC_analysis/'
     script_dir = '/Users/m.wehrens/Documents/git_repos/SCS_More_analyses/'
+    base_dir = '/Users/m.wehrens/Data/_2019_02_HCM_SCS/2021_HPC_analysis.2/'
     
-    data_dir1 = NULL
-    data_dir2 = '/Users/m.wehrens/Data/_2019_02_HCM_SCS/2021_Wang_Counttables/'
+    data_dir1 = '/Users/m.wehrens/Data/_2019_02_HCM_SCS/2021_UmiTools_CountTables_Wang_HCMSCS/ROOIJ/' # NULL
+    data_dir2 = '/Users/m.wehrens/Data/_2019_02_HCM_SCS/2021_UmiTools_CountTables_Wang_HCMSCS/HU/'
+        # '/Users/m.wehrens/Data/_2019_02_HCM_SCS/2021_Wang_Counttables/'
 } else {
     script_dir = '/hpc/hub_oudenaarden/mwehrens/scripts/SCS_HCM_analysis/'
-    base_dir = '/hpc/hub_oudenaarden/mwehrens/data/Wang/'
+    base_dir = '/hpc/hub_oudenaarden/mwehrens/data/HCM_SCS_RHL.2/'
     
-    data_dir1='/hpc/hub_oudenaarden/mwehrens/fastq/HCM_SCS/mapping.93.may25/counttables/'
-    data_dir2='/hpc/hub_oudenaarden/mwehrens/fastq/WANG4/mapping/counttables/'
+    data_dir1 = '/hpc/hub_oudenaarden/mwehrens/data/HCM_SCS_RHL.2/counttables_tsv/'
+        # '/hpc/hub_oudenaarden/mwehrens/fastq/HCM_SCS/mapping.93.may25/'
+    data_dir2 = '/hpc/hub_oudenaarden/mwehrens/data/HCM_SCS_RHL.2/counttables_tsv/'
+        # '/hpc/hub_oudenaarden/mwehrens/fastq/WANG4/mapping/counttables/'
 }
 
 library(Seurat)
@@ -154,7 +157,8 @@ HCM_SCS_ids =
         MW06='HUB-MW-006_AH32W2BGX9_S6_cat', 
         MW07='HUB-MW-007_HC3GFBGX9_S6_cat', 
         MW08='HUB-MW-008_HC3GFBGX9_S7_cat')
-dataset_list_paths_HCM = paste0(data_dir1, HCM_SCS_ids, '_pT_uniaggGenes_spliced.UFICounts.tsv')
+#dataset_list_paths_HCM = paste0(data_dir1, HCM_SCS_ids, '_pT_uniaggGenes_spliced.UFICounts.tsv')
+dataset_list_paths_HCM = paste0(data_dir1, HCM_SCS_ids, '_pT.nonRibo_E99_Aligned.out.counts.table.tsv')
 names(dataset_list_paths_HCM) = names(HCM_SCS_ids)
 
 WANG_ids = c(   N1.97474.a = 'p.N1.plate.97474.part.1_cat',
@@ -186,7 +190,8 @@ names(WANG_conversion_patients) = names(WANG_ids)
 WANG_conversion_samples = sapply(str_split(WANG_ids, pattern = '\\.'), function(x) {x[[4]]})
 names(WANG_conversion_samples) = names(WANG_ids)
 # Generate full data paths
-dataset_list_paths_WANG = paste0(data_dir2, WANG_ids, '_nc_uniaggGenes_spliced.UFICounts.tsv')
+#dataset_list_paths_WANG = paste0(data_dir2, WANG_ids, '_nc_uniaggGenes_spliced.UFICounts.tsv')
+dataset_list_paths_WANG = paste0(data_dir2, WANG_ids, '_nc.nonRibo_E99_Aligned.out.counts.table.tsv')
 names(dataset_list_paths_WANG) = names(WANG_ids)
 
 dataset_list_paths=c(dataset_list_paths_HCM,dataset_list_paths_WANG)
@@ -219,7 +224,9 @@ if ('loadraw' %in% desired_command) {
     #save(list = c('SCS_df_list_data_raw'),file = paste0(base_dir,'Rdata/SCS_df_list_data_raw.Rdata'))
     # load(paste0(base_dir,'Rdata/SCS_df_list_data_raw.Rdata'))
     
-    SCS_df_list_data = lapply(SCS_df_list_data_raw, preprocess_convertAAnames_toSymbol, revert_to_hgnc=T, script_dir=script_dir)
+    # This is necessary when using Anna's count tables
+    # SCS_df_list_data = lapply(SCS_df_list_data_raw, preprocess_convertAAnames_toSymbol, revert_to_hgnc=T, script_dir=script_dir)
+    
     save(list = c('SCS_df_list_data'),file = paste0(base_dir,'Rdata/SCS_df_list_data.Rdata'))
 
 }
@@ -266,6 +273,28 @@ if ('add_teichmann' %in% desired_command) {
     CalcN_out = Seurat:::CalcN(RHL_SeuratObject_list$TEICH)
     RHL_SeuratObject_list$TEICH[['nCount_RNA']]   = CalcN_out$nCount
     RHL_SeuratObject_list$TEICH[['nFeature_RNA']] = CalcN_out$nFeature
+    
+    # I'll now add ensembl IDs to the Teichmann gene names
+    if (file.exists(paste0(base_dir,'Rdata/sym_to_ens_conv_table.Rdata'))) {
+        load(paste0(base_dir,'Rdata/sym_to_ens_conv_table.Rdata'))
+    } else {
+        generate_human_gene_name_conversion_mart()
+        load(paste0(base_dir,'Rdata/sym_to_ens_conv_table.Rdata'))
+    }
+    ensembl_names_Teich = 
+        sym_ens_conv_table[rownames(RHL_SeuratObject_list$TEICH)]
+    ensembl_names_Teich[is.na(ensembl_names_Teich)]="ENSGunknown"
+    rownames(RHL_SeuratObject_list$TEICH) = paste0(ensembl_names_Teich,'_',rownames(RHL_SeuratObject_list$TEICH))
+    
+    stop('CONTINUE WORKING HERE!')
+    # see also https://github.com/satijalab/seurat/issues/1049
+    object@raw.data
+    object@data
+    object@scale.data
+    object@cell.names
+    object@meta.data
+    stop('CONTINUE WORKING HERE!')
+    XXXXXX
     
     # Previously, I converted Teichmann names to "Anna names" (dots instead of dashes), 
     # but I now have converted all names to hgnc symbols.
@@ -470,12 +499,16 @@ if ('select_vCM_genes_cells' %in% desired_command) {
     # Before that, save mitochondrial information
     mito_genes = rownames(RHL_SeuratObject_merged)[grepl('^MT-',rownames(RHL_SeuratObject_merged))]
     RHL_SeuratObject_merged@misc$mito.counts = RHL_SeuratObject_merged@assays$RNA@counts[mito_genes,]
+    rownames(RHL_SeuratObject_merged@misc$mito.counts) = mito_genes
+    colnames(RHL_SeuratObject_merged@misc$mito.counts) = colnames(RHL_SeuratObject_merged@assays$RNA@counts)
+    RHL_SeuratObject_merged@misc$mito.counts_colnames= colnames(RHL_SeuratObject_merged@assays$RNA@counts)
+    RHL_SeuratObject_merged@misc$mito.counts_rownames= mito_genes
     #for (mito_gene in mito_genes) {
     #    RHL_SeuratObject_merged[[paste0('mt.count.',gsub(pattern = '-',replacement = '\\.',x = mito_gene))]] = 
     #        RHL_SeuratObject_merged@assays$RNA@counts[mito_gene,]
     #}
     
-    # Remove mitochondrila info
+    # Remove mitochondria info
     # This is done since some cells have high mitochondrial read counts,
     # which then completely dominate the analysis (and it is unclear whether
     # the ratio mito:chromosomal reads is due to biology or artefacts)
@@ -762,8 +795,9 @@ if ('rerun_plotsOnly' %in% desired_command) {
 
 ################################################################################
 
-# Run correlation analysis
+# Run correlation analysis for all sets
 
+# commands="correlations_of_interest"
 if ('correlations_of_interest' %in% desired_command) {
  source(paste0(script_dir, 'HCM-SCS_2021-06_SeuratRevisedAnalysis_GeneCorrelationsOfInterest.R'))
 }
@@ -903,7 +937,20 @@ if (F) {
     
 }
 
+################################################################################
+# Load a dataset manually
 
+# H5_RHL_SeuratObject_nM_sel_TEICHMANNonly.h5seurat
 
+# DATASET_NAME='TEICHMANNonly_RID2l'
+# DATASET_NAME='HUonly_RID2l'
+if (F) {
+    
+    # load the file
+    current_analysis = list()
+    current_analysis[[DATASET_NAME]] =
+        LoadH5Seurat(file = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_',DATASET_NAME,'.h5seurat'))
+    
 
+}
 
