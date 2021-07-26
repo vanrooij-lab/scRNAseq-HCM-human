@@ -2,7 +2,6 @@
 
 
 # base_dir = '/Volumes/workdrive_m.wehrens_hubrecht/data/2020_04_Wang-heart/'
-## base_dir = '/Users/m.wehrens/Data/_2020_03_Wang/' # old
 
 ######################################################################
 
@@ -11,6 +10,8 @@ base_dir = '/hpc/hub_oudenaarden/mwehrens/data/Wang/'
 library(plyr)
 
 ######################################################################
+# Collection of important Wang metadata into one file
+
 # The Wang data is split into two batches
 
 # First batch of cells, patients N1-N12
@@ -50,6 +51,10 @@ names(Wang_Info_GSE121893)
 names(Wang_MetaData_GSE109816)
 names(Wang_Info_GSE121893) %in% names(Wang_MetaData_GSE109816) # mostly yes
 # so we can merge these two meta-data dataframes.
+# first annotate origin
+Wang_Info_GSE121893$GSE='GSE121893'
+Wang_MetaData_GSE109816$GSE='GSE109816'
+# then merge
 combined_metadata_Wang = rbind.fill(Wang_Info_GSE121893, Wang_MetaData_GSE109816)
 # merge(Wang_Info_GSE121893,Wang_MetaData_GSE109816,by.x=0,by.y=0,all=TRUE)
 dim(combined_metadata_Wang) # 14927 44
@@ -60,7 +65,7 @@ length(unique(combined_metadata_Wang$ID)) # IDs are still unique, also n=14927
 
 
 # Information on the clustering that they performed, 
-# relating to all cells
+# !!**relating to all cells**!!
 # Here's also information about the celltypes that 
 # they determined, 
 # we'll be looking for LV-CMs + LA-CMs, 
@@ -95,6 +100,8 @@ metadata_Wang_full_table[metadata_Wang_full_table$ID=='SC_92563_0_17',]
 metadata_Wang_full_table$plate_nr = sapply(str_split(string = metadata_Wang_full_table$ID, pattern = '_'), function(x) {x[[2]]})
 # now also add an unique ID (also as a sanity check)
 metadata_Wang_full_table$ID_MW = paste0(metadata_Wang_full_table$sample, '-', metadata_Wang_full_table$plate_nr, '-', metadata_Wang_full_table$Barcode)
+# change rownames
+rownames(metadata_Wang_full_table) = metadata_Wang_full_table$ID
 
 # Anyways, let's see if we can get the names of the cells that we want
 desired_celltypes = grepl('^LV[0-9]*$',metadata_Wang_full_table$ident)
@@ -109,12 +116,13 @@ sum(desired_celltypes&desired_individuals) # 1893, a bit more than expected 1864
 # that allow us to gather their raw data
 metadata_Wang_full_table_selection = metadata_Wang_full_table[desired_celltypes&desired_individuals,]
 
-
+######################################################################
 
 # let's create the SRR files
 # these will be per patient, per plate now
 # the bar codes will identify the cells
 all_samples_list = c()
+SRR_export_summary_info=list()
 for (current_patient in c('N1','N2','N3','N4','N5','N13','N14')) {
     
     # current_patient = 'N2'
@@ -159,6 +167,8 @@ for (current_patient in c('N1','N2','N3','N4','N5','N13','N14')) {
         # User info
         print(paste0('Exporting ',sample_name_part1, ' with ', length(current_SRR_Part1),' cells SRR ..'))
         print(paste0('Exporting ',sample_name_part2, ' with ', length(current_SRR_Part2),' cells SRR ..'))
+        SRR_export_summary_info[[sample_name_part1]] = length(current_SRR_Part1)
+        SRR_export_summary_info[[sample_name_part2]] = length(current_SRR_Part2)
         
         # keep track of samples
         all_samples_list = append(all_samples_list, c(sample_name_part1, sample_name_part2))
@@ -189,6 +199,61 @@ write.table(data.frame(as.list(all_samples_list)), file = paste0(base_dir, 'SRR/
 # [1] "Exporting p.N13.plate.100355.part.2 with 36 cells SRR .."
 # [1] "Exporting p.N14.plate.104720.part.1 with 14 cells SRR .."
 # [1] "Exporting p.N14.plate.104720.part.2 with 14 cells SRR .."
+
+################################################################################
+# I've noted that the numbers don't quite add up
+
+# Problem 1: the table with selected cells contains 1893 cells; but only
+# 1423 SRR values are exported, why are there cells missing?
+# --> 
+sum(unlist(SRR_export_summary_info)) # 1423 SRR values
+# Turns out that those "missing cells" belong to patients from who no LV was collected.
+dim(metadata_Wang_full_table_selection[metadata_Wang_full_table_selection$sample %in% c('N6', 'N7', 'N8', 'N9', 'N10', 'N11', 'N12'),])
+# So, there's 470 cells that are classified as LV, whilst they are from LA source
+
+# Problem 2: there are 1864 cells listed as CMs in the excel table, coming from LV
+# source. But now I only have 1423 cells. Are these then classified as LA?
+sum(grepl('^LA',metadata_Wang_full_table[metadata_Wang_full_table$sample %in% c('N1','N2','N3','N4','N5','N13','N14'),]$ident))
+    # indeed, 500 of those "LV" cells end up being classified as LA cells
+sum(!grepl('^LV',metadata_Wang_full_table[metadata_Wang_full_table$sample %in% c('N1','N2','N3','N4','N5','N13','N14'),]$ident))
+unique(metadata_Wang_full_table[metadata_Wang_full_table$sample %in% c('N1','N2','N3','N4','N5','N13','N14'),]$ident)
+dim(metadata_Wang_full_table[metadata_Wang_full_table$sample %in% c('N1','N2','N3','N4','N5','N13','N14') &
+                             metadata_Wang_full_table$ident %in% c("LV2","LV4","LV7","LV5","LV6","LA3","LA4","LA2","LV1","LA1","LA6","LA5","LV3"),])
+
+
+################################################################################
+
+# Additionally, I'd like to make a mapping that maps the original names to 
+# my new names, so 
+# GSE109816_SC_92563_2_44 <--> N3_97438_a_R15.C69.ATTGGAGATTG
+# This should be possible with the table
+
+# New way
+extended_names =  paste0(  metadata_Wang_full_table_selection$sample, '.',
+                            metadata_Wang_full_table_selection$plate_nr, '_',
+                            'R',metadata_Wang_full_table_selection$Chip.Row.ID,'.C',metadata_Wang_full_table_selection$Chip.Column.ID,'.',
+                            metadata_Wang_full_table_selection$Barcode)
+rownames(metadata_Wang_full_table_selection) = extended_names
+# metadata_Wang_full_table_selection[cellname]$ID now gives the old name (or other info)
+save(list = c('metadata_Wang_full_table_selection'),file = paste0(base_dir,'Rdata/metadata_Wang_full_table_selection.Rdata'))
+
+# Old alternative
+simplified_names = paste0(  metadata_Wang_full_table_selection$sample, '_',
+                            metadata_Wang_full_table_selection$plate_nr, '_',
+                            metadata_Wang_full_table_selection$Barcode)
+conversion_table_wang_names = metadata_Wang_full_table_selection$ID
+names(conversion_table_wang_names) = simplified_names
+wang_convert_name_new_to_old = function(newname, add_GSE=F) {
+    newname_short =
+        gsub(pattern = '_[ab]_R[0-9]+.C[0-9]+.', replacement='_', x = newname)
+    if (add_GSE) { 
+        if (sum(metadata_Wang_full_table_selection$ID==conversion_table_wang_names[newname_short])!=1) {stop(paste0('irregularity w ',newname))}
+        GSE=metadata_Wang_full_table_selection$GSE[metadata_Wang_full_table_selection$ID==conversion_table_wang_names[newname_short]]
+        return(paste0(GSE, '_', conversion_table_wang_names[newname_short])) 
+    } else { 
+        return(conversion_table_wang_names[newname_short]) 
+    }
+}
 
 ################################################################################
 # I previously made a mistake, ie not realizing they did run multiple plates,

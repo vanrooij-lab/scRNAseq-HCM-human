@@ -62,9 +62,22 @@ args = commandArgs(trailingOnly = T)
 library(stringr)
 if (!exists('desired_command')) {
     if (length(args)==1) {
+        
+        # split input argument in vector
         desired_command = unlist(str_split(string = args, pattern = '-'))
+        
+        # quickly parse parameters (there might be a lib for this, but ok)
+        config=list()
+        for (command in desired_command[grepl(pattern = '=',x = desired_command)]) {
+            print(command)
+            spl=str_split(string = command,pattern = '=')[[1]]
+            config[[spl[1]]]=spl[2]
+        }
+        # convert numerical strings to numeric
+        config[grepl(config, pattern = '^[0-9]')]=as.numeric(config[grepl(config, pattern = '^[0-9]')])
+           
         print(paste0('Sections to execute: ',paste0(desired_command,collapse = ', ')))
-    } else {stop('Please pass 1 string, in the form \'arg1-arg2-arg3\' to give what section(s) to execute.')}
+    } else {stop('Please pass 1 string, in the form \'arg1-arg2-arg3=x\' to give what section(s) to execute.')}
 }
 
 ########################################################################
@@ -72,19 +85,30 @@ if (!exists('desired_command')) {
 
 # Note: always execute this library loading
 
-MYMCCORES = 8 # not always used properly, currently
+if (exists('config')) {
+    if ('cores' %in% names(config)) {
+        MYMCCORES=config$cores
+        print(paste0('Cores set to: ',MYMCCORES))
+    } else { 
+        MYMCCORES = 8 # not always used properly, currently
+    }
+} else {MYMCCORES = 8}
+
+
 # Local  use
 if (exists('LOCAL')) {
     base_dir = '/Users/m.wehrens/Data/_2019_02_HCM_SCS/2021_HPC_analysis/'
     script_dir = '/Users/m.wehrens/Documents/git_repos/SCS_More_analyses/'
+    
+    data_dir1 = NULL
+    data_dir2 = '/Users/m.wehrens/Data/_2019_02_HCM_SCS/2021_Wang_Counttables/'
 } else {
     script_dir = '/hpc/hub_oudenaarden/mwehrens/scripts/SCS_HCM_analysis/'
     base_dir = '/hpc/hub_oudenaarden/mwehrens/data/Wang/'
+    
+    data_dir1='/hpc/hub_oudenaarden/mwehrens/fastq/HCM_SCS/mapping.93.may25/counttables/'
+    data_dir2='/hpc/hub_oudenaarden/mwehrens/fastq/WANG4/mapping/counttables/'
 }
-
-data_dir1='/hpc/hub_oudenaarden/mwehrens/fastq/HCM_SCS/mapping.93.may25/counttables/'
-data_dir2='/hpc/hub_oudenaarden/mwehrens/fastq/WANG2/mapping_may25/counttables/'
-# data_dir2 = '/Volumes/fastq_m.wehrens/Mapping/WANG2/counttables/'
 
 library(Seurat)
 library(SeuratDisk)
@@ -133,21 +157,37 @@ HCM_SCS_ids =
 dataset_list_paths_HCM = paste0(data_dir1, HCM_SCS_ids, '_pT_uniaggGenes_spliced.UFICounts.tsv')
 names(dataset_list_paths_HCM) = names(HCM_SCS_ids)
 
-WANG_ids = c(N1='GSM2970361_N1_LV_cat', 
-             N3='GSM2970362_N3_LV_cat', 
-             N4='GSM2970366_N4_LV_cat', 
-             N5='GSM2970360_N5_LV_cat',
-             N13='GSM3449619_N13_cat',
-             N14='GSM3449620_N14_cat')
-samples_Wang=c('N1','N2','N3','N4','N5','N13','N14')
+WANG_ids = c(   N1.97474.a = 'p.N1.plate.97474.part.1_cat',
+                N1.97474.b = 'p.N1.plate.97474.part.2_cat',
+    
+                N2.97452.a = 'p.N2.plate.97452.part.1_cat',
+                N2.97452.b = 'p.N2.plate.97452.part.2_cat',
+                N2.97493.a = 'p.N2.plate.97493.part.1_cat',
+                N2.97493.b = 'p.N2.plate.97493.part.2_cat',
+    
+                N3.97438.a = 'p.N3.plate.97438.part.1_cat',
+                N3.97438.b = 'p.N3.plate.97438.part.2_cat',
+    
+                N4.97461.a = 'p.N4.plate.97461.part.1_cat',
+                N4.97461.b = 'p.N4.plate.97461.part.2_cat',
+    
+                N5.97458.a = 'p.N5.plate.97458.part.1_cat',
+                N5.97458.b = 'p.N5.plate.97458.part.2_cat',
+    
+                N13.100355.a = 'p.N13.plate.100355.part.1_cat',
+                N13.100355.b = 'p.N13.plate.100355.part.2_cat',
+    
+                N14.104720.a = 'p.N14.plate.104720.part.1_cat',
+                N14.104720.b = 'p.N14.plate.104720.part.2_cat')
+# Annotation to patients
+WANG_conversion_patients = sapply(str_split(WANG_ids, pattern = '\\.'), function(x) {x[[2]]})
+names(WANG_conversion_patients) = names(WANG_ids)
+# Annotation to samples
+WANG_conversion_samples = sapply(str_split(WANG_ids, pattern = '\\.'), function(x) {x[[4]]})
+names(WANG_conversion_samples) = names(WANG_ids)
+# Generate full data paths
 dataset_list_paths_WANG = paste0(data_dir2, WANG_ids, '_nc_uniaggGenes_spliced.UFICounts.tsv')
 names(dataset_list_paths_WANG) = names(WANG_ids)
-
-# Additionally, Wang patient N2, which will be loaded separately because it was split during mapping
-# (see below)
-W_N2_partlist_string = paste0('part.',0:9,'.')
-W_N2_file_list_parts = paste0(data_dir2, W_N2_partlist_string, 'GSM2970358_N2_LV_cat_nc_uniaggGenes_spliced.UFICounts.tsv')
-names(W_N2_file_list_parts) = W_N2_partlist_string
 
 dataset_list_paths=c(dataset_list_paths_HCM,dataset_list_paths_WANG)
 
@@ -201,49 +241,6 @@ if ('generate_seurat' %in% desired_command) {
     object_size(RHL_SeuratObject_list) 
     save(list = c('RHL_SeuratObject_list'),file = paste0(base_dir,'Rdata/RHL_SeuratObject_list.Rdata'))
     # load(paste0(base_dir,'Rdata/RHL_object_list.Rdata'))
-    
-}
-
-########################################################################
-# Unfortunately, the N2 patient from Wang was so much data, that I had
-# to split the mapping procedure in 10 parts; so here is a bit of a boiler
-# plate solution where I load the separate parts and merge them according
-# to the same procedure as the separate patients
-
-if ('add_N2_patient' %in% desired_command) {
-
-    # load the different datasets
-    SCS_df_list_data_raw = loadData_MW_parallel(W_N2_file_list_parts, mc.cores=MYMCCORES, prefix=F)   
-    
-    # perform the renaming of gene sets
-    SCS_df_list_data = lapply(SCS_df_list_data_raw, preprocess_convertAAnames_toSymbol, revert_to_hgnc=T, script_dir=script_dir)
-    
-    # load the parts as seurat objects
-    Seurat_object_list_parts = 
-        mclapply(1:length(SCS_df_list_data), 
-                    function(idx) {
-                        object=CreateSeuratObject(counts = SCS_df_list_data[[idx]], project = names(SCS_df_list_data)[idx])
-                        print(paste0(names(SCS_df_list_data)[idx],' done .'))
-                        return(object)
-                        }, mc.cores = MYMCCORES)
-
-    # now merge them into one object
-    Seurat_object_merged <- merge(Seurat_object_list_parts[[1]], y = unlist(Seurat_object_list_parts)[2:length(Seurat_object_list_parts)], add.cell.ids = names(Seurat_object_list_parts), project = "N2")
-    
-    # Now load the list with all of the data
-    load(file = paste0(base_dir,'Rdata/RHL_SeuratObject_list.Rdata'))
-        # RHL_SeuratObject_list
-    
-    # Check whether patient Wang N2 isn't in there already
-    if ("N2" %in% names(RHL_SeuratObject_list)) {
-        stop('N2 already present')
-    }
-    
-    # otherwise, add the patient
-    RHL_SeuratObject_list[['N2']] = Seurat_object_merged
-    
-    # And save the structure
-    save(list = 'RHL_SeuratObject_list', file = paste0(base_dir,'Rdata/RHL_SeuratObject_list.Rdata'))
     
 }
 
@@ -331,32 +328,45 @@ if ('create_merged_seurat' %in% desired_command) {
 
 if ('create_merged_seurat' %in% desired_command) {
     
+    # This is required for e.g. LA/LV annotation in Wang sample
+    # Metadata table for Wang..Hu paper
+    load(file = paste0(base_dir,'Rdata/metadata_Wang_full_table_selection.Rdata'))
+    
     # Add sample information (patients in the case of Hu)
     # This just extracts the prefix added by the merge function 
     RHL_annotation_prelim=unlist(lapply(  strsplit(colnames(RHL_SeuratObject_merged), split='_'), 
         function(splitted_string) {splitted_string[1]}))
-    # Get sample and patient information for Teichmann
-    RHL_annotation_samples=RHL_annotation_prelim
-    RHL_annotation_samples[RHL_annotation_samples=='TEICH']=paste0('T',RHL_SeuratObject_list$TEICH@meta.data$sample)
+    
+    # Sanity check for Teichmann
+    if (any(paste0('TEICH_',colnames(RHL_SeuratObject_list$TEICH))!=colnames(RHL_SeuratObject_merged)[RHL_annotation_prelim=='TEICH'])) {
+        print('Annotation inconsistency.'); stop('Annotation inconsistency.')
+        } else {print('Annotation Teichmann consistent.')}
+    
+    # Define sample annotation
+    RHL_annotation_samples=RHL_annotation_prelim # note that our data is named after samples, as they map to patients
+    RHL_annotation_samples[RHL_annotation_samples %in% names(WANG_ids)] = paste0('H.',WANG_conversion_samples[    RHL_annotation_samples[RHL_annotation_samples %in% names(WANG_ids)]    ])
+    RHL_annotation_samples[RHL_annotation_samples=='TEICH']=paste0('T.',RHL_SeuratObject_list$TEICH@meta.data$sample)
     # unique(RHL_annotation_samples)
     # Determine annotation for from which paper a cell comes
     RHL_annotation_paper = rep(NA, length(RHL_annotation_prelim))
     RHL_annotation_paper[RHL_annotation_prelim %in% samples_Rooij]='vRooij'
     RHL_annotation_paper[RHL_annotation_prelim == 'TEICH']='Teichmann'
-    RHL_annotation_paper[RHL_annotation_prelim %in% samples_Wang]='Hu'
+    RHL_annotation_paper[RHL_annotation_prelim %in% names(WANG_ids)]='Hu' 
     # Get patient information for our data and Teichmann's
     RHL_annotation_patients=RHL_annotation_prelim
     RHL_annotation_patients[RHL_annotation_patients=='TEICH']=paste0('T.',RHL_SeuratObject_list$TEICH@meta.data$donor)
     RHL_annotation_patients[RHL_annotation_patients %in% names(Rooij_conversion_pts)] = Rooij_conversion_pts[RHL_annotation_patients[RHL_annotation_patients %in% names(Rooij_conversion_pts)]]
-    RHL_annotation_patients[RHL_annotation_patients %in% samples_Wang] = paste0('H.', RHL_annotation_patients[RHL_annotation_patients %in% samples_Wang])
+    RHL_annotation_patients[RHL_annotation_patients %in% names(WANG_ids)] = paste0('H.',WANG_conversion_patients[    RHL_annotation_patients[RHL_annotation_patients %in% names(WANG_ids)]    ])
     # Now also retrieve the "region" data for the Teichmann data, which correspond for the vCMs to AX, SP, LV, RV (apex, septum, left ventricle, right v)
     # For our data, we only have septal cells
-    # For the Wang data, there's both LV and LA cells
-    # XXXX
-    # RHL_SeuratObject_list$TEICH@meta.data$region
-    # 
-    # metadata_Wang_full_table$condition
-    # XXXX
+    RHL_annotation_region=RHL_annotation_prelim
+    RHL_annotation_region[RHL_annotation_region %in% samples_Rooij] = 'SP'
+    # For the Wang data, there's both LV and LA cells, but we selected for cells categorized as LV
+    RHL_annotation_region[RHL_annotation_region %in% names(WANG_ids)] = 
+        metadata_Wang_full_table_selection[gsub(pattern = '\\.a|\\.b',replacement='',x=colnames(RHL_SeuratObject_merged)[RHL_annotation_region %in% names(WANG_ids)]),]$condition
+    RHL_annotation_region=gsub(RHL_annotation_region, pattern = 'N_',replacement = '')
+    # For Teichmann, we need the region data
+    RHL_annotation_region[RHL_annotation_region %in% 'TEICH'] = as.character(RHL_SeuratObject_list$TEICH@meta.data$region)
     
     # Add information to Seurat object
     RHL_SeuratObject_merged[["annotation_sample_fct"]]     <- as.factor(RHL_annotation_samples)
@@ -365,6 +375,8 @@ if ('create_merged_seurat' %in% desired_command) {
     RHL_SeuratObject_merged[["annotation_patient_str"]]     <- RHL_annotation_patients
     RHL_SeuratObject_merged[["annotation_paper_fct"]]     <- as.factor(RHL_annotation_paper)
     RHL_SeuratObject_merged[["annotation_paper_str"]]     <- RHL_annotation_paper
+    RHL_SeuratObject_merged[["annotation_region_fct"]]     <- as.factor(RHL_annotation_region)
+    RHL_SeuratObject_merged[["annotation_region_str"]]     <- RHL_annotation_region
     
     # Some notes on Teichmann annotation
     #TEICH_colnames = colnames(RHL_SeuratObject_merged)[RHL_annotation_samples=='TEICH']
@@ -385,53 +397,58 @@ if ('create_merged_seurat' %in% desired_command) {
 
 ################################################################################
 
-# Now we also want to create an object with only ventricular cardiomyocytes
-# Van Rooij data:   myectomy tissue, size-sorted to obtain CMs only;
-#                   we'll need some additional selection in downstream analysis
-#                   to filter out non-CMs.
-# Teichmann data:   according to their annotation, downloaded data only contains
-#                   vCMs
-# Hu data:          we'll need to take cells that finally obtained the annotation
-#                   of vCM, which are cells in the clusters LV1-LV7. So
-#                   my strategy here is to use the metadata, and select for cells
-#                   using '^LV[0-9]*$' grepl search.
-#
-# Hu data is already processed in HCM-SCS_2021_05_WANG_looking_processed_data.R,
-# where I identify cellnames that should be vCMs.
+# Previously, I mapped all data from Hu, and it was necessary to select for 
+# vCMs in that data.
+# However, I now performed this selection before mapping, using their metadata, 
+# and only mapped vCM cells. So this section has become obsolete.
+# (Keeping here for later in commented form.)
 
-if ('select_vCM_genes_cells' %in% desired_command) {
-    
-    # So now we just need to select based on cellnames (Hu) / samples (Rooij/Teichmann)
-    # For Hu, see desired_cells_mwName determined in aforementioned script 
-    load(file = paste0(base_dir,'Rdata/desired_cells_mwName.Rdata'))
-    
-    # First need to simplify names of Hu
-    cellNames_Hu = colnames(RHL_SeuratObject_merged)[RHL_SeuratObject_merged$annotation_paper_str=='Hu']
-    Hu_CellBarcodes = sapply(str_split(pattern = '\\.',string = cellNames_Hu), function(x) {x[3]})
-    Hu_CellPatients =  sapply(str_split(pattern = '\\_',string = cellNames_Hu), function(x) {x[1]})
-    simplified_names = paste0(Hu_CellPatients,'-',Hu_CellBarcodes)
-    vCM_sel_Hu = simplified_names %in% desired_cells_mwName 
-    
-    # Now we can annotate which cells are vCM
-    vCM_sel = rep(F, dim(RHL_SeuratObject_merged)[2])
-    vCM_sel[RHL_SeuratObject_merged$annotation_paper_str == 'Hu'] = vCM_sel_Hu
-    vCM_sel[RHL_SeuratObject_merged$annotation_paper_str == 'vRooij'] = T
-    vCM_sel[RHL_SeuratObject_merged$annotation_paper_str == 'Teichmann'] = T
-    
-    RHL_SeuratObject_merged[['vCM']] = vCM_sel
-    
-    # Now save this object, as it's the basis from which we'll be working
-    save(list = c('RHL_SeuratObject_merged'),file = paste0(base_dir,'Rdata/RHL_SeuratObject_merged.Rdata'))
-    # load(file = paste0(base_dir,'Rdata/RHL_SeuratObject_merged.Rdata'))
-
-}
+# # Van Rooij data:   myectomy tissue, size-sorted to obtain CMs only;
+# #                   we'll need some additional selection in downstream analysis
+# #                   to filter out non-CMs.
+# # Teichmann data:   according to their annotation, downloaded data only contains
+# #                   vCMs
+# # Hu data:          we'll need to take cells that finally obtained the annotation
+# #                   of vCM, which are cells in the clusters LV1-LV7. So
+# #                   my strategy here is to use the metadata, and select for cells
+# #                   using '^LV[0-9]*$' grepl search.
+# #
+# # Hu data is already processed in HCM-SCS_2021_05_WANG_looking_processed_data.R,
+# # where I identify cellnames that should be vCMs.
+# 
+# if ('select_vCM_genes_cells' %in% desired_command) {
+#     
+#     # So now we just need to select based on cellnames (Hu) / samples (Rooij/Teichmann)
+#     # For Hu, see desired_cells_mwName determined in aforementioned script 
+#     load(file = paste0(base_dir,'Rdata/desired_cells_mwName.Rdata'))
+#     
+#     # First need to simplify names of Hu
+#     cellNames_Hu = colnames(RHL_SeuratObject_merged)[RHL_SeuratObject_merged$annotation_paper_str=='Hu']
+#     Hu_CellBarcodes = sapply(str_split(pattern = '\\.',string = cellNames_Hu), function(x) {x[3]})
+#     Hu_CellPatients =  sapply(str_split(pattern = '\\_',string = cellNames_Hu), function(x) {x[1]})
+#     simplified_names = paste0(Hu_CellPatients,'-',Hu_CellBarcodes)
+#     vCM_sel_Hu = simplified_names %in% desired_cells_mwName 
+#     
+#     # Now we can annotate which cells are vCM
+#     vCM_sel = rep(F, dim(RHL_SeuratObject_merged)[2])
+#     vCM_sel[RHL_SeuratObject_merged$annotation_paper_str == 'Hu'] = vCM_sel_Hu
+#     vCM_sel[RHL_SeuratObject_merged$annotation_paper_str == 'vRooij'] = T
+#     vCM_sel[RHL_SeuratObject_merged$annotation_paper_str == 'Teichmann'] = T
+#     
+#     RHL_SeuratObject_merged[['vCM']] = vCM_sel
+#     
+#     # Now save this object, as it's the basis from which we'll be working
+#     save(list = c('RHL_SeuratObject_merged'),file = paste0(base_dir,'Rdata/RHL_SeuratObject_merged.Rdata'))
+#     # load(file = paste0(base_dir,'Rdata/RHL_SeuratObject_merged.Rdata'))
+# 
+# }
 
 ################################################################################
 # Now we have a data frame.
 # 
 # Note that for the Teichmann cells, we only obtained data from cells that were
 # kept in the final analysis.
-# For the Hu data, we also made a selection using the clustering, which implicitly
+# For the Hu data, we also made a selection using their clustering, which implicitly
 # also removed cells that were discarded in Hu pre-processing.
 #
 # For our data, no quality control is yet performed. So we'll first perform the 
@@ -477,8 +494,10 @@ if ('select_vCM_genes_cells' %in% desired_command) {
     CalcN_out_merged = Seurat:::CalcN(RHL_SeuratObject_merged_noMito)
     RHL_SeuratObject_merged_noMito[['nCount_nMT_RNA']]   = CalcN_out_merged$nCount
     RHL_SeuratObject_merged_noMito[['nFeature_nMT_RNA']] = CalcN_out_merged$nFeature
-    
-    RHL_SeuratObject_merged_noMito_sel <- subset(RHL_SeuratObject_merged_noMito, subset = nFeature_nMT_RNA > 50 & nCount_nMT_RNA > 1000 & percent.mt < 80 & vCM == T)
+
+    RHL_SeuratObject_merged_noMito_sel <- subset(RHL_SeuratObject_merged_noMito, subset = nFeature_nMT_RNA > 50 & nCount_nMT_RNA > 1000 & percent.mt < 80)    
+        # vCM selection not necessary any more
+        # RHL_SeuratObject_merged_noMito_sel <- subset(RHL_SeuratObject_merged_noMito, subset = nFeature_nMT_RNA > 50 & nCount_nMT_RNA > 1000 & percent.mt < 80 & vCM == T)
     # table(RHL_SeuratObject_merged_sel$orig.ident)
     table(RHL_SeuratObject_merged_noMito_sel$annotation_paper_str)
     table(RHL_SeuratObject_merged_noMito_sel$annotation_patient_str)
@@ -532,7 +551,7 @@ if ('runf_all_default_cl' %in% desired_command) {
         LoadH5Seurat(file = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_merged_noMito_sel.default.h5seurat'))
     
     DE_cluster=list()
-    DE_cluster[[CURRENT_RUNNAME]] = diff_express_clusters(H5_RHL_SeuratObject_merged_noMito_sel.default, mc.cores = 20)
+    DE_cluster[[CURRENT_RUNNAME]] = diff_express_clusters(H5_RHL_SeuratObject_merged_noMito_sel.default, mc.cores = MYMCCORES)
     save(list = c('DE_cluster'), file = paste0(base_dir,'Rdata/DE_cluster_',CURRENT_RUNNAME,'.Rdata'))
     
     diff_express_clusters_save_results(all_markers = DE_cluster[[CURRENT_RUNNAME]], run_name = CURRENT_RUNNAME,
@@ -548,24 +567,24 @@ if ('runf_all_default_cl' %in% desired_command) {
 # Run the analysis for ALL sets, with RACEID2 like params
 
 # NOTE THAT THIS WAS NEVER EXECUTED, BECAUSE FEATURES ALL IS VERY INTENSIVE AND NOT NECESSARY
-if ('runf_all_RID2l' %in% desired_command) {
-    CURRENT_RUNNAME='all_RID2l'
-    
-    load(file = paste0(base_dir,'Rdata/RHL_SeuratObject_merged_noMito_sel.Rdata'))
-    
-    RHL_SeuratObject_merged_noMito_sel.rid2like = mySeuratAnalysis(RHL_SeuratObject_merged_noMito_sel,
-        run_name=CURRENT_RUNNAME,
-        normalization.method='RC', scale.factor=median(RHL_SeuratObject_merged_noMito_sel$nCount_nMT_RNA),
-        do.scale=F,do.center=F,scale.max=Inf, features_to_use_choice = 'all')
-    mySeuratCommonPlots(RHL_SeuratObject_merged_noMito_sel.rid2like, run_name = CURRENT_RUNNAME)
-    # save(list = c('RHL_SeuratObject_merged_noMito_sel.rid2like'), file = paste0(base_dir,'Rdata/RHL_SeuratObject_merged_noMito_sel.rid2like.Rdata'))
-    # load(file = paste0(base_dir,'Rdata/RHL_SeuratObject_merged_noMito_sel.rid2like.Rdata'))
-    
-    SaveH5Seurat(object = RHL_SeuratObject_merged_noMito_sel.rid2like, overwrite = T,
-        filename = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_merged_noMito_sel.rid2like.h5seurat'))
-    #RHL_SeuratObject_merged_noMito_sel.rid2like = LoadH5Seurat(file = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_merged_noMito_sel.rid2like.h5seurat'))
-    
-}
+# if ('runf_all_RID2l' %in% desired_command) {
+#     CURRENT_RUNNAME='all_RID2l'
+#     
+#     load(file = paste0(base_dir,'Rdata/RHL_SeuratObject_merged_noMito_sel.Rdata'))
+#     
+#     RHL_SeuratObject_merged_noMito_sel.rid2like = mySeuratAnalysis(RHL_SeuratObject_merged_noMito_sel,
+#         run_name=CURRENT_RUNNAME,
+#         normalization.method='RC', scale.factor=median(RHL_SeuratObject_merged_noMito_sel$nCount_nMT_RNA),
+#         do.scale=F,do.center=F,scale.max=Inf, features_to_use_choice = 'all')
+#     mySeuratCommonPlots(RHL_SeuratObject_merged_noMito_sel.rid2like, run_name = CURRENT_RUNNAME)
+#     # save(list = c('RHL_SeuratObject_merged_noMito_sel.rid2like'), file = paste0(base_dir,'Rdata/RHL_SeuratObject_merged_noMito_sel.rid2like.Rdata'))
+#     # load(file = paste0(base_dir,'Rdata/RHL_SeuratObject_merged_noMito_sel.rid2like.Rdata'))
+#     
+#     SaveH5Seurat(object = RHL_SeuratObject_merged_noMito_sel.rid2like, overwrite = T,
+#         filename = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_merged_noMito_sel.rid2like.h5seurat'))
+#     #RHL_SeuratObject_merged_noMito_sel.rid2like = LoadH5Seurat(file = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_merged_noMito_sel.rid2like.h5seurat'))
+#     
+# }
 
 ################################################################################
 # RID2-like but with var. features activated
@@ -597,7 +616,7 @@ if ('runf_all_RID2l_VAR_cl' %in% desired_command) {
     
     # perhaps change var names?
     DE_cluster=list()
-    DE_cluster[[CURRENT_RUNNAME]] = diff_express_clusters(RHL_SeuratObject_merged_noMito_sel.rid2like_VAR, mc.cores = 20)
+    DE_cluster[[CURRENT_RUNNAME]] = diff_express_clusters(RHL_SeuratObject_merged_noMito_sel.rid2like_VAR, mc.cores = MYMCCORES)
     save(list = c('DE_cluster'), file = paste0(base_dir,'Rdata/DE_cluster_',CURRENT_RUNNAME,'.Rdata'))
     #load(file = paste0(base_dir,'Rdata/DE_cluster_',CURRENT_RUNNAME,'.Rdata'))
     
@@ -637,25 +656,23 @@ if ('split_datasets' %in% desired_command) {
 ################################################################################
 
 # Note: this can do one of six analysis
-# argument1: selection of this analysis
-# argument2: 'ROOIJ','TEICHMANN','HU'
-# argument3: 'SETTINGS_RID2l' or 'SETTINGS_DEFAULT'
+# required arg, dataset: 'ROOIJ','TEICHMANN','HU'
+# required arg, settings: 'SETTINGS_RID2l' or 'SETTINGS_DEFAULT'
 
-# Note to self: for local testing, e.g. set # base_dir='/Users/m.wehrens/Data/_2019_02_HCM_SCS/2021_HPC_analysis/'
-# and # desired_command=c('run_separate','ROOIJ','SETTINGS_RID2l')
+# Note to self: for local testing, e.g.:
+# base_dir='/Users/m.wehrens/Data/_2019_02_HCM_SCS/2021_HPC_analysis/'
+# desired_command='run_separate'
+# config=list(); config$dataset='ROOIJ'; config$settings='SETTINGS_RID2l'
 
 # Note to self, to run on the HPC, e.g. use:
-# commands="run_separate-TEICHMANN-SETTINGS_RID2l"
+# commands="run_separate-dataset=TEICHMANN-settings=SETTINGS_RID2l"
 
 if ('run_separate' %in% desired_command) {
     
-    # slightly convoluted, but one of the commands should be one of the separate datasets,
-    # which I then select as name
-    current_dataset = 
-        if (any(desired_command %in% c('ROOIJ','TEICHMANN','HU'))) { 
-            desired_command[desired_command %in% c('ROOIJ','TEICHMANN','HU')] 
-        } else { stop('Commands not valid.') }
-    seuratObject_name = paste0('RHL_SeuratObject_nM_sel_',desired_command[2],'only')
+    current_dataset=config$dataset
+    desired_settings=config$settings
+    
+    seuratObject_name = paste0('RHL_SeuratObject_nM_sel_',current_dataset,'only')
     
     # load the file
     current_analysis = list()
@@ -663,7 +680,7 @@ if ('run_separate' %in% desired_command) {
         LoadH5Seurat(file = paste0(base_dir,'Rdata/H5_',seuratObject_name,'.h5seurat'))
     
     # run the seurat analysis
-    if ('SETTINGS_RID2l' %in% desired_command) {
+    if (desired_settings == 'SETTINGS_RID2l') {
         CURRENT_RUNNAME = paste0(current_dataset,'only_','RID2l')
         # run RaceID2 like settings
         current_analysis[[seuratObject_name]] = mySeuratAnalysis(current_analysis[[seuratObject_name]],
@@ -689,10 +706,11 @@ if ('run_separate' %in% desired_command) {
 }
     
 # clustering    
-# commands="run_separate_nowclusterDE-TEICHMANNonly_RID2l"
+# commands="run_separate_nowclusterDE-dataset=TEICHMANNonly_RID2l"
+# note that settings name string now is suffix to dataset name
 if ('run_separate_nowclusterDE' %in% desired_command) {
     
-        CURRENT_RUNNAME=desired_command[2]
+        CURRENT_RUNNAME=config$dataset
     
         print('Loading data')
     
@@ -715,20 +733,127 @@ if ('run_separate_nowclusterDE' %in% desired_command) {
 }
 
 
+# commands="rerun_plotsOnly-seuratObject_name=ROOIJonly_RID2l"
+# commands="rerun_plotsOnly-seuratObject_name=Huonly_RID2l"
+# commands="rerun_plotsOnly-seuratObject_name=TEICHMANNonly_RID2l"
+# Running manually: 
+# config=list(); config$seuratObject_name = 'ROOIJonly_RID2l'
+if ('rerun_plotsOnly' %in% desired_command) {
+    
+    seuratObject_name=config$seuratObject_name
+    
+    # load the file
+    current_analysis = list()
+    current_analysis[[seuratObject_name]] =
+        LoadH5Seurat(file = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_',seuratObject_name,'.h5seurat'))
+    
+    # create respective plots 
+    mySeuratCommonPlots(current_analysis[[seuratObject_name]], run_name = seuratObject_name)
+    
+    print('Plotting done')
+    
+}
+
+
+
 # Already ran analysis
 # CURRENT_RUNNAME = HUonly_RID2l, ROOIJonly_RID2l, ROOIJonly_default
 # current_analysis=list();current_analysis[[CURRENT_RUNNAME]] = LoadH5Seurat(file = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_',CURRENT_RUNNAME,'.h5seurat'))
 
+################################################################################
+
+# Run correlation analysis
+
+if ('correlations_of_interest' %in% desired_command) {
+ source(paste0(script_dir, 'HCM-SCS_2021-06_SeuratRevisedAnalysis_GeneCorrelationsOfInterest.R'))
+}
+
+
+
+
+################################################################################
+# This code was not useful; not sure where I got the "weird" values, 
+# but both methods produce ±similar values (except log2fold change
+# is slightly off). So this code is not necessary.
+
+# # Now let's do the enrichment analysis, but use log10 transformed values etc.
+# # Note: Seurat enrichment analysis produced weird values when I used the 
+# # RaceID2-similar settings; so to do proper DE analysis, I need to either
+# # use another tool, or perform the transformations. Will do latter here.
+# 
+# # LOG10 clustering    
+# # commands="run_separate_nowclusterDE-dataset=TEICHMANNonly_RID2l"
+# # Manual:
+# # config=list(); config$dataset = 'ROOIJonly_RID2l'
+# # 'HUonly_RID2l'
+# if ('run_separate_nowclusterDE' %in% desired_command) {
+#     
+#         CURRENT_RUNNAME=config$dataset
+#     
+#         print('Loading data')
+#     
+#         current_analysis=list()
+#         current_analysis[[CURRENT_RUNNAME]]=
+#             LoadH5Seurat(file = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_',CURRENT_RUNNAME,'.h5seurat'))
+#     
+#         
+#         # Now first add data to this object that is log10 
+#         current_analysis[[CURRENT_RUNNAME]][['RNAlog10']] = CreateAssayObject(counts = current_analysis[[CURRENT_RUNNAME]]@assays$RNA@counts)
+#         # Now normalize & log scale according to standard seurat practices
+#         current_analysis[[CURRENT_RUNNAME]] <- NormalizeData(current_analysis[[CURRENT_RUNNAME]], assay = 'RNAlog10')
+#         current_analysis[[CURRENT_RUNNAME]] <- ScaleData(current_analysis[[CURRENT_RUNNAME]], assay = 'RNAlog10')
+#             # The clustering should now still simply be present
+#             # Idents(current_analysis[[CURRENT_RUNNAME]])
+#         
+#         
+#         # Now perform the enrichment analysis
+#         
+#         THIS CODE IS NOT FINISHED YET ..
+#
+#         print('Starting DE analysis of clusters')
+#         
+#         DE_cluster=list()
+#         DE_cluster[[CURRENT_RUNNAME]] = diff_express_clusters(current_analysis[[CURRENT_RUNNAME]], mc.cores = MYMCCORES)
+#         save(list = c('DE_cluster'), file = paste0(base_dir,'Rdata/DE_cluster_',CURRENT_RUNNAME,'.Rdata'))
+#         #load(file = paste0(base_dir,'Rdata/DE_cluster_',CURRENT_RUNNAME,'.Rdata'))
+#     
+#         diff_express_clusters_save_results(all_markers = DE_cluster[[CURRENT_RUNNAME]], run_name = CURRENT_RUNNAME,
+#                 base_dir=base_dir, topX = 30)
+#         
+#         print('DE analysis of clusters done')
+#     
+# }
+
+
+################################################################################
+
+# commands="rerun_plotsMerged-seuratObject_name=all_RID2l_VAR"
+# commands="rerun_plotsMerged-seuratObject_name=default"
+if ('rerun_plotsMerged' %in% desired_command) {
+    
+    seuratObject_name=config$seuratObject_name
+    
+    # load the file
+    current_analysis = list()
+    current_analysis[[seuratObject_name]] =
+        LoadH5Seurat(file = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_merged_noMito_sel.',seuratObject_name,'.h5seurat'))
+    
+    # create respective plots 
+    mySeuratCommonPlots(current_analysis[[seuratObject_name]], run_name = seuratObject_name)
+    
+    print('Plotting done')
+    
+}
 
 ################################################################################
 # Apply batch corrections to generated datasets 
 # (the ones with default settings)
 
-# E.g. commands="run_batch_corr_sep,TEICHMANNonly"
+# E.g. commands="run_batch_corr_sep-dataset=TEICHMANNonly"
 
 if ('run_batch_corr_sep' %in% desired_command) {
 
-    DATASET_TO_INTEGRATE=desired_command[2]
+    DATASET_TO_INTEGRATE=config$dataset
     
     Seurat_batch_correction_1c(set_name = DATASET_TO_INTEGRATE, base_dir = base_dir)
     
@@ -736,11 +861,11 @@ if ('run_batch_corr_sep' %in% desired_command) {
     
 }
 
-# E.g. commands="run_batch_corr_sep_nowplot_and_DE,TEICHMANNonly_Int1c"
+# E.g. commands="run_batch_corr_sep_nowplot_and_DE-dataset=TEICHMANNonly_Int1c"
 
 if ('run_batch_corr_sep_nowplot_and_DE' %in% desired_command) {
      
-    corrected_set_name=desired_command[2]
+    corrected_set_name=config$dataset
     
     # Load corrected pre-processed analysis object 
     current_analysis=list()

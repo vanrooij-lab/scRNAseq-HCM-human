@@ -4,7 +4,10 @@
 
 ################################################################################
 # Start defining function
-MW_determine_regulons_part1 = function(expression_matrix, calculate_p = F, outputDir, analysis_name = '1') {
+MW_determine_regulons_part1 = function(expression_matrix, calculate_p = F, 
+                                       outputDir, analysis_name = '1',
+                                       min_expression_fraction_genes=.05, 
+                                       MYPADJUSTMETHOD='BH') {
     # example settings (but it depends completely on the data):
     # chosen_cutoff_parameter='r'
     # calculate_p = F
@@ -41,7 +44,19 @@ MW_determine_regulons_part1 = function(expression_matrix, calculate_p = F, outpu
     # create object where we can store relevant params from this analysis
     regulon_object = list()
     # now store for future use in object
-    regulon_object$expression_matrix = expression_matrix
+    regulon_object$expression_matrix_original = expression_matrix
+    
+    # Now do a first gene filter, require min. expression for cells
+    # Let's calculate first in how many cells each gene is expressed
+    gene_expressed_in_X_cells<-rowSums(1*(expression_matrix>min(expression_matrix)))
+    cells_N<-dim(expression_matrix)[2] # number of cells
+    sel_genes_05percent_expr<-gene_expressed_in_X_cells>round(cells_N*min_expression_fraction_genes) # selection for genes expressed in >5% cells
+    # perform actual filtering
+    regulon_object$expression_matrix =
+        regulon_object$expression_matrix_original[sel_genes_05percent_expr,]
+    
+    # 
+    print(paste0('Keeping ', sum(sel_genes_05percent_expr), ' genes of ',length(sel_genes_05percent_expr)))
     
     # Generate 100 distinct colors
     n <- 100
@@ -235,7 +250,7 @@ MW_determine_regulons_part1 = function(expression_matrix, calculate_p = F, outpu
         }
         
         # Then, we produce adjusted the p-values using p.adjust
-        p_val_matrix_adjusted<-matrix(p.adjust(as.vector(p_val_matrix), method='BH'),nrow=dim(p_val_matrix)[2])
+        p_val_matrix_adjusted<-matrix(p.adjust(as.vector(p_val_matrix), method=MYPADJUSTMETHOD),nrow=dim(p_val_matrix)[2])
         
         end_time <- Sys.time(); print(paste0('Task performed in ', round(end_time - start_time,2), ' ',units((end_time-start_time)),'..')) # timing of operation
 
@@ -362,7 +377,7 @@ MW_determine_regulons_part2 = function(regulon_object, chosen_cutoff_parameter='
 MW_determine_regulons_part3 = function(regulon_object, 
                 connectedness_cutoff = NULL, 
                 max_genes = NULL,
-                min_expression_fraction_genes=.05,
+                # min_expression_fraction_genes=.05, # Should be done before calculating p-values!
                 show_heatmap=F,
                 chosen_cutoff_parameter='r') {
     # min_expression_fraction_genes = in how many cells (as a fraction of total) 
@@ -380,10 +395,7 @@ MW_determine_regulons_part3 = function(regulon_object,
     regulon_object$connectedness_cutoff = connectedness_cutoff
     regulon_object$max_genes = max_genes
     
-    # Let's calculate first in how many cells each gene is expressed
-    gene_expressed_in_X_cells<-apply(1*(expression_matrix>min(expression_matrix)),1,sum)
-    cells_N<-dim(expression_matrix)[2] # number of cells
-    sel_genes_05percent_expr<-gene_expressed_in_X_cells>round(cells_N*min_expression_fraction_genes) # selection for genes expressed in >5% cells
+    # XXXX
     
     # Now select which genes should be taken into account for "regulon" matrix
     # selection based on 
@@ -395,7 +407,9 @@ MW_determine_regulons_part3 = function(regulon_object,
     } else if (chosen_cutoff_parameter == 'p') {
         count_of_high_corrs_per_gene_stringent <- apply(1*(p_val_matrix_adjusted_NA < p_or_r_cutoff), 2, sum, na.rm=T)    
     }
-    sel_genes_2<-(count_of_high_corrs_per_gene_stringent>connectedness_cutoff)&sel_genes_05percent_expr
+    sel_genes_2<-(count_of_high_corrs_per_gene_stringent>connectedness_cutoff)
+    # sel_genes_2<-(count_of_high_corrs_per_gene_stringent>connectedness_cutoff)&sel_genes_05percent_expr # sel_genes_05percent_expr should be done at the start for p-vals
+    
     # only take along top X connected genes if desired (in case computational burden too high)
     topX_connected_genes_idxs = order(count_of_high_corrs_per_gene_stringent,decreasing = T)[1:min(max_genes,sum(sel_genes_2))]
     if (!is.null(max_genes)) {
@@ -408,7 +422,8 @@ MW_determine_regulons_part3 = function(regulon_object,
     p<-ggplot(data=data.frame(x=hist_out_intrx2$mids,y=hist_out_intrx2$density))+
         geom_line(aes(x=x,y=y))+
         xlab(paste0('# correlations this gene with others, ',chosen_cutoff_parameter,switch(chosen_cutoff_parameter, 'r'='>','p'='<'),round(p_or_r_cutoff,6),''))+ylab('Density (normalized)')+
-        ggtitle(paste0('For genes that are expressed in ',round(min_expression_fraction_genes*100,2),'% of cells'))+
+        ggtitle('Connectedness')+
+        # ggtitle(paste0('For genes that are expressed in ',round(min_expression_fraction_genes*100,2),'% of cells'))+
         theme_bw()+give_better_textsize_plot(10)
         #xlim(c(0,100))+
     print(p)
@@ -429,7 +444,7 @@ MW_determine_regulons_part3 = function(regulon_object,
     # save to object for export
     regulon_object$cor_out_selected_2 = cor_out_selected_2
     regulon_object$chosen_cutoff_parameter = chosen_cutoff_parameter
-    regulon_object$sel_genes_05percent_expr=sel_genes_05percent_expr
+    # regulon_object$sel_genes_05percent_expr=sel_genes_05percent_expr
     
     return(regulon_object)
 

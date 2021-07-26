@@ -3,18 +3,40 @@
 
 
 # Run the full RaceID2 like analysis, without var. feature selection
-commands=runf_all_RID2l
-script_dir=/hpc/hub_oudenaarden/mwehrens/scripts/SCS_HCM_analysis/
-sbatch --output=slurm-${commands}-%x.%j.out --job-name=${commands} -c 1 --time=1-00:00:00 --mem=150G --export=ALL,commands="${commands}" ${script_dir}/run_SeuratTask.sh
+# This took to long, so wasn't performed
+#commands=runf_all_RID2l
+#script_dir=/hpc/hub_oudenaarden/mwehrens/scripts/SCS_HCM_analysis/
+#sbatch --output=slurm-${commands}-%x.%j.out --job-name=${commands} -c 1 --time=1-00:00:00 --mem=150G --export=ALL,commands="${commands}" ${script_dir}/run_SeuratTask.sh
   # --gres=tmpspace:500G
   # set c 8 when e.g. doing clustering
   
-# Now the clustering of RID2l VAR
-commands=runf_all_RID2l_VAR_cl
+################################################################################  
+  
+# Run the default analysis for the pooled datasets
+commands=runf_all_default
+processors=1
+script_dir=/hpc/hub_oudenaarden/mwehrens/scripts/SCS_HCM_analysis/
+last_jobid=$(sbatch --parsable --output=slurm-${commands}-%x.%j.out --job-name=${commands} -c ${processors} --time=1-00:00:00 --mem=150G --export=ALL,commands="${commands}" ${script_dir}/run_SeuratTask.sh)
+
+# CLUSTER+DE DEFAULT
+# Run the default analysis for the pooled datasets
+# Then the clustering of the default analysis (if before not ran, use dependency)
 processors=20
+commands="runf_all_default_cl-cores=${processors}"
+script_dir=/hpc/hub_oudenaarden/mwehrens/scripts/SCS_HCM_analysis/
+# With dependency:
+# sbatch --dependency=afterany:${last_jobid} --output=slurm-${commands}-%x.%j.out --job-name=${commands} -c ${processors} --time=2-00:00:00 --mem=150G --export=ALL,commands="${commands}" ${script_dir}/run_SeuratTask.sh
+# Without dependency
+sbatch --output=slurm-${commands}-%x.%j.out --job-name=${commands} -c ${processors} --time=2-00:00:00 --mem=150G --export=ALL,commands="${commands}" ${script_dir}/run_SeuratTask.sh
+  
+# CLUSTER+DE RID2l VAR
+# Now the clustering of RID2l VAR
+processors=20
+commands="runf_all_RID2l_VAR_cl-cores=${processors}"
 script_dir=/hpc/hub_oudenaarden/mwehrens/scripts/SCS_HCM_analysis/
 sbatch --output=slurm-${commands}-%x.%j.out --job-name=${commands} -c ${processors} --time=1-00:00:00 --mem=150G --export=ALL,commands="${commands}" ${script_dir}/run_SeuratTask.sh
 
+# SPLIT DATASETS
 # split the pre-processed data into three sets
 commands=split_datasets
 processors=1
@@ -22,32 +44,19 @@ script_dir=/hpc/hub_oudenaarden/mwehrens/scripts/SCS_HCM_analysis/
 sbatch --output=slurm-${commands}-%x.%j.out --job-name=${commands} -c ${processors} --time=1-00:00:00 --mem=150G --export=ALL,commands="${commands}" ${script_dir}/run_SeuratTask.sh
 
 
-# Run the default analysis for the pooled datasets
-commands=runf_all_default
-processors=1
-script_dir=/hpc/hub_oudenaarden/mwehrens/scripts/SCS_HCM_analysis/
-sbatch --output=slurm-${commands}-%x.%j.out --job-name=${commands} -c ${processors} --time=1-00:00:00 --mem=150G --export=ALL,commands="${commands}" ${script_dir}/run_SeuratTask.sh
-#
-# Run the default analysis for the pooled datasets
-# DEPENDENCY SET FOR PREVIOUS JOB (MANUALLY!)
-commands=runf_all_default_cl
-processors=20
-script_dir=/hpc/hub_oudenaarden/mwehrens/scripts/SCS_HCM_analysis/
-sbatch --dependency=afterany:7707272 --output=slurm-${commands}-%x.%j.out --job-name=${commands} -c ${processors} --time=2-00:00:00 --mem=150G --export=ALL,commands="${commands}" ${script_dir}/run_SeuratTask.sh
-
 #####
 
 # little test (parsable makes output ID only)
 last_jobid=$(sbatch --parsable test.sh)
 
 ################################################################################
-# ANALYSIS OF TEICHMANN DATA SEPARATELY
+# ANALYSIS OF TEICHMANN DATA, INTEGRATED [ F A I L E D ]
 
 # Note: Analysis "run_separate" not required!
 # We go straight to ..
 
-# Integration
-commands="run_batch_corr_sep-TEICHMANNonly"
+# Integration (This fails because the data is so large.)
+commands="run_batch_corr_sep-dataset=TEICHMANNonly"
 processors=1
 script_dir=/hpc/hub_oudenaarden/mwehrens/scripts/SCS_HCM_analysis/
 mem=250G
@@ -56,65 +65,124 @@ last_jobid=$(sbatch --parsable --output=slurm-${commands}-%x.%j.out --job-name="
 # V
 # Analysis (plots + DE)
 # Depend on above
-commands="run_batch_corr_sep_nowplot_and_DE-TEICHMANNonly_Int1c-CORES=8"
+commands="run_batch_corr_sep_nowplot_and_DE-dataset=TEICHMANNonly_Int1c-cores=8"
 processors=8
 mem=150G
 script_dir=/hpc/hub_oudenaarden/mwehrens/scripts/SCS_HCM_analysis/
 last_jobid2=$(sbatch --dependency=afterany:${last_jobid} --parsable --output=slurm-${commands}-%x.%j.out --job-name="${commands}" -c ${processors} --time=2-00:00:00 --mem=${mem} --export=ALL,commands="${commands}" ${script_dir}/run_SeuratTask.sh)
 
+################################################################################
+# Now, execute the analyses of the separate datasets
+# RACEID2 like settings
 
-# CONTINUE BELOW !!!!!
-
-# STILL TO EXECUTE, RID2-like
-# Now here, the analysis is required ..
-
-commands="run_separate-TEICHMANN-SETTINGS_RID2l"
+# TEICHMANN
+commands="run_separate-dataset=TEICHMANN-settings=SETTINGS_RID2l"
 processors=1
+memory=128G
 script_dir=/hpc/hub_oudenaarden/mwehrens/scripts/SCS_HCM_analysis/
-last_jobid=$(sbatch --parsable --output=slurm-${commands}-%x.%j.out --job-name="${commands}" -c ${processors} --time=2-00:00:00 --mem=150G --export=ALL,commands="${commands}" ${script_dir}/run_SeuratTask.sh)
+last_jobid=$(sbatch --parsable --output=slurm-${commands}-%x.%j.out --job-name="${commands}" -c ${processors} --time=2-00:00:00 --mem=${memory} --export=ALL,commands="${commands}" ${script_dir}/run_SeuratTask.sh)
 # |
 # V
-commands="run_separate_nowclusterDE-TEICHMANNonly_RID2l-CORES=8"
-processors=8
+processors=20
+commands="run_separate_nowclusterDE-dataset=TEICHMANNonly_RID2l-cores=${processors}"
+memory=128G
 script_dir=/hpc/hub_oudenaarden/mwehrens/scripts/SCS_HCM_analysis/
-last_jobid2=$(sbatch --dependency=afterany:${last_jobid} --parsable --output=slurm-${commands}-%x.%j.out --job-name="${commands}" -c ${processors} --time=2-00:00:00 --mem=150G --export=ALL,commands="${commands}" ${script_dir}/run_SeuratTask.sh)
+jobid_Teich_Cl=$(sbatch --dependency=afterany:${last_jobid} --parsable --output=slurm-${commands}-%x.%j.out --job-name="${commands}" -c ${processors} --time=2-00:00:00 --mem=${memory} --export=ALL,commands="${commands}" ${script_dir}/run_SeuratTask.sh)
+#last_jobid2=$(sbatch --parsable --output=slurm-${commands}-%x.%j.out --job-name="${commands}" -c ${processors} --time=2-00:00:00 --mem=150G --export=ALL,commands="${commands}" ${script_dir}/run_SeuratTask.sh)
+
+# HU
+commands="run_separate-dataset=HU-settings=SETTINGS_RID2l"
+processors=1
+memory=64G
+script_dir=/hpc/hub_oudenaarden/mwehrens/scripts/SCS_HCM_analysis/
+last_jobid=$(sbatch --parsable --output=slurm-${commands}-%x.%j.out --job-name="${commands}" -c ${processors} --time=2-00:00:00 --mem=${memory} --export=ALL,commands="${commands}" ${script_dir}/run_SeuratTask.sh)
+# |
+# V
+processors=20
+commands="run_separate_nowclusterDE-dataset=HUonly_RID2l-cores=${processors}"
+memory=128G
+script_dir=/hpc/hub_oudenaarden/mwehrens/scripts/SCS_HCM_analysis/
+jobid_Hu_Cl=$(sbatch --dependency=afterany:${last_jobid} --parsable --output=slurm-${commands}-%x.%j.out --job-name="${commands}" -c ${processors} --time=2-00:00:00 --mem=${memory} --export=ALL,commands="${commands}" ${script_dir}/run_SeuratTask.sh)
+#last_jobid2=$(sbatch --parsable --output=slurm-${commands}-%x.%j.out --job-name="${commands}" -c ${processors} --time=2-00:00:00 --mem=150G --export=ALL,commands="${commands}" ${script_dir}/run_SeuratTask.sh)
+
+# ROOIJ
+commands="run_separate-dataset=ROOIJ-settings=SETTINGS_RID2l"
+processors=1
+memory=32G
+script_dir=/hpc/hub_oudenaarden/mwehrens/scripts/SCS_HCM_analysis/
+last_jobid=$(sbatch --parsable --output=slurm-${commands}-%x.%j.out --job-name="${commands}" -c ${processors} --time=2-00:00:00 --mem=${memory} --export=ALL,commands="${commands}" ${script_dir}/run_SeuratTask.sh)
+# |
+# V
+processors=10
+commands="run_separate_nowclusterDE-dataset=ROOIJonly_RID2l-cores=${processors}"
+memory=32G
+script_dir=/hpc/hub_oudenaarden/mwehrens/scripts/SCS_HCM_analysis/
+jobid_Rooij_Cl=$(sbatch --dependency=afterany:${last_jobid} --parsable --output=slurm-${commands}-%x.%j.out --job-name="${commands}" -c ${processors} --time=2-00:00:00 --mem=${memory} --export=ALL,commands="${commands}" ${script_dir}/run_SeuratTask.sh)
 #last_jobid2=$(sbatch --parsable --output=slurm-${commands}-%x.%j.out --job-name="${commands}" -c ${processors} --time=2-00:00:00 --mem=150G --export=ALL,commands="${commands}" ${script_dir}/run_SeuratTask.sh)
 
 ################################################################################
-# Also do clustering DE for HU
+# This can be skipped, but used if you wanna re-run some plots
 
-commands="run_separate_nowclusterDE-HUonly_RID2l-CORES=8"
-processors=8
+for DATASET in TEICHMANN HU ROOIJ
+do
+  processors=1
+  commands="rerun_plotsOnly-seuratObject_name=${DATASET}only_RID2l-cores=${processors}"
+  memory=32G
+  script_dir=/hpc/hub_oudenaarden/mwehrens/scripts/SCS_HCM_analysis/
+  sbatch --parsable --output=slurm-${commands}-%x.%j.out --job-name="${commands}" -c ${processors} --time=1-00:00:00 --mem=${memory} --export=ALL,commands="${commands}" ${script_dir}/run_SeuratTask.sh
+done
+
+processors=1
 script_dir=/hpc/hub_oudenaarden/mwehrens/scripts/SCS_HCM_analysis/
-mem=150G
-last_jobid=$(sbatch --parsable --output=slurm-${commands}-%x.%j.out --job-name="${commands}" -c ${processors} --time=2-00:00:00 --mem=${mem} --export=ALL,commands="${commands}" ${script_dir}/run_SeuratTask.sh)
-
+memory=64G
+commands="rerun_plotsMerged-seuratObject_name=all_RID2l_VAR-cores=${processors}"
+sbatch --output=slurm-${commands}-%x.%j.out --job-name="${commands}" -c ${processors} --time=1-00:00:00 --mem=${memory} --export=ALL,commands="${commands}" ${script_dir}/run_SeuratTask.sh
+commands="rerun_plotsMerged-seuratObject_name=default-cores=${processors}"
+sbatch --output=slurm-${commands}-%x.%j.out --job-name="${commands}" -c ${processors} --time=1-00:00:00 --mem=${memory} --export=ALL,commands="${commands}" ${script_dir}/run_SeuratTask.sh
 
 ################################################################################
-# Regulons for Hu and Teichmann
-commands="run_regulon_step1-HUonly_RID2l-CORES=6"
-processors=6
-mem=128G
-script_dir=/hpc/hub_oudenaarden/mwehrens/scripts/SCS_HCM_analysis/
-script_name=run_SeuratRegulonTask.sh
-last_jobid=$(sbatch --parsable --output=slurm-${commands}-%x.%j.out --job-name="${commands}" -c ${processors} --time=2-00:00:00 --mem=${mem} --export=ALL,commands="${commands}" ${script_dir}/${script_name})
+# Regulons analyses for all datasets
+# Note: amount of processors is set to amount of patients
 
-# Teichmann
-commands="run_regulon_step1-TEICHMANNonly_RID2l-CORES=5"
+# Regulon analysis for Rooij 
 processors=5
-mem=255G
-script_dir=/hpc/hub_oudenaarden/mwehrens/scripts/SCS_HCM_analysis/
-script_name=run_SeuratRegulonTask.sh
-last_jobid=$(sbatch --parsable --output=slurm-${commands}-%x.%j.out --job-name="${commands}" -c ${processors} --time=3-00:00:00 --mem=${mem} --export=ALL,commands="${commands}" ${script_dir}/${script_name})
-
-# Regulon analysis for Rooij (also did this locally, but convenient as a test)
-commands="run_regulon_step1-ROOIJonly_RID2l-CORES=5"
-processors=5
+commands="run_regulon_step1-ROOIJonly_RID2l-CORES=${processors}"
 mem=64G
 script_dir=/hpc/hub_oudenaarden/mwehrens/scripts/SCS_HCM_analysis/
 script_name=run_SeuratRegulonTask.sh
-last_jobid=$(sbatch --parsable --output=slurm-${commands}-%x.%j.out --job-name="${commands}" -c ${processors} --time=2-00:00:00 --mem=${mem} --export=ALL,commands="${commands}" ${script_dir}/${script_name})
+last_jobid=$(sbatch --dependency=afterany:${jobid_Rooij_Cl} --parsable --output=slurm-${commands}-%x.%j.out --job-name="${commands}" -c ${processors} --time=2-00:00:00 --mem=${mem} --export=ALL,commands="${commands}" ${script_dir}/${script_name})
+# last_jobid=$(sbatch --parsable --output=slurm-${commands}-%x.%j.out --job-name="${commands}" -c ${processors} --time=2-00:00:00 --mem=${mem} --export=ALL,commands="${commands}" ${script_dir}/${script_name})
 
+# Regulons for HU
+processors=4
+commands="run_regulon_step1-HUonly_RID2l-CORES=${processors}"
+mem=200G
+script_dir=/hpc/hub_oudenaarden/mwehrens/scripts/SCS_HCM_analysis/
+script_name=run_SeuratRegulonTask.sh
+last_jobid=$(sbatch --dependency=afterany:${jobid_Hu_Cl} --parsable --output=slurm-${commands}-%x.%j.out --job-name="${commands}" -c ${processors} --time=2-00:00:00 --mem=${mem} --export=ALL,commands="${commands}" ${script_dir}/${script_name})
+#last_jobid=$(sbatch --parsable --output=slurm-${commands}-%x.%j.out --job-name="${commands}" -c ${processors} --time=2-00:00:00 --mem=${mem} --export=ALL,commands="${commands}" ${script_dir}/${script_name})
+
+# Regulons for Teichmann
+processors=14
+commands="run_regulon_step1-TEICHMANNonly_RID2l-CORES=${processors}"
+mem=255G
+script_dir=/hpc/hub_oudenaarden/mwehrens/scripts/SCS_HCM_analysis/
+script_name=run_SeuratRegulonTask.sh
+last_jobid=$(sbatch --dependency=afterany:${jobid_Teich_Cl} --parsable --output=slurm-${commands}-%x.%j.out --job-name="${commands}" -c ${processors} --time=3-00:00:00 --mem=${mem} --export=ALL,commands="${commands}" ${script_dir}/${script_name})
+#last_jobid=$(sbatch --parsable --output=slurm-${commands}-%x.%j.out --job-name="${commands}" -c ${processors} --time=3-00:00:00 --mem=${mem} --export=ALL,commands="${commands}" ${script_dir}/${script_name})
+
+################################################################################
+# Correlation analysis
+
+processors=1
+commands="correlations_of_interest-CORES=${processors}"
+mem=128G
+script_dir=/hpc/hub_oudenaarden/mwehrens/scripts/SCS_HCM_analysis/
+script_name=run_SeuratRegulonTask.sh
+sbatch --parsable --output=slurm-${commands}-%x.%j.out --job-name="${commands}" -c ${processors} --time=3-00:00:00 --mem=${mem} --export=ALL,commands="${commands}" ${script_dir}/${script_name}
+
+
+################################################################################
 
 
 
@@ -125,6 +193,13 @@ commands="fake1-fake2-fake3_hoi"
 processors=1
 script_dir=/hpc/hub_oudenaarden/mwehrens/scripts/SCS_HCM_analysis/
 last_jobid=$(sbatch --parsable --output=slurm-${commands}-%x.%j.out --job-name="${commands}" -c ${processors} --time=0-00:05:00 --mem=1G --export=ALL,commands="${commands}" ${script_dir}/run_SeuratTask.sh)
+
+
+
+
+
+
+
 
 
 

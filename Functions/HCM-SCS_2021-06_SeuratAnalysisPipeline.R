@@ -82,12 +82,12 @@ mySeuratCommonPlots = function(mySeuratObject,
     print(paste0('Markers not found: ', paste0(mymarkers_notfound, collapse = ', ')))
     
     # Show umap with annotations
-    for (current_annotation in c('annotation_sample_str','annotation_patient_str','annotation_paper_str','ident')) {
+    for (current_annotation in c('annotation_sample_str','annotation_patient_str','annotation_paper_str','annotation_region_str','ident')) {
         # create labeled and unlabeled version
         p=DimPlot(mySeuratObject, group.by = current_annotation, cols = rep(col_vector_60,2), label = T, repel = T, label.size = 7)
         p_nl=DimPlot(mySeuratObject, group.by = current_annotation, cols = rep(col_vector_60,2))
         # remove legend if it's too large (prevents errors)
-        if(!(current_annotation=='ident')) {if (dim(unique(mySeuratObject[[current_annotation]]))[1]>25) {
+        if(!(current_annotation=='ident')) {if (dim(unique(mySeuratObject[[current_annotation]]))[1]>30) {
          p=p+theme(legend.position = 'none')   
          p_nl=p_nl+theme(legend.position = 'none')
         }}
@@ -113,7 +113,7 @@ mySeuratCommonPlots = function(mySeuratObject,
         pHist=ggplot(data.frame(expression=mySeuratObject@assays[[mySeuratObject@active.assay]]@data[marker,], 
                                 source=mySeuratObject$annotation_paper_fct))+
             geom_histogram(aes(x=expression, fill=source, after_stat(density)))+
-            facet_grid(rows='source')+theme_bw()+theme(legend.position = 'none', )+give_better_textsize_plot(10)
+            facet_grid(rows='source')+theme_bw()+theme(legend.position = 'none', )+ggtitle(marker)+give_better_textsize_plot(10)
         ggsave(filename = paste0(base_dir,'Rplots/',run_name,'_4_histogram_markers_',marker,'.png'), plot = pHist, height=10, width=7.5, units='cm')
         
         # More complicated histogram, split, x-lims @98% of data, such that shape of curve is visible in case of outliers

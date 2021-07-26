@@ -40,12 +40,14 @@ get_volcano_df3 = function(expression_matrix,my_gene,calc_qvals=T,no_expression_
     }
     
     # Determine which genes to take along
-    seen_in_frac_cells = apply(expression_matrix>no_expression_val, 1, mean)
+    # seen_in_frac_cells = apply(expression_matrix>no_expression_val, 1, mean)
+    seen_in_frac_cells = rowMeans(expression_matrix>no_expression_val)
     
     # calculate the correlations again, but now for cell_counts vs. genes
     start_time <- Sys.time()
     my_corrs_current = lapply(as.data.frame(t(expression_matrix[seen_in_frac_cells>=min_cell_expressed,])), function(X) {cor.test(X,goi_expr)})
-    end_time <- Sys.time(); elapsed_time <- end_time - start_time; elapsed_time
+    end_time <- Sys.time(); elapsed_time <- difftime(end_time, start_time, units='mins')
+    print(paste0('Corrs determined in ',round(elapsed_time,2),' mins'))
     
     # Put result in dataframe
     my_corrs_df_current = data.frame(corr=unlist(lapply(my_corrs_current,function(X) {X$estimate})),
@@ -62,7 +64,8 @@ get_volcano_df3 = function(expression_matrix,my_gene,calc_qvals=T,no_expression_
     my_corrs_df_current$gene_name_short = rownames(expression_matrix[seen_in_frac_cells>=min_cell_expressed,])
     
     # add some more parameter to export to excel file
-    my_corrs_df_current$nrCellsExpressGene  = apply(expression_matrix[seen_in_frac_cells>=min_cell_expressed,]>no_expression_val,1,sum)
+    #my_corrs_df_current$nrCellsExpressGene  = apply(expression_matrix[seen_in_frac_cells>=min_cell_expressed,]>no_expression_val,1,sum)
+    my_corrs_df_current$nrCellsExpressGene  = rowSums(expression_matrix[seen_in_frac_cells>=min_cell_expressed,]>no_expression_val)
     #my_corrs_df_current$averageExpression   = averageExpression_current
     
     # export correlations to excel file

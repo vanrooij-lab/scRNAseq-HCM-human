@@ -1,6 +1,7 @@
 
 library(stringr)
 library(parallel)
+library(biomaRt)
 
 # For convenience, little fn to change text size ggplot in one go
 give_better_textsize_plot <- function(TEXTSIZE){
@@ -38,7 +39,7 @@ loadData_MW = function(dataset_list_paths, toPool = NULL, prefix=T) {
     
 }
 
-loadData_MW_parallel = function(dataset_list_paths, mc.cores=1, prefix=T) {
+loadData_MW_parallel = function(dataset_list_paths, mc.cores=1, prefix=T, sep="") {
     # input: 
     # - dataset_list_paths: c(sample_name=path1, sample2_name=path2, ..)
     # - toPool: list of vectors that list datasets that should be pooled, e.g.
@@ -50,8 +51,10 @@ loadData_MW_parallel = function(dataset_list_paths, mc.cores=1, prefix=T) {
     
     output = mclapply(X = 1:length(dataset_list_paths), FUN=function(idx) {
     
+        print(paste0('Starting to load: ', sample_names[idx]))
+      
         sample_output = 
-            read.table(dataset_list_paths[[idx]], row.names = 1, header=1)
+            read.table(dataset_list_paths[[idx]], row.names = 1, header=1, sep=sep)
         if (prefix) { # prefix colnames with sample name
           colnames(sample_output) = 
               paste0(sample_names[idx],'.',colnames(sample_output))
@@ -60,7 +63,7 @@ loadData_MW_parallel = function(dataset_list_paths, mc.cores=1, prefix=T) {
         print(paste0('Loaded: ', sample_names[idx]))
         return(sample_output)
         
-    })
+    }, mc.cores=mc.cores)
     names(output) = sample_names
     
     return(output)
@@ -107,6 +110,32 @@ manual_scale_table = function(countTable) {
             median_readsPerWell=median_readsPerWell, GenesHowManyCells=GenesHowManyCells ))
 }
 
+generate_human_gene_name_conversion_mart = function() {
+
+    # Create lookup table to get gene names from bio mart
+    mart <- useMart("ensembl", dataset = "hsapiens_gene_ensembl")
+    all_gene_symbols_ensids <- getBM(
+      attributes=c("hgnc_symbol","ensembl_gene_id"),
+      mart = mart)
+    # head(all_gene_symbols_ensids)
+    
+    # Now conversion table ens->sym
+    ens_to_sym_conv_table = all_gene_symbols_ensids$hgnc_symbol
+    names(ens_to_sym_conv_table) = all_gene_symbols_ensids$ensembl_gene_id
+    
+    # Save the table
+    save(list=('ens_to_sym_conv_table'), file = paste0(base_dir,'Rdata/ens_to_sym_conv_table.Rdata'))
+    # load(file = paste0(base_dir,'Rdata/ens_to_sym_conv_table.Rdata'))
+    
+    # And reverse table, sym->ens
+    sym_ens_conv_table = all_gene_symbols_ensids$ensembl_gene_id
+    names(sym_ens_conv_table) = all_gene_symbols_ensids$hgnc_symbol
+    
+    # Save the table
+    save(list=('sym_ens_conv_table'), file = paste0(base_dir,'Rdata/sym_to_ens_conv_table.Rdata'))
+    #load(file = paste0(base_dir,'Rdata/sym_to_ens_conv_table.Rdata'))
+    
+}
 
 # So we'll only take along uniquely mapped genes for now ..
 # And we'll convert those names to only the symbol

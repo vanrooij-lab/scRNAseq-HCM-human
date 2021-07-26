@@ -12,6 +12,9 @@
 # See regulons_README_objects_saved
 # See exporatory analyses for comparison earlier and current data analyses
 
+# Note, for HPC custom analyses, this script can be sourced as
+# source('/hpc/hub_oudenaarden/mwehrens/scripts/SCS_HCM_analysis/HCM_SCS_2021_06_SeuratRevised_Regulon_v3.R')
+
 ######################################################################
 # libraries
 
@@ -82,7 +85,11 @@ if (!exists('desired_command')) {
         desired_command = unlist(str_split(string = args, pattern = '-'))
         print(paste0('Sections to execute: ',paste0(desired_command,collapse = ', ')))
         if(any(grepl(x = desired_command,pattern = 'CORES'))) {MYMCCORES=str_split(string = desired_command[grepl(x = desired_command,pattern = 'CORES')], pattern = '=')[[1]][2];print(paste0('MYMCCORES set to ',MYMCCORES))}
-    } else {stop('Please pass 1 string, in the form \'arg1-arg2-arg3\' to give what section(s) to execute.')}
+    } else {
+        warning('Please pass 1 string, in the form \'arg1-arg2-arg3\' to give what section(s) to execute.')
+        print('Will proceed (this loads functions).')
+        desired_command='dummy'
+    }
 }
 
 ######################################################################
@@ -91,7 +98,9 @@ if (!exists('desired_command')) {
 # Using Tomo code!
 giveMeRegulons_SeuratVersion = function(run_name, base_dir, current_matrix, 
     get_GO_terms=F, strip_object=F, MAX_GENES=NULL,
-    required_minCellFraction=.05) {
+    required_minCellFraction=.05,
+    connectedness_cutoff=10, 
+    chosen_cutoff_parameter='p', p_or_r_cutoff=10^-3) {
     
     EXPRESSION_ZERO_CUTOFF = 0 # 0.1
     run_name # run_name = 'groupedSCS_Patient1Mod'
@@ -118,12 +127,13 @@ giveMeRegulons_SeuratVersion = function(run_name, base_dir, current_matrix,
     #gene_selection = current_analysis_temp@misc$genes_expr_in_cells_fraction>0.1
     # print(paste0('Genes in run: ',sum(gene_selection)))
     
-    
     regulon_object = MW_determine_regulons_part1(
         expression_matrix = current_matrix[gene_selection,], 
         calculate_p = T,
         outputDir = paste0(base_dir,'regulon/'),
-        analysis_name = run_name)
+        analysis_name = run_name, 
+        MYPADJUSTMETHOD = 'fdr', # Joep's choice, default is BH in my code
+        min_expression_fraction_genes = required_minCellFraction)
     
     # Next, we can assess which 'connectedness' cutoff we want.
     # With connectedness, I mean with how many other genes a gene is significantly
@@ -135,12 +145,12 @@ giveMeRegulons_SeuratVersion = function(run_name, base_dir, current_matrix,
     # This function provides plots with statistics on with how many other
     # genes genes are significantely correlated.
     regulon_object = MW_determine_regulons_part2(regulon_object=regulon_object, 
-        chosen_cutoff_parameter='p',
+        chosen_cutoff_parameter=chosen_cutoff_parameter,
         # this parameter should be 'r' or 'p', respectively selection of 
         # genes based on r-value or p-value cutoff (r being the correlation 
         # coefficient value itself)
         #p_or_r_cutoff=.25
-        p_or_r_cutoff=10^-5) # 1/100000, value Joep, has pretty high FPR though
+        p_or_r_cutoff=p_or_r_cutoff) # 1/100000, value Joep, has pretty high FPR though
         # this parameter provides the cutoff you have chosen earlier,
         # e.g. consider r-values (correlation coefficients) >.35 or <-.35 
         # significant.
@@ -151,10 +161,10 @@ giveMeRegulons_SeuratVersion = function(run_name, base_dir, current_matrix,
     # some parameters and set a cutoff to perform clustering on this correlation
     # matrix.
     regulon_object = MW_determine_regulons_part3(regulon_object, 
-                    connectedness_cutoff = 40, # this is rather arbitrary so let's set to 25 instead of 40
+                    connectedness_cutoff = connectedness_cutoff, # this is rather arbitrary so let's set to 25 instead of 40
                     max_genes = MAX_GENES,
                     #min_expression_fraction_genes=.1,
-                    min_expression_fraction_genes=.1,
+                    #min_expression_fraction_genes=.1,
                     show_heatmap=F,
                     chosen_cutoff_parameter = 'p')
                     # Note that when using MAX_GENES, top connected genes are chosen;
@@ -325,6 +335,12 @@ if ('run_regulon_step1' %in% desired_command) {
     #         giveMeRegulons_SeuratVersion(run_name=paste0(ANALYSIS_NAME,'_',current_patient),base_dir=base_dir,current_matrix=current_matrix)
     # }
     
+    # Only take along genes that are present in 20% of all pooled cells
+    current_matrix_gene_filter = rowMeans(current_analysis[[ANALYSIS_NAME]]@assays$RNA@data>0)>.2
+    genes_to_take_along = rownames(current_analysis[[ANALYSIS_NAME]]@assays$RNA@data)[current_matrix_gene_filter]
+    whole_SeuratData_filtered = subset(current_analysis[[ANALYSIS_NAME]], features = genes_to_take_along)
+    print(paste0('Taking along ',sum(current_matrix_gene_filter), ' genes for analysis (20% cutoff).'))
+    
     # Version that is parallelized
     collected_regulon_objects = list()
     collected_regulon_objects[[ANALYSIS_NAME]] =
@@ -333,16 +349,23 @@ if ('run_regulon_step1' %in% desired_command) {
                 print(paste0('Starting patient ',current_patient))
                 
                 current_analysis_for_patient=
-                    subset(current_analysis[[ANALYSIS_NAME]], annotation_patient_str == current_patient)
+                    subset(whole_SeuratData_filtered, annotation_patient_str == current_patient)
+                
+                # if (!is.null(regulon_cell_selection)) {
+                #     if (is.null(current_analysis_for_patient$regulon_cell_selection)) {
+                #         
+                #     }
+                # }
                 
                 current_matrix = 
                     current_analysis_for_patient@assays$RNA@data
                     # expression matrix now in
                     # current_anaysis_temp@assays$RNA@data
-            
+
                 return( 
                     giveMeRegulons_SeuratVersion(run_name=paste0(ANALYSIS_NAME,'_',current_patient),
-                        base_dir=base_dir,current_matrix=current_matrix, strip_object = T, MAX_GENES = MAX_GENES)
+                        base_dir=base_dir,current_matrix=current_matrix, 
+                        strip_object = T, MAX_GENES = MAX_GENES)
                 )
         
             }, mc.cores = MYMCCORES)
@@ -368,6 +391,9 @@ if ('run_regulon_step1' %in% desired_command) {
 # ANALYSIS_NAME='ROOIJonly_RID2l'
 # ANALYSIS_NAME='HUonly_RID2l'
 # ANALYSIS_NAME='TEICHMANNonly_RID2l'
+# ANALYSIS_NAME='ROOIJonly_RID2l_test'
+# ANALYSIS_NAME='original_HCM_SCS_data'
+# ANALYSIS_NAME = 'original_HCM_SCS_data_sel'
 
 if ('XXXXXXX' %in% desired_command) {
     
@@ -379,6 +405,8 @@ if ('XXXXXXX' %in% desired_command) {
         do.call(c, 
             lapply(collected_regulon_objects[[ANALYSIS_NAME]], function(x) {names(x$the_regulons) = paste0('R.',1:length(x$the_regulons)); x$the_regulons})
         )
+        # sizes of regulons:
+        # sapply(regulon_gene_names, length)
     
     save(list='regulon_gene_names', file = paste0(base_dir,'Rdata/',ANALYSIS_NAME,'_regulons_per_patient_geneNamesOnly.Rdata'))
     
@@ -485,6 +513,11 @@ if (F) {
 
 }
 
+################################################################################
+
+print('Done; end of regulon script.')
+
+################################################################################
 
 
 
