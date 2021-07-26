@@ -1,7 +1,10 @@
 
 library(stringr)
 library(parallel)
-library(biomaRt)
+
+if ("biomaRt" %in% rownames(installed.packages())) {
+  library(biomaRt)
+} else { warning('Library biomaRt not found; please install (or use existing gene name table).') }
 
 # For convenience, little fn to change text size ggplot in one go
 give_better_textsize_plot <- function(TEXTSIZE){

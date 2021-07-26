@@ -220,10 +220,15 @@ if ('loadraw' %in% desired_command) {
     # according to same pipelin as our data.)
     
     SCS_df_list_data_raw = loadData_MW_parallel(dataset_list_paths, mc.cores=MYMCCORES, prefix=F)
-    pryr::object_size(SCS_df_list_data_raw)
+    pryr::object_size(SCS_df_list_data)
+    
+    # Seurat can't handle underscores
+    SCS_df_list_data = lapply(SCS_df_list_data_raw, 
+        function(x) {rownames(x) = gsub(x = rownames(x), pattern = '_', replacement = ':'); return(x)})
+    
+    # Old code
     #save(list = c('SCS_df_list_data_raw'),file = paste0(base_dir,'Rdata/SCS_df_list_data_raw.Rdata'))
     # load(paste0(base_dir,'Rdata/SCS_df_list_data_raw.Rdata'))
-    
     # This is necessary when using Anna's count tables
     # SCS_df_list_data = lapply(SCS_df_list_data_raw, preprocess_convertAAnames_toSymbol, revert_to_hgnc=T, script_dir=script_dir)
     
@@ -274,6 +279,11 @@ if ('add_teichmann' %in% desired_command) {
     RHL_SeuratObject_list$TEICH[['nCount_RNA']]   = CalcN_out$nCount
     RHL_SeuratObject_list$TEICH[['nFeature_RNA']] = CalcN_out$nFeature
     
+    # Rooij and Hu data now have gene names that are EnsemblID_hgncName
+    # Some hgncName are duplicates, so to pool all data incl Teichmann, 
+    # I'll look op EnsemblIDs with their gene names to convert those 
+    # from hgncName --> EnsemblID_hgncName
+    # 
     # I'll now add ensembl IDs to the Teichmann gene names
     if (file.exists(paste0(base_dir,'Rdata/sym_to_ens_conv_table.Rdata'))) {
         load(paste0(base_dir,'Rdata/sym_to_ens_conv_table.Rdata'))
@@ -281,21 +291,24 @@ if ('add_teichmann' %in% desired_command) {
         generate_human_gene_name_conversion_mart()
         load(paste0(base_dir,'Rdata/sym_to_ens_conv_table.Rdata'))
     }
+    #
+    # Generate names
+    hgnc_names_Teich = rownames(RHL_SeuratObject_list$TEICH)
     ensembl_names_Teich = 
         sym_ens_conv_table[rownames(RHL_SeuratObject_list$TEICH)]
     ensembl_names_Teich[is.na(ensembl_names_Teich)]="ENSGunknown"
-    rownames(RHL_SeuratObject_list$TEICH) = paste0(ensembl_names_Teich,'_',rownames(RHL_SeuratObject_list$TEICH))
+    # actually update names    
+    rownames(RHL_SeuratObject_list$TEICH@assays$RNA@data) = paste0(ensembl_names_Teich,':',hgnc_names_Teich)
+        # can now also be queried by
+        # rownames(RHL_SeuratObject_list$TEICH)
     
-    stop('CONTINUE WORKING HERE!')
+    # Potential other data containers for which to rename gene names
     # see also https://github.com/satijalab/seurat/issues/1049
-    object@raw.data
-    object@data
-    object@scale.data
-    object@cell.names
-    object@meta.data
-    stop('CONTINUE WORKING HERE!')
-    XXXXXX
+    #RHL_SeuratObject_list$TEICH@assays$RNA@raw.data
+    #RHL_SeuratObject_list$TEICH@assays$RNA@scale.data
+    #RHL_SeuratObject_list$TEICH@meta.data
     
+    # Code/comments from older version script
     # Previously, I converted Teichmann names to "Anna names" (dots instead of dashes), 
     # but I now have converted all names to hgnc symbols.
     #
@@ -417,7 +430,7 @@ if ('create_merged_seurat' %in% desired_command) {
     # Count mitochondrial reads
     # checking whether we take the right genes:
     # rownames(RHL_SeuratObject_merged)[grepl("^MT-",rownames(RHL_SeuratObject_merged))]
-    RHL_SeuratObject_merged[["percent.mt"]] <- PercentageFeatureSet(RHL_SeuratObject_merged, pattern = "^MT-")
+    RHL_SeuratObject_merged[["percent.mt"]] <- PercentageFeatureSet(RHL_SeuratObject_merged, pattern = ":MT-")
     
     save(list = c('RHL_SeuratObject_merged'),file = paste0(base_dir,'Rdata/RHL_SeuratObject_merged.Rdata'))
     # load(paste0(base_dir,'Rdata/RHL_SeuratObject_merged.Rdata'))
