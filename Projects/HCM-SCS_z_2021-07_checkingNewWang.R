@@ -78,6 +78,8 @@ RHL_SeuratObject_merged_WANGORIGINAL[['annotation_paper_fct']] = factor(RHL_Seur
 
 SaveH5Seurat(object = RHL_SeuratObject_merged_WANGORIGINAL, overwrite = T,
         filename = paste0(base_dir,'Rdata/RHL_SeuratObject_merged_WANGORIGINAL.h5seurat'))
+# RHL_SeuratObject_merged_WANGORIGINAL = LoadH5Seurat(file = paste0(base_dir,'Rdata/RHL_SeuratObject_merged_WANGORIGINAL.h5seurat'))
+
 
 test_table = read.table('/Volumes/workdrive_m.wehrens_hubrecht/data/2020_04_Wang-heart/Original_counttables/GSE121893_human_heart_sc_umi.csv', header = 1, row.names = 1, sep = ',')
 rm('test_table')
@@ -179,6 +181,42 @@ mySeuratCommonPlots(RHL_SeuratObject_merged_WANGORIGINAL_vCM, run_name = 'WANGOR
 PREL_SeuratObject_merged_WANGonly = 
     mySeuratAnalysis(mySeuratObject = PREL_SeuratObject_merged_WANGonly, run_name = 'PRELWANGMAPPEDAGAIN_vCM')
 mySeuratCommonPlots(PREL_SeuratObject_merged_WANGonly, run_name = 'PRELWANGMAPPEDAGAIN_vCM')
+
+
+################################################################################
+
+# What do they do about pseudogenes?
+
+mito_names = 
+    rownames(RHL_SeuratObject_merged_WANGORIGINAL)[grepl('^MT', rownames(RHL_SeuratObject_merged_WANGORIGINAL))]
+        # They also do seem to have pseudogenes in there; let's check their expression
+
+mito_related_totals = 
+    rowSums(RHL_SeuratObject_merged_WANGORIGINAL@assays$RNA@data[mito_names,])
+    # View(mito_related_totals)
+
+# e.g.
+compare_mito_df = data.frame(MTND6P3 = RHL_SeuratObject_merged_WANGORIGINAL@assays$RNA@data['MTND6P3',], 
+                             MT.ND6 = RHL_SeuratObject_merged_WANGORIGINAL@assays$RNA@data['MT-ND6',])
+#library(zoo)
+#y1=rollmean(compare_mito_df$expr_real, 100)
+ggplot(compare_mito_df,aes(x=MT.ND6,y=MTND6P3))+
+    geom_point(alpha=.25)+theme_bw()+geom_abline(intercept = 0, slope = 1)+
+    ggtitle('MT-ND6 real vs. pseudo expr')
+    #geom_line(aes(y=rollmean(expr_pseudo, 30, na.pad=T)), color='red')
+
+# e.g.
+compare_mito_df2 = data.frame(MT.ATP6 = RHL_SeuratObject_merged_WANGORIGINAL@assays$RNA@data['MT-ATP6',], 
+                             MTATP6P1 = RHL_SeuratObject_merged_WANGORIGINAL@assays$RNA@data['MTATP6P1',])
+#library(zoo)
+#y1=rollmean(compare_mito_df$expr_real, 100)
+ggplot(compare_mito_df2,aes(x=MT.ATP6,y=MTATP6P1))+
+    geom_point(alpha=.25)+theme_bw()+geom_abline(intercept = 0, slope = 1)+
+    ggtitle('MT-ATP6 real vs. pseudo expr')
+
+
+################################################################################
+
 
 
 

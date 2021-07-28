@@ -73,13 +73,29 @@ mySeuratAnalysis_verybasic_part2only = function(mySeuratObject,
     return(mySeuratObject)
 }
 
+# e.g. mySeurat_genenames(current_analysis$HUonly, c('TTN','NPPA'))
+mySeurat_genenames = function(mySeuratObject, gene_names, complete=T) {
+    
+    if (complete) {
+        search_pattern = paste0(':',gene_names, '$')
+    } else { search_pattern = gene_names }
+    
+    extended_names = sapply(search_pattern, function(current_search) { 
+        hits = grepl(pattern = current_search, x = rownames(mySeuratObject))
+        if (sum(hits)==1) { return(rownames(mySeuratObject)[hits]) } else { return(NA) }
+    } ) 
+    
+    return(extended_names)
+    
+}
+
 mySeuratCommonPlots = function(mySeuratObject, 
     run_name,
     mymarkers = c('MALAT1', 'TTN', 'MYH7', 'MYH6', 'NPPA', 'NPPB', 'ACTA1','MYL2','SORBS2','CSRP3','NDUFA4','CRYAB','HSPB1', 'KCNQ1OT1')) {    
     
-    mymarkers_found = mymarkers[mymarkers %in% rownames(mySeuratObject)]
-    mymarkers_notfound = mymarkers[!(mymarkers %in% rownames(mySeuratObject))]
-    print(paste0('Markers not found: ', paste0(mymarkers_notfound, collapse = ', ')))
+    mymarkers_ext = mySeurat_genenames(mySeuratObject, mymarkers)
+    
+    print(paste0('Markers not found: ', paste0(mymarkers[is.na(mymarkers_ext)], collapse = ', ')))
     
     # Show umap with annotations
     for (current_annotation in c('annotation_sample_str','annotation_patient_str','annotation_paper_str','annotation_region_str','ident')) {
@@ -96,7 +112,7 @@ mySeuratCommonPlots = function(mySeuratObject,
         ggsave(filename = paste0(base_dir,'Rplots/',run_name,'_2_umap_by_',current_annotation,'.png'), plot = p_nl, height=7, width=7)
     }
     
-    for (marker in mymarkers_found) {
+    for (marker in mymarkers_ext[!is.na(mymarkers_ext)]) {
         
         # marker = 'KCNQ1OT1'
         # marker = 'ACTC1'

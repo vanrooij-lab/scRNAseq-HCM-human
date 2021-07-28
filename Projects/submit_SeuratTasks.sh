@@ -25,16 +25,27 @@ processors=20
 commands="runf_all_default_cl-cores=${processors}"
 script_dir=/hpc/hub_oudenaarden/mwehrens/scripts/SCS_HCM_analysis/
 # With dependency:
-# sbatch --dependency=afterany:${last_jobid} --output=slurm-${commands}-%x.%j.out --job-name=${commands} -c ${processors} --time=2-00:00:00 --mem=150G --export=ALL,commands="${commands}" ${script_dir}/run_SeuratTask.sh
+sbatch --dependency=afterany:${last_jobid} --output=slurm-${commands}-%x.%j.out --job-name=${commands} -c ${processors} --time=2-00:00:00 --mem=150G --export=ALL,commands="${commands}" ${script_dir}/run_SeuratTask.sh
 # Without dependency
-sbatch --output=slurm-${commands}-%x.%j.out --job-name=${commands} -c ${processors} --time=2-00:00:00 --mem=150G --export=ALL,commands="${commands}" ${script_dir}/run_SeuratTask.sh
+# sbatch --output=slurm-${commands}-%x.%j.out --job-name=${commands} -c ${processors} --time=2-00:00:00 --mem=150G --export=ALL,commands="${commands}" ${script_dir}/run_SeuratTask.sh
   
+# Again analysis, but now for RID2l
+commands=runf_all_RID2l_VAR  
+processors=1
+script_dir=/hpc/hub_oudenaarden/mwehrens/scripts/SCS_HCM_analysis/
+last_jobid=$(sbatch --parsable --output=slurm-${commands}-%x.%j.out --job-name=${commands} -c ${processors} --time=1-00:00:00 --mem=150G --export=ALL,commands="${commands}" ${script_dir}/run_SeuratTask.sh)
+# |
+# V
 # CLUSTER+DE RID2l VAR
 # Now the clustering of RID2l VAR
 processors=20
 commands="runf_all_RID2l_VAR_cl-cores=${processors}"
 script_dir=/hpc/hub_oudenaarden/mwehrens/scripts/SCS_HCM_analysis/
-sbatch --output=slurm-${commands}-%x.%j.out --job-name=${commands} -c ${processors} --time=1-00:00:00 --mem=150G --export=ALL,commands="${commands}" ${script_dir}/run_SeuratTask.sh
+# w/o dependency
+# sbatch --output=slurm-${commands}-%x.%j.out --job-name=${commands} -c ${processors} --time=1-00:00:00 --mem=150G --export=ALL,commands="${commands}" ${script_dir}/run_SeuratTask.sh
+# w dependency
+sbatch --dependency=afterany:${last_jobid} --output=slurm-${commands}-%x.%j.out --job-name=${commands} -c ${processors} --time=1-00:00:00 --mem=150G --export=ALL,commands="${commands}" ${script_dir}/run_SeuratTask.sh
+
 
 # SPLIT DATASETS
 # split the pre-processed data into three sets

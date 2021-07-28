@@ -113,6 +113,25 @@ manual_scale_table = function(countTable) {
             median_readsPerWell=median_readsPerWell, GenesHowManyCells=GenesHowManyCells ))
 }
 
+generate_biotype_annotation_table = function() {
+
+    # Create lookup table to get gene names from bio mart
+    mart <- useMart("ensembl", dataset = "hsapiens_gene_ensembl")
+    gene_table_biotypes <- getBM(
+      attributes=c("ensembl_gene_id","gene_biotype"),
+      mart = mart)
+    rownames(gene_table_biotypes) = gene_table_biotypes$ensembl_gene_id
+    
+    # Create vector
+    gene_biotypes = gene_table_biotypes$gene_biotype
+    names(gene_biotypes) = gene_table_biotypes$ensembl_gene_id
+    
+    # Save the table
+    save(list=('gene_biotypes'), file = paste0(base_dir,'Rdata/gene_biotypes.Rdata'))
+    # load(file = paste0(base_dir,'Rdata/ens_to_sym_conv_table.Rdata'))
+    
+}
+
 generate_human_gene_name_conversion_mart = function() {
 
     # Create lookup table to get gene names from bio mart
