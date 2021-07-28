@@ -57,7 +57,24 @@ ggplot(df_psuedo,
         aes(x=expression_old, y=expression_new))+
     geom_point()+
     geom_text_repel(aes(label=gene))+
-    theme_bw()+geom_abline(slope = 1,intercept = 0)+coord_fixed(ratio = 1, xlim = mylim, ylim = mylim)
+    theme_bw()+geom_abline(slope = 1,intercept = 0)+coord_fixed(ratio = 1, xlim = mylim, ylim = mylim)+
+    ggtitle('Comparison of pseudo gene expression')
 
+### 
+# Did original Wang simply count mito/pseudo genes towards
+# both pseudo and mito gene?
 
+sum(RHL_SeuratObject_merged_WANGORIGINAL@assays$RNA@data['MTATP6P1',])/
+sum(RHL_SeuratObject_merged_WANGORIGINAL@assays$RNA@data['MT-ATP6',])
+# Ok, so not all, but might be because not all reads where multi-mappers
 
+sum(RHL_SeuratObject_merged_WANGORIGINAL@assays$RNA@data['MTND4P12',])/
+sum(RHL_SeuratObject_merged_WANGORIGINAL@assays$RNA@data['MT-ND4',])
+# Ok, so not all, but might be because not all reads where multi-mappers
+
+MTND4_Psuedo_names = 
+    rownames(RHL_SeuratObject_merged_WANGORIGINAL@assays$RNA@data)[grepl('MTND4P',rownames(RHL_SeuratObject_merged_WANGORIGINAL@assays$RNA@data))]
+
+sum(RHL_SeuratObject_merged_WANGORIGINAL@assays$RNA@data[MTND4_Psuedo_names,])/
+sum(RHL_SeuratObject_merged_WANGORIGINAL@assays$RNA@data['MT-ND4',])
+# Ok, so not all, but might be because not all reads where multi-mappers
