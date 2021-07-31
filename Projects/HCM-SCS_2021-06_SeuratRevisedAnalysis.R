@@ -92,25 +92,22 @@ if (exists('config')) {
     } else { 
         MYMCCORES = 8 # not always used properly, currently
     }
-} else {if (exists('LOCAL')) {MYMCCORES=1} else {MYMCCORES = 8}}
+} else {MYMCCORES = 8}
 
 
 # Local  use
 if (exists('LOCAL')) {
+    base_dir = '/Users/m.wehrens/Data/_2019_02_HCM_SCS/2021_HPC_analysis/'
     script_dir = '/Users/m.wehrens/Documents/git_repos/SCS_More_analyses/'
-    base_dir = '/Users/m.wehrens/Data/_2019_02_HCM_SCS/2021_HPC_analysis.3/'
     
-    data_dir1 = '/Users/m.wehrens/Data/_2019_02_HCM_SCS/2021_UmiTools_CountTables_Wang_HCMSCS/ROOIJ/' # NULL
-    data_dir2 = '/Users/m.wehrens/Data/_2019_02_HCM_SCS/2021_UmiTools_CountTables_Wang_HCMSCS/HU/'
-        # '/Users/m.wehrens/Data/_2019_02_HCM_SCS/2021_Wang_Counttables/'
+    data_dir1 = NULL
+    data_dir2 = '/Users/m.wehrens/Data/_2019_02_HCM_SCS/2021_Wang_Counttables/'
 } else {
     script_dir = '/hpc/hub_oudenaarden/mwehrens/scripts/SCS_HCM_analysis/'
     base_dir = '/hpc/hub_oudenaarden/mwehrens/data/HCM_SCS_RHL.3/'
     
-    data_dir1 = '/hpc/hub_oudenaarden/mwehrens/data/HCM_SCS_RHL.3/counttables_tsv_exclmulti_filtered/'
-        # '/hpc/hub_oudenaarden/mwehrens/fastq/HCM_SCS/mapping.93.may25/'
-    data_dir2 = '/hpc/hub_oudenaarden/mwehrens/data/HCM_SCS_RHL.3/counttables_tsv_exclmulti_filtered/'
-        # '/hpc/hub_oudenaarden/mwehrens/fastq/WANG4/mapping/counttables/'
+    data_dir1='/hpc/hub_oudenaarden/mwehrens/fastq/HCM_SCS/mapping.93.may25/counttables/'
+    data_dir2='/hpc/hub_oudenaarden/mwehrens/fastq/WANG4/mapping/counttables/'
 }
 
 library(Seurat)
@@ -120,9 +117,12 @@ library(pryr)
 library(ggplot2)
 library(stringr)
 
+library(patchwork)
+
 source(paste0(script_dir,'Functions/Load-Pool-Scale_Simple_MW.R'))
 source(paste0(script_dir,'Functions/HCM-SCS_2021-06_SeuratAnalysisPipeline.R'))
 source(paste0(script_dir,'Functions/MW_general_functions.R'))
+source(paste0(script_dir,'Functions/MW_customized_plot_functions.R'))
 
 # Some colors
 library(RColorBrewer)
@@ -157,8 +157,7 @@ HCM_SCS_ids =
         MW06='HUB-MW-006_AH32W2BGX9_S6_cat', 
         MW07='HUB-MW-007_HC3GFBGX9_S6_cat', 
         MW08='HUB-MW-008_HC3GFBGX9_S7_cat')
-#dataset_list_paths_HCM = paste0(data_dir1, HCM_SCS_ids, '_pT_uniaggGenes_spliced.UFICounts.tsv')
-dataset_list_paths_HCM = paste0(data_dir1, HCM_SCS_ids, '_pT.nonRibo_E99_Aligned.out.counts.table.tsv')
+dataset_list_paths_HCM = paste0(data_dir1, HCM_SCS_ids, '_pT_uniaggGenes_spliced.UFICounts.tsv')
 names(dataset_list_paths_HCM) = names(HCM_SCS_ids)
 
 WANG_ids = c(   N1.97474.a = 'p.N1.plate.97474.part.1_cat',
@@ -190,8 +189,7 @@ names(WANG_conversion_patients) = names(WANG_ids)
 WANG_conversion_samples = sapply(str_split(WANG_ids, pattern = '\\.'), function(x) {x[[4]]})
 names(WANG_conversion_samples) = names(WANG_ids)
 # Generate full data paths
-#dataset_list_paths_WANG = paste0(data_dir2, WANG_ids, '_nc_uniaggGenes_spliced.UFICounts.tsv')
-dataset_list_paths_WANG = paste0(data_dir2, WANG_ids, '_nc.nonRibo_E99_Aligned.out.counts.table.tsv')
+dataset_list_paths_WANG = paste0(data_dir2, WANG_ids, '_nc_uniaggGenes_spliced.UFICounts.tsv')
 names(dataset_list_paths_WANG) = names(WANG_ids)
 
 dataset_list_paths=c(dataset_list_paths_HCM,dataset_list_paths_WANG)
@@ -221,17 +219,10 @@ if ('loadraw' %in% desired_command) {
     
     SCS_df_list_data_raw = loadData_MW_parallel(dataset_list_paths, mc.cores=MYMCCORES, prefix=F)
     pryr::object_size(SCS_df_list_data_raw)
-    
-    # Seurat can't handle underscores
-    SCS_df_list_data = lapply(SCS_df_list_data_raw, 
-        function(x) {rownames(x) = gsub(x = rownames(x), pattern = '_', replacement = ':'); return(x)})
-    
-    # Old code
     #save(list = c('SCS_df_list_data_raw'),file = paste0(base_dir,'Rdata/SCS_df_list_data_raw.Rdata'))
     # load(paste0(base_dir,'Rdata/SCS_df_list_data_raw.Rdata'))
-    # This is necessary when using Anna's count tables
-    # SCS_df_list_data = lapply(SCS_df_list_data_raw, preprocess_convertAAnames_toSymbol, revert_to_hgnc=T, script_dir=script_dir)
     
+    SCS_df_list_data = lapply(SCS_df_list_data_raw, preprocess_convertAAnames_toSymbol, revert_to_hgnc=T, script_dir=script_dir)
     save(list = c('SCS_df_list_data'),file = paste0(base_dir,'Rdata/SCS_df_list_data.Rdata'))
 
 }
@@ -279,27 +270,6 @@ if ('add_teichmann' %in% desired_command) {
     RHL_SeuratObject_list$TEICH[['nCount_RNA']]   = CalcN_out$nCount
     RHL_SeuratObject_list$TEICH[['nFeature_RNA']] = CalcN_out$nFeature
     
-    # Retreive ensembl names from the object
-    ensembl_IDs = RHL_SeuratObject_list$TEICH@assays$RNA@meta.features$'gene_ids-Harvard-Nuclei'
-    names(ensembl_IDs) = rownames(RHL_SeuratObject_list$TEICH@assays$RNA@meta.features)
-        # Note that all(RHL_SeuratObject_list$TEICH@assays$RNA@meta.features$'gene_ids-Harvard-Nuclei' == RHL_SeuratObject_list$TEICH@assays$RNA@meta.features$'gene_ids-Sanger-Nuclei')
-    
-    ensembl_IDs_check = ensembl_IDs[rownames(RHL_SeuratObject_list$TEICH)]
-        # this is redundant, since naming is consistent, i.e.
-        # all(ensembl_IDs_check == ensembl_IDs)
-        # still nice to do sanity check
-    
-    # actually update names    
-    hgnc_names_Teich=rownames(RHL_SeuratObject_list$TEICH@assays$RNA@data)
-    rownames(RHL_SeuratObject_list$TEICH@assays$RNA@data) = paste0(ensembl_IDs_check,':',hgnc_names_Teich)
-    rownames(RHL_SeuratObject_list$TEICH@assays$RNA@counts) = paste0(ensembl_IDs_check,':',hgnc_names_Teich)
-        # can now also be queried by
-        # rownames(RHL_SeuratObject_list$TEICH)
-        # 
-        # Potential other data containers for which to rename gene names
-        # see also https://github.com/satijalab/seurat/issues/1049
-        
-    # Code/comments from older version script
     # Previously, I converted Teichmann names to "Anna names" (dots instead of dashes), 
     # but I now have converted all names to hgnc symbols.
     #
@@ -421,7 +391,7 @@ if ('create_merged_seurat' %in% desired_command) {
     # Count mitochondrial reads
     # checking whether we take the right genes:
     # rownames(RHL_SeuratObject_merged)[grepl("^MT-",rownames(RHL_SeuratObject_merged))]
-    RHL_SeuratObject_merged[["percent.mt"]] <- PercentageFeatureSet(RHL_SeuratObject_merged, pattern = ":MT-")
+    RHL_SeuratObject_merged[["percent.mt"]] <- PercentageFeatureSet(RHL_SeuratObject_merged, pattern = "^MT-")
     
     save(list = c('RHL_SeuratObject_merged'),file = paste0(base_dir,'Rdata/RHL_SeuratObject_merged.Rdata'))
     # load(paste0(base_dir,'Rdata/RHL_SeuratObject_merged.Rdata'))
@@ -498,122 +468,43 @@ if ('create_merged_seurat' %in% desired_command) {
 
 # First, we'll remove mitochondrial reads.
 
-# Previously, I removed pseudo genes during post-processing.
-# But now, I have filtered the GTF file beforehand (following the Cell Ranger procedure)
-# So this is not necessary any more
-# Keeping this as option since might be convenient later
-DISCARD_GENE_OPTION=F
-ENSEMBL_VERSION_BIOTYPES=93
-
-if ('select_genes_cells' %in% desired_command) {
+if ('select_vCM_genes_cells' %in% desired_command) {
     
-    load(paste0(base_dir,'Rdata/RHL_SeuratObject_merged.Rdata'))
+    # Before that, save mitochondrial information
+    mito_genes = rownames(RHL_SeuratObject_merged)[grepl('^MT-',rownames(RHL_SeuratObject_merged))]
+    RHL_SeuratObject_merged@misc$mito.counts = RHL_SeuratObject_merged@assays$RNA@counts[mito_genes,]
+    rownames(RHL_SeuratObject_merged@misc$mito.counts) = mito_genes
+    colnames(RHL_SeuratObject_merged@misc$mito.counts) = colnames(RHL_SeuratObject_merged@assays$RNA@counts)
+    RHL_SeuratObject_merged@misc$mito.counts_colnames= colnames(RHL_SeuratObject_merged@assays$RNA@counts)
+    RHL_SeuratObject_merged@misc$mito.counts_rownames= mito_genes
+    #for (mito_gene in mito_genes) {
+    #    RHL_SeuratObject_merged[[paste0('mt.count.',gsub(pattern = '-',replacement = '\\.',x = mito_gene))]] = 
+    #        RHL_SeuratObject_merged@assays$RNA@counts[mito_gene,]
+    #}
     
-    # Let's remove mitochondrial and other undesired gene expression information
-    
-    # First, let's annotate gene biotypes
-    # NOTE: strictly this code is not necessary any more for other stuff to function,
-    # but it might still be nice as a sanity check to see that biotypes check out
-    load(file = paste0(base_dir,'Rdata/gene_biotypes_',ENSEMBL_VERSION_BIOTYPES,'.Rdata')) 
-    current_genes_ens = sapply(str_split(string = rownames(RHL_SeuratObject_merged), pattern = ':'), function(x) {x[[1]]})
-    RHL_SeuratObject_merged@misc[[paste0('biotypes',ENSEMBL_VERSION_BIOTYPES)]] = gene_biotypes_XX[current_genes_ens]
-        # Sanity checks
-        # unique(RHL_SeuratObject_merged@misc[[paste0('biotypes',ENSEMBL_VERSION_BIOTYPES)]])
-        # --> checks out
-        # Also, in Teichmann, biotypes check out
-        # genes_TEICH_ens = sapply(str_split(string = rownames(RHL_SeuratObject_list$TEICH), pattern = ':'), function(x) {x[[1]]})
-        # gene_types_TEICH_ens = gene_biotypes_XX[genes_TEICH_ens]
-        # unique(gene_types_TEICH_ens); table(gene_types_TEICH_ens)
-        # For our data (testing one set), also checks out
-        # genes_JE10_ens = sapply(str_split(string = rownames(RHL_SeuratObject_list$JE10), pattern = ':'), function(x) {x[[1]]})
-        # gene_types_JE10_ens = gene_biotypes_XX[genes_JE10_ens]
-        # unique(gene_types_JE10_ens); table(gene_types_JE10_ens)
-    
-    if (DISCARD_GENE_OPTION) {
-        # Cell Ranger biotypes
-        # Note that the biomart annotation is slightly different than what's listed on Cell Ranger website, below
-        # is consistent with biomart; difference: should be lncRNA, not lincRNA
-        desired_biotypes_cellranger = c('protein_coding', 'lncRNA', 'IG_LV_gene', 'IG_V_gene', 'IG_V_pseudogene', 'IG_D_gene', 'IG_J_gene', 'IG_J_pseudogene', 'IG_C_gene', 'IG_C_pseudogene', 'TR_V_gene', 'TR_V_pseudogene', 'TR_D_gene', 'TR_J_gene', 'TR_J_pseudogene', 'TR_C_gene')
-        # desired_biotypes_cellranger = c('protein_coding', 'lincRNA', 'antisense', 'IG_LV_gene', 'IG_V_gene', 'IG_V_pseudogene', 'IG_D_gene', 'IG_J_gene', 'IG_J_pseudogene', 'IG_C_gene', 'IG_C_pseudogene', 'TR_V_gene', 'TR_V_pseudogene', 'TR_D_gene', 'TR_J_gene', 'TR_J_pseudogene', 'TR_C_gene')
-        
-        # Determine subsets of desired vs. undesired gene features
-        RHL_SeuratObject_merged@misc$desired_genes = 
-            rownames(RHL_SeuratObject_merged)[RHL_SeuratObject_merged@misc$biotypes %in% desired_biotypes_cellranger]
-        RHL_SeuratObject_merged@misc$discarded_genes = 
-            rownames(RHL_SeuratObject_merged)[!(RHL_SeuratObject_merged@misc$biotypes %in% desired_biotypes_cellranger)]
-    
-        # Then, let's (1) store non-desired data into different assay and (2) filter out non-desired data
-        RHL_SeuratObject_merged[['rnaDiscardedCounts']] <- CreateAssayObject(counts = RHL_SeuratObject_merged@assays$RNA@counts[RHL_SeuratObject_merged@misc$discarded_genes,])
-    }
-    
-    # Now let's also turn to mitochondrial reads
-    mito_genes = rownames(RHL_SeuratObject_merged)[grepl(':MT-',rownames(RHL_SeuratObject_merged))]
-    # Again save the non-desired data
-    RHL_SeuratObject_merged[['rnaMitoCounts']] <- CreateAssayObject(counts = RHL_SeuratObject_merged@assays$RNA@counts[mito_genes,])
-    # Create updated selection
-    if (DISCARD_GENE_OPTION) {
-        RHL_SeuratObject_merged@misc$desired_genes_excl_mito = 
-            RHL_SeuratObject_merged@misc$desired_genes[!(RHL_SeuratObject_merged@misc$desired_genes %in% mito_genes)]
-            # RHL_SeuratObject_merged@misc$desired_genes[(RHL_SeuratObject_merged@misc$desired_genes %in% mito_genes)]
-    } else {
-        RHL_SeuratObject_merged@misc$desired_genes_excl_mito = 
-            rownames(RHL_SeuratObject_merged)[!(rownames(RHL_SeuratObject_merged) %in% mito_genes)]
-    }
-    
-    # Then, subset the RNA assay (note: "noMito" is historic name, earlier only mito genes removed, now many more)
+    # Remove mitochondria info
+    # This is done since some cells have high mitochondrial read counts,
+    # which then completely dominate the analysis (and it is unclear whether
+    # the ratio mito:chromosomal reads is due to biology or artefacts)
+    all_genes_except_mito_merged = 
+        rownames(RHL_SeuratObject_merged)[!grepl('^MT-',rownames(RHL_SeuratObject_merged))]
     RHL_SeuratObject_merged_noMito =
-        subset(RHL_SeuratObject_merged, features= RHL_SeuratObject_merged@misc$desired_genes_excl_mito)
-    # And add the desired stored information again
-    RHL_SeuratObject_merged_noMito[['rnaMitoCounts']] = RHL_SeuratObject_merged[['rnaMitoCounts']]
-        # note: to look up; don't quite understand why subsetting can't be applied to all assays at once in Seurat
-    if (DISCARD_GENE_OPTION) {
-        RHL_SeuratObject_merged_noMito[['rnaDiscardedCounts']] = RHL_SeuratObject_merged[['rnaDiscardedCounts']]
-    }
-        # dim(RHL_SeuratObject_merged_noMito@assays$rnaMitoCounts@counts)
-        # rownames(RHL_SeuratObject_merged_noMito@assays$rnaMitoCounts@counts)
-        # colnames(RHL_SeuratObject_merged_noMito@assays$rnaMitoCounts@counts)[1:10]
-        # dim(RHL_SeuratObject_merged_noMito@assays$rnaDiscardedCounts@counts)
-        # rownames(RHL_SeuratObject_merged_noMito@assays$rnaDiscardedCounts@counts)[1:30]
-        # colnames(RHL_SeuratObject_merged_noMito@assays$rnaDiscardedCounts@counts)[1:10]
-    # Sanity check
-    # DefaultAssay(object = RHL_SeuratObject_merged_noMito)
-    #Key(object = RHL_SeuratObject_merged_noMito[["RNA"]])
-    #Key(object = RHL_SeuratObject_merged_noMito[["rnaMitoCounts"]])
-    #Key(object = RHL_SeuratObject_merged_noMito[["rnaDiscardedCounts"]])
-    # all keys are same names but lowercase followed by underscore
+        subset(RHL_SeuratObject_merged, features= all_genes_except_mito_merged)
+        # Manual method; led to problems later
+        # RHL_SeuratObject_merged_noMito = RHL_SeuratObject_merged
+        # gene.names = rownames(RHL_SeuratObject_merged_noMito@assays$RNA@counts)
+        # RHL_SeuratObject_merged_noMito@assays$RNA@counts = 
+        #     RHL_SeuratObject_merged_noMito@assays$RNA@counts[!grepl('^MT-', gene.names),]
     
-    # Earlier code; I only removed selection of mitochondrial pseudogenes -- 
-    # turns out Cell Ranger removes ALL pseudogenes, so it's more convenient that we also do that.
-    #
-    # # Now do the same for mitochondrial pseudogenes
-    # mito_genes_sym = sapply(str_split(string = mito_genes, pattern = ':'), function(x) {x[[2]]})
-    # pseudo_patterns = paste0( ':', gsub(x=mito_genes_sym, pattern = '-', replacement = '') , 'P')
-    # mito_pseudogenes = rownames(RHL_SeuratObject_merged)[grepl(paste0(pseudo_patterns, collapse = '|'),rownames(RHL_SeuratObject_merged))]
-    # # 
-    # RHL_SeuratObject_merged@misc$mito.pseudocounts = RHL_SeuratObject_merged@assays$RNA@counts[mito_pseudogenes,]
-    # rownames(RHL_SeuratObject_merged@misc$mito.pseudocounts) = mito_pseudogenes
-    # colnames(RHL_SeuratObject_merged@misc$mito.pseudocounts) = colnames(RHL_SeuratObject_merged@assays$RNA@counts)
-    # RHL_SeuratObject_merged@misc$mito.pseudocounts_colnames= colnames(RHL_SeuratObject_merged@assays$RNA@counts)
-    # RHL_SeuratObject_merged@misc$mito.pseudocounts_rownames= mito_pseudogenes
     
     # Then determine the total well and detected feature counts again
     CalcN_out_merged = Seurat:::CalcN(RHL_SeuratObject_merged_noMito)
-    RHL_SeuratObject_merged_noMito[['nCount.nMT']]   = CalcN_out_merged$nCount
-    RHL_SeuratObject_merged_noMito[['nFeature.nMT']] = CalcN_out_merged$nFeature
-    
-    # Then perform cell selection
-    RHL_SeuratObject_merged_noMito_sel <- subset(RHL_SeuratObject_merged_noMito, subset = nFeature.nMT > 50 & nFeature.nMT > 1000 & percent.mt < 80)
-    # Little boilerplate, additional selection of Hu cells based on region
-    # unique(RHL_SeuratObject_merged_noMito_sel[["annotation_region_str"]][RHL_SeuratObject_merged_noMito_sel[["annotation_paper_str"]]=='Hu'])
-    RHL_SeuratObject_merged_noMito_sel = RHL_SeuratObject_merged_noMito_sel[,!(RHL_SeuratObject_merged_noMito_sel[["annotation_region_str"]]=='LA'&
-               RHL_SeuratObject_merged_noMito_sel[["annotation_paper_str"]]=='Hu')]
-    
-    # Now also apply this to the stored "discarded" data
-    RHL_SeuratObject_merged_noMito_sel[['rnaMitoCounts']] <- subset(RHL_SeuratObject_merged_noMito[['rnaMitoCounts']], cells = colnames(RHL_SeuratObject_merged_noMito_sel))
-    if (DISCARD_GENE_OPTION) {
-        RHL_SeuratObject_merged_noMito_sel[['rnaDiscardedCounts']] <- subset(RHL_SeuratObject_merged_noMito[['rnaDiscardedCounts']], cells = colnames(RHL_SeuratObject_merged_noMito_sel))
-    }
-    
+    RHL_SeuratObject_merged_noMito[['nCount_nMT_RNA']]   = CalcN_out_merged$nCount
+    RHL_SeuratObject_merged_noMito[['nFeature_nMT_RNA']] = CalcN_out_merged$nFeature
+
+    RHL_SeuratObject_merged_noMito_sel <- subset(RHL_SeuratObject_merged_noMito, subset = nFeature_nMT_RNA > 50 & nCount_nMT_RNA > 1000 & percent.mt < 80)    
+        # vCM selection not necessary any more
+        # RHL_SeuratObject_merged_noMito_sel <- subset(RHL_SeuratObject_merged_noMito, subset = nFeature_nMT_RNA > 50 & nCount_nMT_RNA > 1000 & percent.mt < 80 & vCM == T)
     # table(RHL_SeuratObject_merged_sel$orig.ident)
     table(RHL_SeuratObject_merged_noMito_sel$annotation_paper_str)
     table(RHL_SeuratObject_merged_noMito_sel$annotation_patient_str)
@@ -690,7 +581,7 @@ if ('runf_all_default_cl' %in% desired_command) {
 #     
 #     RHL_SeuratObject_merged_noMito_sel.rid2like = mySeuratAnalysis(RHL_SeuratObject_merged_noMito_sel,
 #         run_name=CURRENT_RUNNAME,
-#         normalization.method='RC', scale.factor=median(RHL_SeuratObject_merged_noMito_sel$nCount.nMT),
+#         normalization.method='RC', scale.factor=median(RHL_SeuratObject_merged_noMito_sel$nCount_nMT_RNA),
 #         do.scale=F,do.center=F,scale.max=Inf, features_to_use_choice = 'all')
 #     mySeuratCommonPlots(RHL_SeuratObject_merged_noMito_sel.rid2like, run_name = CURRENT_RUNNAME)
 #     # save(list = c('RHL_SeuratObject_merged_noMito_sel.rid2like'), file = paste0(base_dir,'Rdata/RHL_SeuratObject_merged_noMito_sel.rid2like.Rdata'))
@@ -713,7 +604,7 @@ if ('runf_all_RID2l_VAR' %in% desired_command) {
     # Run and make some standard plots
     RHL_SeuratObject_merged_noMito_sel.rid2like_VAR = mySeuratAnalysis(RHL_SeuratObject_merged_noMito_sel,
         run_name=CURRENT_RUNNAME,
-        normalization.method='RC', scale.factor=median(RHL_SeuratObject_merged_noMito_sel$nCount.nMT),
+        normalization.method='RC', scale.factor=median(RHL_SeuratObject_merged_noMito_sel$nCount_nMT_RNA),
         do.scale=F,do.center=F,scale.max=Inf, features_to_use_choice = 'variable')
     mySeuratCommonPlots(RHL_SeuratObject_merged_noMito_sel.rid2like_VAR, run_name = CURRENT_RUNNAME)
     
@@ -756,17 +647,9 @@ if ('split_datasets' %in% desired_command) {
     # Create separate subsets
     print('Splitting')
     RHL_SeuratObject_nM_sel_HUonly = subset(RHL_SeuratObject_merged_noMito_sel, subset = annotation_paper_str == 'Hu')
-    RHL_SeuratObject_nM_sel_HUonly[['rnaMitoCounts']] <- subset(RHL_SeuratObject_nM_sel_HUonly[['rnaMitoCounts']], cells = colnames(RHL_SeuratObject_nM_sel_HUonly))
-    if (DISCARD_GENE_OPTION) { RHL_SeuratObject_nM_sel_HUonly[['rnaDiscardedCounts']] <- subset(RHL_SeuratObject_nM_sel_HUonly[['rnaDiscardedCounts']], cells = colnames(RHL_SeuratObject_nM_sel_HUonly)) }
-    
     RHL_SeuratObject_nM_sel_TEICHMANNonly = subset(RHL_SeuratObject_merged_noMito_sel, subset = annotation_paper_str == 'Teichmann')
-    RHL_SeuratObject_nM_sel_TEICHMANNonly[['rnaMitoCounts']] <- subset(RHL_SeuratObject_nM_sel_TEICHMANNonly[['rnaMitoCounts']], cells = colnames(RHL_SeuratObject_nM_sel_TEICHMANNonly))
-    if (DISCARD_GENE_OPTION) { RHL_SeuratObject_nM_sel_TEICHMANNonly[['rnaDiscardedCounts']] <- subset(RHL_SeuratObject_nM_sel_TEICHMANNonly[['rnaDiscardedCounts']], cells = colnames(RHL_SeuratObject_nM_sel_TEICHMANNonly)) }
-
     RHL_SeuratObject_nM_sel_ROOIJonly = subset(RHL_SeuratObject_merged_noMito_sel, subset = annotation_paper_str == 'vRooij')
-    RHL_SeuratObject_nM_sel_ROOIJonly[['rnaMitoCounts']] <- subset(RHL_SeuratObject_nM_sel_ROOIJonly[['rnaMitoCounts']], cells = colnames(RHL_SeuratObject_nM_sel_ROOIJonly))
-    if (DISCARD_GENE_OPTION) { RHL_SeuratObject_nM_sel_ROOIJonly[['rnaDiscardedCounts']] <- subset(RHL_SeuratObject_nM_sel_ROOIJonly[['rnaDiscardedCounts']], cells = colnames(RHL_SeuratObject_nM_sel_ROOIJonly)) }
-
+    
     # Save those
     print('Saving')
     SaveH5Seurat(object = RHL_SeuratObject_nM_sel_HUonly, overwrite = T,
@@ -775,6 +658,10 @@ if ('split_datasets' %in% desired_command) {
         filename = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_TEICHMANNonly.h5seurat'))
     SaveH5Seurat(object = RHL_SeuratObject_nM_sel_ROOIJonly, overwrite = T,
         filename = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_ROOIJonly.h5seurat'))
+    
+    # For debugging purposes, also save Rdata file
+    save(list='RHL_SeuratObject_nM_sel_HUonly',    file=paste0(base_dir,'Rdata/RHL_SeuratObject_nM_sel_HUonly.Rdata'))
+    save(list='RHL_SeuratObject_nM_sel_ROOIJonly', file=paste0(base_dir,'Rdata/RHL_SeuratObject_nM_sel_ROOIJonly.Rdata'))
 }
 
 ################################################################################
@@ -809,7 +696,7 @@ if ('run_separate' %in% desired_command) {
         # run RaceID2 like settings
         current_analysis[[seuratObject_name]] = mySeuratAnalysis(current_analysis[[seuratObject_name]],
             run_name=CURRENT_RUNNAME,
-            normalization.method='RC', scale.factor=median(current_analysis[[seuratObject_name]]$nCount.nMT),
+            normalization.method='RC', scale.factor=median(current_analysis[[seuratObject_name]]$nCount_nMT_RNA),
             do.scale=F,do.center=F,scale.max=Inf, features_to_use_choice = 'variable') # variable because otherwise too large calculation ..
     } else {
         CURRENT_RUNNAME = paste0(current_dataset,'only_','default')
@@ -1009,35 +896,7 @@ if ('run_batch_corr_sep_nowplot_and_DE' %in% desired_command) {
         
     
 }
-
-################################################################################
-# More plots
-
-# Code in:
-# source(paste0(script_dir,'Functions/MW_customized_plot_functions.R'))
-
-if ('more_custom_plots' %in% desired_command) {
     
-    load(file = paste0(base_dir,'Rdata/RHL_SeuratObject_merged_noMito_sel.Rdata'))
-    current_analysis=list()
-    current_analysis$merged_noMito_sel=RHL_SeuratObject_merged_noMito_sel
-    rm('RHL_SeuratObject_merged_noMito_sel')
-    
-    # Add one-letter shorthand for dataset
-    name_change = c("vRooij"="R", "Hu"="H", "Teichmann"="T")
-    current_analysis$merged_noMito_sel$annotation_paper_oneletter_fct = factor(
-        name_change[current_analysis$merged_noMito_sel$annotation_paper_str], levels=c('R','H','T'))
-    
-    # Stress gene plots
-    ANALYSIS_NAME='merged_noMito_sel'; LIST_NAME='stress'; CAT = 'annotation_paper_oneletter_fct'; CATNAME = 'Dataset'
-    genes_of_interest = c('NPPA', 'NPPB', 'ACTA1', 'MYH7', 'MYH6')
-    plot_list = lapply(genes_of_interest, 
-        function(x) {shorthand_plotViolinBox_custom(current_analysis,analysis_name=ANALYSIS_NAME,cat_by = CAT, gene_of_interest=x,base_dir=base_dir, cat_name = CATNAME)})
-    p=wrap_plots(plot_list, nrow = 1)& theme(plot.margin = margin(t = 0, r = 0, b = 0, l = 5, unit = "pt"))
-    #p
-    ggsave(plot = p,filename = paste0(base_dir, 'Rplots/',ANALYSIS_NAME,'_6_violin_by-', CAT, '_',LIST_NAME,'.pdf'), width = min(18.64, 4*length(genes_of_interest)), height= 4, units='cm')
-
-}
 
 ################################################################################
 # Some custom stuff (put somewhere else later)
@@ -1063,23 +922,19 @@ if (F) {
 # H5_RHL_SeuratObject_nM_sel_TEICHMANNonly.h5seurat
 
 # DATASET_NAME='TEICHMANNonly_RID2l'
-# DATASET_NAME='ROOIJonly_RID2l'
 # DATASET_NAME='HUonly_RID2l'
-# DATASET_NAME='HUonly'
 if (F) {
     
     # load the file
     current_analysis = list()
     current_analysis[[DATASET_NAME]] =
         LoadH5Seurat(file = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_',DATASET_NAME,'.h5seurat'))
-    
+}
 
-}
-if (F) {
-    # To load full pooled thing
-    current_analysis = list()
-    load(file = paste0(base_dir,'Rdata/RHL_SeuratObject_merged_noMito_sel.Rdata'))
-    current_analysis$merged_noMito_sel = RHL_SeuratObject_merged_noMito_sel
-    rm('RHL_SeuratObject_merged_noMito_sel')
-    
-}
+
+
+
+
+
+
+

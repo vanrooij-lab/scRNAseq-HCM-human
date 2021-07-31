@@ -48,10 +48,12 @@ GENES_OF_INTEREST=c('TTN','NPPA')
 
 Volcano_df_collection=list()
 for (analysis_name in OBJECTS_TO_ANALYZE) {
-
+    
     for (gene_name in GENES_OF_INTEREST) {
         
-        # analysis_name='ROOIJonly_RID2l'; gene_name='TTN'
+        # analysis_name='ROOIJonly_RID2l'; gene_name=shorthand_seurat_fullgenename('TTN')
+        # analysis_name='ROOIJonly_RID2l'; gene_name=shorthand_seurat_fullgenename('NPPA')
+        # analysis_name='ROOIJonly_RID2l'; gene_name=shorthand_seurat_fullgenename('CMYA5')
         # analysis_name='TEICHMANNonly_RID2l'; gene_name='TTN'
         
         # Depending on whether we want to look at integrated data or not, Seurat has stored the

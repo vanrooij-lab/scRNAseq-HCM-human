@@ -113,21 +113,41 @@ manual_scale_table = function(countTable) {
             median_readsPerWell=median_readsPerWell, GenesHowManyCells=GenesHowManyCells ))
 }
 
-generate_biotype_annotation_table = function() {
+generate_biotype_annotation_table = function(ensembl_version='latest') {
+  # See 
+  # https://www.bioconductor.org/packages/devel/bioc/vignettes/biomaRt/inst/doc/accessing_ensembl.html#using-archived-versions-of-ensembl
+  # for more information about using archived ensembl versions
+  # Some useful commands
+  # mart_archive <- listEnsemblArchives()
+  # listEnsembl(version=ensembl_version_to_use)
+  # listEnsembl(version=104)
+  # listDatasets(mart)
+  # listDatasets(Ensembl_XX)
+  # listMarts()
+  
+  # Set ensembl version to use
+  if (ensembl_version=='latest') {
+    # for convenience, retrieve which version is latest
+    mart_archive <- listEnsemblArchives()
+    ensembl_version_to_use=as.numeric(mart_archive$version[mart_archive$current_release=='*'])
+  } else {
+    ensembl_version_to_use=ensembl_version
+  }
 
     # Create lookup table to get gene names from bio mart
-    mart <- useMart("ensembl", dataset = "hsapiens_gene_ensembl")
-    gene_table_biotypes <- getBM(
-      attributes=c("ensembl_gene_id","gene_biotype"),
-      mart = mart)
-    rownames(gene_table_biotypes) = gene_table_biotypes$ensembl_gene_id
+    print(paste0('Using mart version', ensembl_version_to_use))
+    Ensembl_XX = useEnsembl(biomart="genes", dataset = "hsapiens_gene_ensembl", version=ensembl_version_to_use)
+    # mart <- useMart("ensembl", dataset = "hsapiens_gene_ensembl")
+    
+    gene_table_biotypes_XX <- getBM(attributes=c("ensembl_gene_id","gene_biotype"), mart = Ensembl_XX)
+    # rownames(gene_table_biotypes_XX) = gene_table_biotypes_XX$ensembl_gene_id
     
     # Create vector
-    gene_biotypes = gene_table_biotypes$gene_biotype
-    names(gene_biotypes) = gene_table_biotypes$ensembl_gene_id
+    gene_biotypes_XX = gene_table_biotypes_XX$gene_biotype
+    names(gene_biotypes_XX) = gene_table_biotypes_XX$ensembl_gene_id
     
     # Save the table
-    save(list=('gene_biotypes'), file = paste0(base_dir,'Rdata/gene_biotypes.Rdata'))
+    save(list=('gene_biotypes_XX'), file = paste0(base_dir,'Rdata/gene_biotypes_',ensembl_version_to_use,'.Rdata'))
     # load(file = paste0(base_dir,'Rdata/ens_to_sym_conv_table.Rdata'))
     
 }

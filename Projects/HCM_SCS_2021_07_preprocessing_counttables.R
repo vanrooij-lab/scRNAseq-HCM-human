@@ -7,6 +7,7 @@
 # Also, I'd like to add the gene names.
 
 library(reshape2)
+library(stringr)
 
 ################################################################################
 
@@ -16,8 +17,10 @@ if (exists('LOCAL')) {
     base_dir = '/Users/m.wehrens/Data/_2019_02_HCM_SCS/2021_HPC_analysis.2/'
     
     # 1. Rooij, 2. Hu
-    data_dir1 = '/Users/m.wehrens/Data/_2019_02_HCM_SCS/2021_UmiTools_CountTables_Wang_HCMSCS/ROOIJ/'
-    data_dir2 = '/Users/m.wehrens/Data/_2019_02_HCM_SCS/2021_UmiTools_CountTables_Wang_HCMSCS/HU/'
+    #data_dir1 = '/Users/m.wehrens/Data/_2019_02_HCM_SCS/2021_UmiTools_CountTables_Wang_HCMSCS/ROOIJ/'
+    #data_dir2 = '/Users/m.wehrens/Data/_2019_02_HCM_SCS/2021_UmiTools_CountTables_Wang_HCMSCS/HU/'
+    data_dir1 = '/Users/m.wehrens/Data/_2019_02_HCM_SCS/2021_UmiTools_CountTables_Wang_HCMSCS/exclMulti_Filtered/ROOIJ/'
+    data_dir2 = '/Users/m.wehrens/Data/_2019_02_HCM_SCS/2021_UmiTools_CountTables_Wang_HCMSCS/exclMulti_Filtered/HU/'
     
     
     #data_dir1 = NULL
@@ -109,6 +112,16 @@ if (file.exists(paste0(base_dir,'Rdata/ens_to_sym_conv_table.Rdata'))) {
     stop('Conversion table ensembl ID and symbol not found.')
     
 }
+
+# Note: very few names are double, see 
+# freq_names=table(names(ens_to_sym_conv_table))
+# freq_names[freq_names>1]
+# ens_to_sym_conv_table[names(ens_to_sym_conv_table) %in% names(freq_names[freq_names>1])]
+# Seems to be mostly inconsequential genes
+# ENSG00000277796   ENSG00000277796   ENSG00000277768   ENSG00000277768   ENSG00000277336   ENSG00000277336   ENSG00000288487 
+#        "CCL3L3"          "CCL3L1"          "CCL3L3"          "CCL3L1"          "CCL3L3"          "CCL3L1"        "KIR2DL5B" 
+# ENSG00000288487   ENSG00000230417   ENSG00000230417   ENSG00000254876   ENSG00000254876   ENSG00000276085   ENSG00000276085 
+#       "KIR2DS3"       "LINC00595"       "LINC00856"         "STRA6LP" "SUGT1P4-STRA6LP"          "CCL3L3"          "CCL3L1" 
 
 
 #rownames(dataTable1_df)

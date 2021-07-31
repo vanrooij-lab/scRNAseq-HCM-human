@@ -24,7 +24,7 @@ if (exists('LOCAL')) {
     base_dir_secondary = '/Volumes/workdrive_m.wehrens_hubrecht/R-sessions/2021_SCS_HCM_Seurat/'
     script_dir = '/Users/m.wehrens/Documents/git_repos/SCS_More_analyses/'
 } else {
-    base_dir = '/hpc/hub_oudenaarden/mwehrens/data/Wang/'
+    base_dir = '/hpc/hub_oudenaarden/mwehrens/data/HCM_SCS_RHL.3/'
     base_dir_secondary = base_dir # change if desired to put some less important and/or big files
     script_dir = '/hpc/hub_oudenaarden/mwehrens/scripts/SCS_HCM_analysis/'
 }

@@ -10,7 +10,7 @@
 mySeuratAnalysis = function(mySeuratObject, run_name,
     normalization.method='LogNormalize', scale.factor=10000,
     do.scale=T,do.center=T,scale.max=10,features_to_use_choice='variable',
-    remove_genes=T) {
+    remove_genes=T, cluster_resolution=1) {
     # type_features_to_use_PCA: variable or all
     
     # First remove genes that are only in <5 cells
@@ -49,7 +49,7 @@ mySeuratAnalysis = function(mySeuratObject, run_name,
     mySeuratObject <- RunPCA(object=mySeuratObject, npcs = 30, verbose = FALSE, features=features_to_use)
     mySeuratObject <- RunUMAP(mySeuratObject, reduction = "pca", dims = 1:30)
     mySeuratObject <- FindNeighbors(mySeuratObject, reduction = "pca", dims = 1:30)
-    mySeuratObject <- FindClusters(mySeuratObject, resolution = 0.5)
+    mySeuratObject <- FindClusters(mySeuratObject, resolution = cluster_resolution)
     
     # save(list = c('mySeuratObject'), file = paste0(base_dir,'Rdata/WRL_object_bigbig_sel_AnaDone.Rdata'))
     
@@ -58,7 +58,7 @@ mySeuratAnalysis = function(mySeuratObject, run_name,
 }
 
 mySeuratAnalysis_verybasic_part2only = function(mySeuratObject,
-    do.scale=T,do.center=T,scale.max=10,features_to_use_choice='all') {
+    do.scale=T,do.center=T,scale.max=10,features_to_use_choice='all', cluster_resolution=1) {
     
     assayType = if ('integrated' %in% names(mySeuratObject@assays)) {'integrated'} else {'RNA'}
     
@@ -69,7 +69,7 @@ mySeuratAnalysis_verybasic_part2only = function(mySeuratObject,
     mySeuratObject <- RunPCA(object=mySeuratObject, npcs = 30, verbose = FALSE, features=features_to_use)
     mySeuratObject <- RunUMAP(mySeuratObject, reduction = "pca", dims = 1:30)
     mySeuratObject <- FindNeighbors(mySeuratObject, reduction = "pca", dims = 1:30)
-    mySeuratObject <- FindClusters(mySeuratObject, resolution = 0.5)
+    mySeuratObject <- FindClusters(mySeuratObject, resolution = cluster_resolution)
     return(mySeuratObject)
 }
 
