@@ -1,8 +1,19 @@
 
 
+# For convenience, little fn to change text size ggplot in one go
+give_better_textsize_plot <- function(TEXTSIZE){
+  theme(#legend.position="none",
+        text = element_text(size=TEXTSIZE),
+        axis.text = element_text(size=TEXTSIZE),
+        plot.title = element_text(size=TEXTSIZE))
+}
+
+
+
 # Violin plot
 # Use lapply and wrap_plots to create a list of plots
-shorthand_plotViolinBox_custom = function(myseuratobjectlist, analysis_name, cat_by='seurat_clusters', cat_name = 'category', gene_of_interest,base_dir, percentile=.02, type='boxplot') {
+shorthand_plotViolinBox_custom = function(myseuratobjectlist, analysis_name, cat_by='seurat_clusters', 
+    cat_name = 'category', gene_of_interest,base_dir, percentile=.02, type='boxplot') {
 
     # get full gene names
     gene_of_interest_fullname = rownames(myseuratobjectlist[[analysis_name]])[grepl(paste0(paste0(':',gene_of_interest,'$'),collapse='|'),rownames(myseuratobjectlist[[analysis_name]]))]
@@ -32,24 +43,84 @@ shorthand_plotViolinBox_custom = function(myseuratobjectlist, analysis_name, cat
     # start plotting w/ desired options
     p=ggplot(plot_df, aes_string(x=cat_name, y='count',fill=cat_name))
     
-    if (type=='violin') {p=p+geom_violin()}
+    if (type=='violin') {p=p+geom_violin(scale='width')}
     if (type=='boxplot') {p=p+geom_boxplot()}
     
     p=p+
         #geom_bar(aes_string(y='count', fill=as.factor(cat_name)),stat='summary',fun='mean',fill='grey',color='black')+
         #geom_boxplot(alpha=0)+
-        ggtitle(gene_of_interest)+theme_bw()+give_better_textsize_plot(10)+
+        ggtitle(gene_of_interest)+theme_bw()+
         theme(legend.position='none')+
-        theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+        theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
+        xlab(element_blank())+give_better_textsize_plot(8)
     
     # save 1
-    ggsave(plot = p,filename = paste0(base_dir, 'Rplots/',analysis_name,'_6_violin_by-', cat_name, '_',gene_of_interest,'.pdf'), width = 4, height= 6, units='cm')
+    ggsave(plot = p,filename = paste0(base_dir, 'Rplots/',analysis_name,'_6_',type,'_by-', cat_name, '_',gene_of_interest,'.pdf'), width = 4, height= 6, units='cm')
     
     # add ylim and save 2
     p=p+ylim(c(0,my_max_limit))
-    ggsave(plot = p,filename = paste0(base_dir, 'Rplots/',analysis_name,'_6_violin_ylim98_by-', cat_name, '_',gene_of_interest,'.pdf'), width = 4, height= 6, units='cm')
+    ggsave(plot = p,filename = paste0(base_dir, 'Rplots/',analysis_name,'_6_',type,'_ylim98_by-', cat_name, '_',gene_of_interest,'.pdf'), width = 4, height= 6, units='cm')
     
     # return plot
     return(p)
     
 }
+
+shorthand_cutname = function(gene_names) {
+    
+  # if something to be split
+  if (any(grepl(gene_names, pattern = ':'))) {
+    # split, also for genes w/o 2nd annotation, just return 1st part instead
+    return(sapply(str_split(gene_names, pattern = ':'), function(Y) { if (Y[[2]]=="") {Y[[1]]} else {Y[[2]]} }))
+  } else {return(gene_names)}
+    
+}
+
+shorthand_cutname_table = function(gene_table) {
+    
+ sapply(gene_table, function(X) {
+            sapply(str_split(X, pattern = ':'), function(Y) { if (Y[[2]]=="") {Y[[1]]} else {Y[[2]]} })
+            })   
+}
+
+################################################################################
+
+# function to plot expression of a gene
+shorthand_seurat_custom_expr = function(seuratObject, gene_of_interest, textsize=8, pointsize=1) {
+    
+    # gene_of_interest = 'KRT6A'
+    print(paste0('Retrieving ',gene_of_interest))
+    gene_of_interest_fullname =rownames(seuratObject)[grepl(paste0(':',gene_of_interest,'$'),rownames(seuratObject))]
+    
+    # retrieve current expression
+    current_expr = seuratObject@assays$RNA@data[gene_of_interest_fullname,]
+    expr_limits=calc_limits(current_expr, percentile = .03)
+    
+    ggplot(data.frame(UMAP_1=seuratObject@reductions$umap@cell.embeddings[,1],
+                      UMAP_2=seuratObject@reductions$umap@cell.embeddings[,2],
+                      expr=current_expr),
+            mapping = aes(x=UMAP_1, y=UMAP_2, color=expr))+
+        geom_point(size = pointsize, stroke = 0, shape = 16)+scale_color_gradientn(colours=rainbow_colors, limits=c(0,expr_limits[2]), oob=squish)+
+        #+ggtitle(gene_of_interest)+
+        annotate("text", -Inf, Inf, label = gene_of_interest, hjust = 0, vjust = 1, size=textsize / .pt)+
+        theme_void()+
+        #give_better_textsize_plot(textsize)+
+        theme(legend.position = 'none', plot.margin = margin(0.1,0.1,0,0,'mm'))
+        
+        
+        
+       
+}
+# shorthand to get full names
+shorthand_seurat_fullgenename = function(seuratObject, gene_names) {
+    
+    gene_of_interest_fullname =rownames(seuratObject)[grepl(paste0(paste0(':',gene_names,'$'),collapse = '|'),rownames(seuratObject))]
+    return(gene_of_interest_fullname)
+    
+}
+
+
+
+
+
+

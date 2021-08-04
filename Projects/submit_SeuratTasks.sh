@@ -196,7 +196,7 @@ sbatch --output=slurm-${commands}-%x.%j.out --job-name="${commands}" -c ${proces
 
 # Regulon analysis for Rooij 
 processors=5
-commands="run_regulon_step1-ROOIJonly_RID2l-CORES=${processors}"
+commands="run_regulon_step1-dataset=ROOIJonly_RID2l-CORES=${processors}"
 mem=64G
 script_dir=/hpc/hub_oudenaarden/mwehrens/scripts/SCS_HCM_analysis/
 script_name=run_SeuratRegulonTask.sh
@@ -204,8 +204,8 @@ script_name=run_SeuratRegulonTask.sh
 last_jobid=$(sbatch --parsable --output=slurm-${commands}-%x.%j.out --job-name="${commands}" -c ${processors} --time=2-00:00:00 --mem=${mem} --export=ALL,commands="${commands}" ${script_dir}/${script_name})
 
 # Regulons for HU
-processors=4
-commands="run_regulon_step1-HUonly_RID2l-CORES=${processors}"
+processors=7 # 4
+commands="run_regulon_step1-dataset=HUonly_RID2l-CORES=${processors}"
 mem=200G
 script_dir=/hpc/hub_oudenaarden/mwehrens/scripts/SCS_HCM_analysis/
 script_name=run_SeuratRegulonTask.sh
@@ -214,7 +214,7 @@ last_jobid=$(sbatch --parsable --output=slurm-${commands}-%x.%j.out --job-name="
 
 # Regulons for Teichmann
 processors=14
-commands="run_regulon_step1-TEICHMANNonly_RID2l-CORES=${processors}"
+commands="run_regulon_step1-dataset=TEICHMANNonly_RID2l-CORES=${processors}"
 mem=255G
 script_dir=/hpc/hub_oudenaarden/mwehrens/scripts/SCS_HCM_analysis/
 script_name=run_SeuratRegulonTask.sh

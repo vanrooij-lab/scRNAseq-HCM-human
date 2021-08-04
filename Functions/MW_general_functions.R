@@ -45,7 +45,11 @@ get_volcano_df3 = function(expression_matrix,my_gene,calc_qvals=T,no_expression_
     
     # calculate the correlations again, but now for cell_counts vs. genes
     start_time <- Sys.time()
-    my_corrs_current = lapply(as.data.frame(t(expression_matrix[seen_in_frac_cells>=min_cell_expressed,])), function(X) {cor.test(X,goi_expr)})
+    #my_corrs_current = lapply(as.data.frame(t(expression_matrix[seen_in_frac_cells>=min_cell_expressed,])), function(X) {cor.test(X,goi_expr)})
+    sub_mat=expression_matrix[seen_in_frac_cells>=min_cell_expressed,]
+    my_corrs_current = lapply(1:(dim(sub_mat)[1]), function(X) {
+                          cor.test(sub_mat[X,],goi_expr)
+                        })
     end_time <- Sys.time(); elapsed_time <- difftime(end_time, start_time, units='mins')
     print(paste0('Corrs determined in ',round(elapsed_time,2),' mins'))
     
@@ -59,9 +63,11 @@ get_volcano_df3 = function(expression_matrix,my_gene,calc_qvals=T,no_expression_
       my_corrs_df_current$qval = pval2qval(my_corrs_df_current$pval)[[1]]
     }    
     
-    rownames(my_corrs_df_current) = rownames(expression_matrix[seen_in_frac_cells>=min_cell_expressed,])
-    my_corrs_df_current$gene_name = rownames(expression_matrix[seen_in_frac_cells>=min_cell_expressed,])
-    my_corrs_df_current$gene_name_short = rownames(expression_matrix[seen_in_frac_cells>=min_cell_expressed,])
+    rownames(my_corrs_df_current) = rownames(sub_mat)
+    my_corrs_df_current$gene_name = rownames(sub_mat)
+    if (grepl(':',rownames(sub_mat)[1], fixed = T)) { 
+      my_corrs_df_current$gene_name_short = shorthand_cutname(rownames(sub_mat))
+    } else {my_corrs_df_current$gene_name_short = rownames(sub_mat)}
     
     # add some more parameter to export to excel file
     #my_corrs_df_current$nrCellsExpressGene  = apply(expression_matrix[seen_in_frac_cells>=min_cell_expressed,]>no_expression_val,1,sum)
@@ -85,13 +91,15 @@ get_volcano_df3 = function(expression_matrix,my_gene,calc_qvals=T,no_expression_
 # now plot the volcano
 plot_volcano3 = function(my_corrs_df_current,mytextsize=15,mycex=3,manual_gene_name=NULL,
         NRLABELED=20,mypvaltreshold=0.01,custom_highlight_group=NULL,NRLABELED_hlgroup=NULL,
-                  mypointsize=.1, mylinesize=.25) {
+                  mypointsize=.1, mylinesize=.25, mylabelsize=NULL) {
 
     if (!is.null(manual_gene_name)){
         current_gene=manual_gene_name
     } else {
         current_gene = my_corrs_df_current$gene_name_short[my_corrs_df_current$corr==1&!is.na(my_corrs_df_current$corr)]
     }
+  
+    if (is.null(mylabelsize)) {mylabelsize=mytextsize}
     
     my_corrs_df_current = my_corrs_df_current[!my_corrs_df_current$gene_name_short==current_gene,]
     if (sum(my_corrs_df_current$gene_name_short==current_gene)>1) { stop('Error') }
@@ -105,15 +113,16 @@ plot_volcano3 = function(my_corrs_df_current,mytextsize=15,mycex=3,manual_gene_n
         xlab('Correlation')+ylab('-log10(p-value)')+
         #geom_text_repel(data=my_corrs_df_current[my_corrs_df_current$pval<.001,],
         #    mapping = aes(x=corr,y=-log10(pval.adj),label=gene_name),cex=4,color='red',segment.color='gray')+
-        give_better_textsize_plot(mytextsize)+
         theme_bw()+
+        give_better_textsize_plot(mytextsize)+
         geom_hline(yintercept = -log10(mypvaltreshold), size=mylinesize)+
         #xlim(c(-.6,.6))+
         ggtitle(paste0('Genes correlated with ', current_gene))
     if (is.null(custom_highlight_group)) {
       # add labels to 1st N genes (determined by p-val)
       p=p+ggrepel::geom_text_repel(data=my_corrs_df_current[pval_idx[1:NRLABELED],],
-            mapping = aes(x=corr,y=-log10(pval.adj),label=gene_name_short),color='black',cex=mycex,segment.size	=mylinesize)#,segment.color='gray')+#,cex=.3
+            mapping = aes(x=corr,y=-log10(pval.adj),label=gene_name_short), size=mylabelsize/.pt ,color='black',
+            cex=mycex,segment.size	=mylinesize, max.overlaps = Inf, min.segment.length = 0)#,segment.color='gray')+#,cex=.3
     } else {
       # select a custom group of genes
       toshow_df = my_corrs_df_current[my_corrs_df_current$gene_name_short %in% custom_highlight_group,]
@@ -121,7 +130,8 @@ plot_volcano3 = function(my_corrs_df_current,mytextsize=15,mycex=3,manual_gene_n
       if (!is.null(NRLABELED_hlgroup)) {toshow_df = toshow_df[1:NRLABELED_hlgroup,]}
       # add labels
       p=p+ggrepel::geom_text_repel(data=toshow_df,
-            mapping = aes(x=corr,y=-log10(pval.adj),label=gene_name_short),color='black',cex=mycex)#,segment.color='gray')+#,cex=.3
+            mapping = aes(x=corr,y=-log10(pval.adj),label=gene_name_short), size=mylabelsize/.pt,color='black',cex=mycex,
+            max.overlaps = Inf, min.segment.length = 0)#,segment.color='gray')+#,cex=.3
         
     }
     p

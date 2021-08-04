@@ -13,62 +13,46 @@
 # See exporatory analyses for comparison earlier and current data analyses
 
 # Note, for HPC custom analyses, this script can be sourced as
-# source('/hpc/hub_oudenaarden/mwehrens/scripts/SCS_HCM_analysis/HCM_SCS_2021_06_SeuratRevised_Regulon_v3.R')
+# desired_command_regulon='dummy'; source('/hpc/hub_oudenaarden/mwehrens/scripts/SCS_HCM_analysis/HCM_SCS_2021_06_SeuratRevised_Regulon_v3.R')
 
 ######################################################################
 # libraries
 
-# local base dir
-if (exists('LOCAL')) {
-    base_dir = '/Users/m.wehrens/Data/_2019_02_HCM_SCS/2021_HPC_analysis/'
-    base_dir_secondary = '/Volumes/workdrive_m.wehrens_hubrecht/R-sessions/2021_SCS_HCM_Seurat/'
-    script_dir = '/Users/m.wehrens/Documents/git_repos/SCS_More_analyses/'
-} else {
-    base_dir = '/hpc/hub_oudenaarden/mwehrens/data/HCM_SCS_RHL.3/'
-    base_dir_secondary = base_dir # change if desired to put some less important and/or big files
-    script_dir = '/hpc/hub_oudenaarden/mwehrens/scripts/SCS_HCM_analysis/'
-}
-dir.create(paste0(base_dir_secondary,'Rdata/'))
-    
-MYMCCORES=8 # Can be overwritten by using CORES=X argument
+print('Executing main script to load libraries')
 
-library(Seurat)
-library(SeuratDisk)
+myargs = commandArgs(trailingOnly = T)
+print(paste0('myargs=',myargs))
+
+# set script dir (note: overwritten by loading SeuratRevisedAnalysis below)
+if (exists('LOCAL')) {
+    script_dir = '/Users/m.wehrens/Documents/git_repos/SCS_More_analyses/'
+    desired_command='dummy'
+    source(paste0(script_dir, 'Projects/HCM-SCS_2021-06_SeuratRevisedAnalysis_v2_UmiTools.R'))
+    rm('desired_command')
+} else {
+    script_dir = '/hpc/hub_oudenaarden/mwehrens/scripts/SCS_HCM_analysis/'
+    desired_command='dummy'
+    source(paste0(script_dir, 'HCM-SCS_2021-06_SeuratRevisedAnalysis_v2_UmiTools.R'))
+    rm('desired_command')
+}
 
 library(ggdendro)
 library(gplots) # heatmap.2
 library(pheatmap)
 
 library(randomcoloR)
-library(ggplot2)
-library(scales)
 library(gridExtra)
 
 library(parallel)
 
-library(RColorBrewer)
-qual_col_pals = brewer.pal.info[brewer.pal.info$category == 'qual',]
-col_vector_60 = unlist(mapply(brewer.pal, qual_col_pals$maxcolors, rownames(qual_col_pals)))
-
 source(paste0(script_dir, 'Functions/MW_regulon_analysis_COPY.R'))
-source(paste0(script_dir, 'Functions/MW_general_functions.R'))
-source(paste0(script_dir, 'Functions/Load-Pool-Scale_Simple_MW.R'))
 source(paste0(script_dir, 'Functions/MW_regulon_analysis_supportFns_COPIES.R'))
     # file.edit(paste0(script_dir, 'Functions/MW_general_functions.R'))
 
-# Not necessary
-# source('/Users/m.wehrens/Documents/git_repos/SCS_RaceID3/Functions/MW_analysis_functions.R')
-
-# Redundant, libs required are now loaded above
-if (F) {
-    cfg=list()
-    cfg$SCRIPT_LOCATION_MW = '/Users/m.wehrens/Documents/git_repos/Tomoseq_mw/'
-    cfg$SCRIPT_LOCATION_MW_2 = '/Users/m.wehrens/Documents/git_repos/SCS_RaceID3/'
-    cfg$species='human'
-    source('/Users/m.wehrens/Documents/git_repos/Tomoseq_mw/sub_functions/MW_load_libraries.R') # doesn't work completely ?
-        # file.edit('/Users/m.wehrens/Documents/git_repos/Tomoseq_mw/sub_functions/MW_load_libraries.R')
-    source('/Users/m.wehrens/Documents/git_repos/Tomoseq_mw/sub_functions/MW_regulon_analysis.R')
-        # file.edit('/Users/m.wehrens/Documents/git_repos/Tomoseq_mw/sub_functions/MW_regulon_analysis.R')
+if (!exists('desired_command_regulon')) {
+    cmd=command_interpreter_mw(myargs)
+    desired_command_regulon=cmd$desired_command
+    config=cmd$config
 }
 
 ########################################################################
@@ -77,20 +61,21 @@ if (F) {
 #
 # Note that some sections are executed together.
 
-args = commandArgs(trailingOnly = T)
-
-library(stringr)
-if (!exists('desired_command')) {
-    if (length(args)==1) {
-        desired_command = unlist(str_split(string = args, pattern = '-'))
-        print(paste0('Sections to execute: ',paste0(desired_command,collapse = ', ')))
-        if(any(grepl(x = desired_command,pattern = 'CORES'))) {MYMCCORES=str_split(string = desired_command[grepl(x = desired_command,pattern = 'CORES')], pattern = '=')[[1]][2];print(paste0('MYMCCORES set to ',MYMCCORES))}
-    } else {
-        warning('Please pass 1 string, in the form \'arg1-arg2-arg3\' to give what section(s) to execute.')
-        print('Will proceed (this loads functions).')
-        desired_command='dummy'
-    }
-}
+# stuff below is now handled by SeuratRevisedAnalysis
+# args = commandArgs(trailingOnly = T)
+# 
+# library(stringr)
+# if (!exists('desired_command')) {
+#     if (length(args)==1) {
+#         desired_command = unlist(str_split(string = args, pattern = '-'))
+#         print(paste0('Sections to execute: ',paste0(desired_command,collapse = ', ')))
+#         if(any(grepl(x = desired_command,pattern = 'CORES'))) {MYMCCORES=str_split(string = desired_command[grepl(x = desired_command,pattern = 'CORES')], pattern = '=')[[1]][2];print(paste0('MYMCCORES set to ',MYMCCORES))}
+#     } else {
+#         warning('Please pass 1 string, in the form \'arg1-arg2-arg3\' to give what section(s) to execute.')
+#         print('Will proceed (this loads functions).')
+#         desired_command='dummy'
+#     }
+# }
 
 ######################################################################
 ######################################################################
@@ -192,11 +177,11 @@ giveMeRegulons_SeuratVersion = function(run_name, base_dir, current_matrix,
     # Finally, we can create a plot which shows the correlation coefficient matrix
     # and also the hierarchical clustering dendrogram and cluster classification
     # performed on it.
-    # Choose a cutoff value, e.g.:
-    # current_cutoff = regulon_object$auto_cutoff2
+    # With hierarchical_cutoff = NULL, gap_stat will be used OR Choose a cutoff value, e.g.:
+    # - current_cutoff = regulon_object$auto_cutoff2
     regulon_object = MW_determine_regulons_part5(regulon_object = regulon_object,
-        hierarchical_cutoff = NULL) # current_cutoff)
-        # With hierarchical_cutoff = NULL, gap_stat will be used
+        hierarchical_cutoff = NULL, KMAX_GAPTEST = 75) # current_cutoff)
+        
     
     # Now we can add some information about the genes (are they TF, ligand, receptor?)
     data_container=list() # Change this to get TF ligand stuff (should be easily doable)
@@ -269,8 +254,18 @@ regulon_overlap_heatmap = function(pooled_regulons, base_dir, run_name, MYTREECU
     p0
     ggsave(filename = paste0(base_dir,'Rplots/',run_name,'_7_Regulons_noCats.png'), plot = p0, width=nrow(matrix_compare)*.4, height=nrow(matrix_compare)*.4, units='cm')
     
+    # Check out how they group using hclust
     hclust_out = hclust(dist(matrix_compare), method='ward.D2')
-    plot(as.dendrogram(hclust_out))
+    
+    # Plot dendrogram
+    p=ggdendrogram(hclust_out)+give_better_textsize_plot(6)
+    ggsave(plot = p, filename = paste0(base_dir,'Rplots/',run_name,'_7_Regulons_Dendrogram_',run_name,'.png'), width = 80, height=80, units='mm')
+    
+    # 
+    pcjd_out = plot_clust_join_density(hclust_out)
+    p=pcjd_out$p2+theme_bw()+give_better_textsize_plot(8)
+    ggsave(plot = p, filename = paste0(base_dir,'Rplots/',run_name,'_7_Regulons_DendrogramCutoffAnalysis_',run_name,'.png'), width = 80, height=80, units='mm')
+    
     cutree_out = cutree(hclust_out, h = MYTREECUTTINGHEIGHT)
     cutree_df  = as.data.frame(as.factor(cutree_out)); colnames(cutree_df) = c('group')
     #annotation_colors = col_Dark2[1:max(cutree_out)]
@@ -298,6 +293,7 @@ regulon_overlap_heatmap = function(pooled_regulons, base_dir, run_name, MYTREECU
 ######################################################################
 
 ################################################################################
+# Run the actual analysis
 
 # Execute for all patients in a specific analysis
 
@@ -307,9 +303,9 @@ regulon_overlap_heatmap = function(pooled_regulons, base_dir, run_name, MYTREECU
 
 MAX_GENES=1000 # previously 500
 
-if ('run_regulon_step1' %in% desired_command) {
+if ('run_regulon_step1' %in% desired_command_regulon) {
     
-    ANALYSIS_NAME=desired_command[2]
+    ANALYSIS_NAME=config$dataset
     
     current_analysis=list()
     current_analysis[[ANALYSIS_NAME]] = 
@@ -386,16 +382,21 @@ if ('run_regulon_step1' %in% desired_command) {
     
 }    
     
+
 ################################################################################
 
 # ANALYSIS_NAME='ROOIJonly_RID2l'
 # ANALYSIS_NAME='HUonly_RID2l'
 # ANALYSIS_NAME='TEICHMANNonly_RID2l'
+#
 # ANALYSIS_NAME='ROOIJonly_RID2l_test'
 # ANALYSIS_NAME='original_HCM_SCS_data'
 # ANALYSIS_NAME = 'original_HCM_SCS_data_sel'
 
-if ('XXXXXXX' %in% desired_command) {
+CUTS_PER_DATASET = c(ROOIJonly_RID2l=3,TEICHMANNonly_RID2l=3.423,HUonly_RID2l=3)
+    # TODO (remove this) TEICHMANNonly_RID2l and HUonly_RID2l not calibrated yet
+
+if ('XXXXXXX' %in% desired_command_regulon) {
     
     load(file = paste0(base_dir,'Rdata/',ANALYSIS_NAME,'_regulons_per_patient.Rdata'))
     
@@ -413,15 +414,46 @@ if ('XXXXXXX' %in% desired_command) {
     # Now make the little comparison again
     
     overlap_output=
-        regulon_overlap_heatmap(regulon_gene_names, base_dir=base_dir, run_name =ANALYSIS_NAME)
+        regulon_overlap_heatmap(pooled_regulons = regulon_gene_names, base_dir=base_dir, run_name =ANALYSIS_NAME, 
+            MYTREECUTTINGHEIGHT = CUTS_PER_DATASET[ANALYSIS_NAME])
 
     save(list='overlap_output', file = paste0(base_dir,'Rdata/',ANALYSIS_NAME,'_regulons_per_patient_overlapData.Rdata'))
     
 }    
+
+################################################################################
+# Just plot all dendrograms for the separate patients/donors
+
+if ('XXXXXXX' %in% desired_command_regulon) {
+    
+    for (ANALYSIS_NAME in c('ROOIJonly_RID2l', 'HUonly_RID2l', 'TEICHMANNonly_RID2l')) {
+    
+        load(file = paste0(base_dir,'Rdata/',ANALYSIS_NAME,'_regulons_per_patient.Rdata'))
+        
+        donors=names(collected_regulon_objects[[ANALYSIS_NAME]])
+        
+        for (DONOR in donors) {
+            
+            current_hclust = collected_regulon_objects[[ANALYSIS_NAME]][[DONOR]]$hclust_out
+            chosen_cutoff = collected_regulon_objects[[ANALYSIS_NAME]][[DONOR]]$nCluster
+            cutree_out = cutree(collected_regulon_objects[[ANALYSIS_NAME]][[DONOR]]$hclust_out, k = chosen_cutoff)
+            df_assignements = as.data.frame(cutree_out)
+            names(df_assignements)='assignment'
+        
+            p=pheatmap(df_assignements, cluster_rows = current_hclust, cluster_cols = F, 
+                fontsize_row = 1, color = col_vector_60, cellwidth = 10, legend = F, labels_col=element_blank())
+        
+            nr_rows=length(collected_regulon_objects[[ANALYSIS_NAME]][[DONOR]]$rownames_cor_out_selected_2)
+            ggsave(filename = paste0(base_dir,'Rplots/',ANALYSIS_NAME,'_7_Regulons_DendrogramAss_',DONOR,'.pdf'), plot = p, width=50, height=nr_rows/2, units='mm')
+        }
+        
+    }
+}
     
 ################################################################################
+# Analyze overlap in regulons between the different patients
 
-if ('XXXXXXX' %in% desired_command) {
+if ('XXXXXXX' %in% desired_command_regulon) {
     
     # load overlap_output
     load(file = paste0(base_dir,'Rdata/',ANALYSIS_NAME,'_regulons_per_patient_overlapData.Rdata'))
@@ -452,6 +484,7 @@ if ('XXXXXXX' %in% desired_command) {
     
     # show lengths
     core_regulons_length = sapply(core_regulons, length)
+    core_regulons_length
     
     # Create output
     matrix_core_regulons_padded = t(plyr::ldply(core_regulons, rbind))
@@ -472,7 +505,7 @@ if (F) {
     # See exporatory analyses for comparison earlier and current data analyses
     
     
-    # Sizes of old regulons 
+    # Sizes of old regulons (ie comparison with old data)
     old_regulon_sizes = lapply(joined_regulons, length)
     ggplot(data.frame(old_regulon_size=unlist(old_regulon_sizes), name=names(old_regulon_sizes)))+
         geom_bar(aes(x=name,y=old_regulon_size), stat='identity')+theme_bw()+
@@ -509,7 +542,7 @@ if (F) {
     
     # All genes old analysis
     unique(unlist(joined_regulons)) # ±1000 genes
-    unique(unlist(regulon_gene_names)) # ±375 genes
+    unique(unlist(regulon_gene_names)) # ±771 genes
 
 }
 

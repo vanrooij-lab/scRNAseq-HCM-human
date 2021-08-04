@@ -57,14 +57,22 @@
 #
 # Note that some sections are executed together.
 
-args = commandArgs(trailingOnly = T)
+print('Firing main module.')
+
+if (!exists('myargs')) {
+    myargs = commandArgs(trailingOnly = T)
+    print(paste0('(main) myargs=',myargs))
+} else { print(paste0('(main) myargs=',myargs)) }
 
 library(stringr)
-if (!exists('desired_command')) {
-    if (length(args)==1) {
+command_interpreter_mw = function(myargs) {
+    
+    if (length(myargs)==1) {
+        
+        print('Interpreting command line input')
         
         # split input argument in vector
-        desired_command = unlist(str_split(string = args, pattern = '-'))
+        desired_command = unlist(str_split(string = myargs, pattern = '-'))
         
         # quickly parse parameters (there might be a lib for this, but ok)
         config=list()
@@ -72,12 +80,21 @@ if (!exists('desired_command')) {
             print(command)
             spl=str_split(string = command,pattern = '=')[[1]]
             config[[spl[1]]]=spl[2]
+            print(paste0('Setting config$',spl[1],' to ' ,spl[2]))
         }
         # convert numerical strings to numeric
         config[grepl(config, pattern = '^[0-9]')]=as.numeric(config[grepl(config, pattern = '^[0-9]')])
            
         print(paste0('Sections to execute: ',paste0(desired_command,collapse = ', ')))
     } else {stop('Please pass 1 string, in the form \'arg1-arg2-arg3=x\' to give what section(s) to execute.')}
+
+    return(list(desired_command=desired_command, config=config))
+}
+
+if (!exists('desired_command')) {
+    cmd=command_interpreter_mw(myargs)
+    desired_command=cmd$desired_command
+    config=cmd$config
 }
 
 ########################################################################
@@ -120,9 +137,19 @@ library(pryr)
 library(ggplot2)
 library(stringr)
 
+library(patchwork)
+library(scales)
+
+library(ggrepel)
+
+#####
+
+#####
+
 source(paste0(script_dir,'Functions/Load-Pool-Scale_Simple_MW.R'))
 source(paste0(script_dir,'Functions/HCM-SCS_2021-06_SeuratAnalysisPipeline.R'))
 source(paste0(script_dir,'Functions/MW_general_functions.R'))
+source(paste0(script_dir,'Functions/MW_customized_plot_functions.R'))
 
 # Some colors
 library(RColorBrewer)
@@ -1018,25 +1045,39 @@ if ('run_batch_corr_sep_nowplot_and_DE' %in% desired_command) {
 
 if ('more_custom_plots' %in% desired_command) {
     
-    load(file = paste0(base_dir,'Rdata/RHL_SeuratObject_merged_noMito_sel.Rdata'))
-    current_analysis=list()
-    current_analysis$merged_noMito_sel=RHL_SeuratObject_merged_noMito_sel
-    rm('RHL_SeuratObject_merged_noMito_sel')
+    CURRENT_RUNNAME='all_RID2l_VAR'
+    current_analysis = list()
+    current_analysis[[CURRENT_RUNNAME]] = 
+        LoadH5Seurat(file = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_merged_noMito_sel.',CURRENT_RUNNAME,'.h5seurat'))
     
     # Add one-letter shorthand for dataset
     name_change = c("vRooij"="R", "Hu"="H", "Teichmann"="T")
-    current_analysis$merged_noMito_sel$annotation_paper_oneletter_fct = factor(
-        name_change[current_analysis$merged_noMito_sel$annotation_paper_str], levels=c('R','H','T'))
+    current_analysis[[CURRENT_RUNNAME]]$annotation_paper_oneletter_fct = factor(
+        name_change[current_analysis[[CURRENT_RUNNAME]]$annotation_paper_str], levels=c('R','H','T'))
+    # Create custom order for annotation
+    current_analysis[[CURRENT_RUNNAME]]$annotation_paper_fct = 
+        factor(current_analysis[[CURRENT_RUNNAME]]$annotation_paper_str, levels=c("vRooij", "Hu", "Teichmann"))
     
     # Stress gene plots
-    ANALYSIS_NAME='merged_noMito_sel'; LIST_NAME='stress'; CAT = 'annotation_paper_oneletter_fct'; CATNAME = 'Dataset'
-    genes_of_interest = c('NPPA', 'NPPB', 'ACTA1', 'MYH7', 'MYH6')
+    LIST_NAME='stress'; CAT = 'annotation_paper_oneletter_fct'; CATNAME = 'Dataset'; PLOTTYPE='boxplot'
+    genes_of_interest = c('NPPA', 'NPPB', 'ACTA1', 'MYH7')#, 'MYH6')
     plot_list = lapply(genes_of_interest, 
-        function(x) {shorthand_plotViolinBox_custom(current_analysis,analysis_name=ANALYSIS_NAME,cat_by = CAT, gene_of_interest=x,base_dir=base_dir, cat_name = CATNAME)})
+        function(x) {shorthand_plotViolinBox_custom(current_analysis,analysis_name=CURRENT_RUNNAME,cat_by = CAT, 
+                                                    gene_of_interest=x,base_dir=base_dir, cat_name = CATNAME,
+                                                    type = 'violin')})
     p=wrap_plots(plot_list, nrow = 1)& theme(plot.margin = margin(t = 0, r = 0, b = 0, l = 5, unit = "pt"))
     #p
-    ggsave(plot = p,filename = paste0(base_dir, 'Rplots/',ANALYSIS_NAME,'_6_violin_by-', CAT, '_',LIST_NAME,'.pdf'), width = min(18.64, 4*length(genes_of_interest)), height= 4, units='cm')
+    ggsave(plot = p,filename = paste0(base_dir, 'Rplots/',CURRENT_RUNNAME,'_6_',PLOTTYPE,'_by-', CAT, '_',LIST_NAME,'.pdf'), width = min(18.64, 4*length(genes_of_interest)), height= 4, units='cm')
 
+    # Now create MYH6 separately, also use to add legend
+    p_=shorthand_plotViolinBox_custom(current_analysis,analysis_name=CURRENT_RUNNAME,cat_by = 'annotation_paper_fct', 
+                                                    gene_of_interest='MYH6',base_dir=base_dir, cat_name = CATNAME,
+                                                    type = 'violin')+theme(legend.position='right')
+    ggsave(plot = p_,filename = paste0(base_dir, 'Rplots/',analysis_name,'_6_',type,'_FORLEGEND.pdf'), width = 7, height= 6, units='cm')
+    
+    
+    
+    
 }
 
 ################################################################################
@@ -1064,6 +1105,7 @@ if (F) {
 
 # DATASET_NAME='TEICHMANNonly_RID2l'
 # DATASET_NAME='ROOIJonly_RID2l'
+# DATASET_NAME='ROOIJonly_Int1c'
 # DATASET_NAME='HUonly_RID2l'
 # DATASET_NAME='HUonly'
 if (F) {
@@ -1077,9 +1119,10 @@ if (F) {
 }
 if (F) {
     # To load full pooled thing
+    CURRENT_RUNNAME='all_RID2l_VAR'
     current_analysis = list()
-    load(file = paste0(base_dir,'Rdata/RHL_SeuratObject_merged_noMito_sel.Rdata'))
-    current_analysis$merged_noMito_sel = RHL_SeuratObject_merged_noMito_sel
-    rm('RHL_SeuratObject_merged_noMito_sel')
+    current_analysis[[CURRENT_RUNNAME]] = 
+        LoadH5Seurat(file = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_merged_noMito_sel.',CURRENT_RUNNAME,'.h5seurat'))
+        # NOTE: RHL_SeuratObject_merged_noMito_sel.Rdata contains data that isn't normalized properly
     
 }

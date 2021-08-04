@@ -4,14 +4,27 @@
 #
 #
 
+print('Executing main script to load libraries')
+
+# set script dir (note: overwritten by loading SeuratRevisedAnalysis below)
+if (exists('LOCAL')) {
+    script_dir = '/Users/m.wehrens/Documents/git_repos/SCS_More_analyses/'
+} else {
+    script_dir = '/hpc/hub_oudenaarden/mwehrens/scripts/SCS_HCM_analysis/'
+}
+
+desired_command='dummy'
+source(paste0(script_dir, 'HCM-SCS_2021-06_SeuratRevisedAnalysis_v2_UmiTools.R'))
+    # Also loads already
+    # source(paste0(script_dir,'Functions/MW_general_functions.R'))
+    # file.edit('/Users/m.wehrens/Documents/git_repos/SCS_More_analyses/Functions/MW_general_functions.R')
+        # Volcano plot functions (other copies of this function exist in other repos)
+
 print('Starting correlation script ..')
 
 library(Matrix) # required to transpose the sparse matrix, dgCMatrix
 library(pheatmap)
 
-source(paste0(script_dir,'Functions/MW_general_functions.R'))
-# file.edit('/Users/m.wehrens/Documents/git_repos/SCS_More_analyses/Functions/MW_general_functions.R')
-    # Volcano plot functions (other copies of this function exist in other repos)
 
 # For the integrated dataset
 # currentSeuratObject_recombined3@assays$integrated@scale.data
@@ -27,10 +40,15 @@ OBJECTS_TO_ANALYZE = c('ROOIJonly_RID2l','HUonly_RID2l', 'TEICHMANNonly_RID2l')
 INTEGRATED_OR_NOT = c('no'              , 'no'                     ,'no')
 names(INTEGRATED_OR_NOT)=OBJECTS_TO_ANALYZE
 
+# For testing purposes
+#OBJECTS_TO_ANALYZE = c('ROOIJonly_RID2l')
+#INTEGRATED_OR_NOT = c('no'              )
+#names(INTEGRATED_OR_NOT)=OBJECTS_TO_ANALYZE
+
 current_analysis=list()
 for (analysis_name in OBJECTS_TO_ANALYZE) {
 
-    # analysis_name = 'HUonly_RID2l'
+    # analysis_name = 'ROOIJonly_RID2l'
     
     print(paste0('Loading ', analysis_name))
     
@@ -44,7 +62,10 @@ for (analysis_name in OBJECTS_TO_ANALYZE) {
 # To do: automate this such that it just loops over multiple datasets, patients, and the pooled/integrated data
 
 OBJECTS_TO_ANALYZE=OBJECTS_TO_ANALYZE # defined above; this is just a reminder
-GENES_OF_INTEREST=c('TTN','NPPA')
+GENES_OF_INTEREST_ = c('TTN','NPPA')
+
+# let's assume the genes of interest are among the features in each dataset 
+GENES_OF_INTEREST = shorthand_seurat_fullgenename(seuratObject = current_analysis[[1]], gene_names = GENES_OF_INTEREST_)
 
 Volcano_df_collection=list()
 for (analysis_name in OBJECTS_TO_ANALYZE) {
@@ -83,21 +104,163 @@ for (analysis_name in OBJECTS_TO_ANALYZE) {
                 
             # Make a plot
             p=plot_volcano3(my_corrs_df_current = Volcano_df_collection[[analysis_name]][[gene_name]][[current_patient]],mycex=3,
-                            NRLABELED=20,mypvaltreshold=0.01,manual_gene_name = gene_name,
+                            NRLABELED=20,mypvaltreshold=0.01,manual_gene_name = shorthand_cutname(gene_name),
                               mypointsize=.1, mylinesize=.25, mytextsize=10)+
                 ggtitle(paste0('Correlations with ',gene_name,'\n(',analysis_name,'); ',current_patient,''))
+            # p
             
             # Save & export it
             ggsave(filename = paste0(base_dir,'Rplots/',analysis_name,'_6_Volcano_',gene_name,'_',current_patient,'.png'), 
                 plot = p, height=7.5, width=7.5, units = 'cm')
-            openxlsx::write.xlsx(x = Volcano_df_collection[[analysis_name]][[gene_name]], file = paste0(base_dir,'Rplots/',analysis_name,'_6_Volcano_',gene_name,'.xlsx'))
             
         }    
+
+        # Export xlsx for all patients at once
+        openxlsx::write.xlsx(x = Volcano_df_collection[[analysis_name]][[gene_name]], file = paste0(base_dir,'Rplots/',analysis_name,'_6_Volcano_',gene_name,'.xlsx'), overwrite=T)
     }
     
 }#; beepr::beep()
 
 save(list = c('Volcano_df_collection'), file = paste0(base_dir,'Rdata/Volcano_df_collection__for_all.Rdata'))
+
+# Prettier plots also
+for (analysis_name in OBJECTS_TO_ANALYZE) {
+    for (gene_name in GENES_OF_INTEREST) {
+        patients_current_dataset = unique(names(Volcano_df_collection[[analysis_name]][[gene_name]]))
+        for (current_patient in patients_current_dataset) {
+            pvalslog10_=-log10(Volcano_df_collection[[analysis_name]][[gene_name]][[current_patient]]$pval.adj)
+            p=
+                plot_volcano3(my_corrs_df_current = Volcano_df_collection[[analysis_name]][[gene_name]][[current_patient]],mycex=3,
+                            NRLABELED=15,mypvaltreshold=0.01,manual_gene_name = shorthand_cutname(gene_name),
+                              mypointsize=.1, mylinesize=.25, mytextsize=8, mylabelsize = 6)+
+                              xlab('Correlation coefficient')+ylab('-log10(p)')+
+                              ylim(c(-20, 1.1*max(pvalslog10_[is.finite(pvalslog10_)])))+
+                                # ggtitle
+                                    if (grepl(x = current_patient,pattern = 'pooled')[1]) {    
+                                        ggtitle(paste0('Correlations with ',shorthand_cutname(gene_name)))
+                                    } else {ggtitle(paste0('Correlations with ',shorthand_cutname(gene_name),'\n(',analysis_name,'); ',current_patient,''))}
+            
+            p
+            ggsave(filename = paste0(base_dir,'Rplots/',analysis_name,'_6_VolcanoPrettier_',gene_name,'_',current_patient,'.pdf'), 
+                plot = p, height=50, width=61, units = 'mm')
+        }
+    }
+}
+
+################################################################################
+# An additional nice summary plot would be where we show the average and CV
+# in a plot
+
+load(paste0(base_dir,'Rdata/Volcano_df_collection__for_all.Rdata'))
+
+for (CURRENT_DATASET in OBJECTS_TO_ANALYZE) {
+    for (CURRENT_GENE in c('ENSG00000155657:TTN', 'ENSG00000175206:NPPA')) {
+
+    # CURRENT_DATASET = 'ROOIJonly_RID2l'; CURRENT_GENE = 'ENSG00000155657:TTN'
+    # CURRENT_DATASET = 'ROOIJonly_RID2l'; CURRENT_GENE = 'ENSG00000175206:NPPA'
+    # CURRENT_DATASET = 'TEICHMANNonly_RID2l'
+    # CURRENT_DATASET = 'HUonly_RID2l'
+    
+    # Volcano_df_collection[[CURRENT_DATASET]][[CURRENT_GENE]]
+    
+    sel_idx = !grepl('pooled',names(Volcano_df_collection[[CURRENT_DATASET]][[CURRENT_GENE]])  )
+    
+    # First collect shared names
+    all_rownames = lapply(Volcano_df_collection[[CURRENT_DATASET]][[CURRENT_GENE]][sel_idx], rownames)
+    shared_genes = Reduce(intersect, all_rownames) 
+    shared_genes = shared_genes[!(CURRENT_GENE==shared_genes)]
+    
+    # Bind data
+    current_dfs_donorsNames_selGene =
+        lapply(names(Volcano_df_collection[[CURRENT_DATASET]][[CURRENT_GENE]][sel_idx]),
+            function(df_name) { df = Volcano_df_collection[[CURRENT_DATASET]][[CURRENT_GENE]][sel_idx][[df_name]][shared_genes,]
+                                df$donor = df_name
+                                return(df)})
+    df_melted = Reduce(rbind, current_dfs_donorsNames_selGene)
+    
+    df_melted$pval.adj.sign = df_melted$pval.adj<0.05
+    
+    df_correlations_mean = 
+        aggregate(df_melted[,c('corr','pval.adj')], by=list(gene_name=df_melted$gene_name), mean)
+    df_correlations_mean$sign.donors = 
+        aggregate(df_melted[,c('pval.adj.sign')], by=list(gene_name=df_melted$gene_name), sum)$x
+    df_correlations_SE = 
+        aggregate(df_melted[,c('corr','pval.adj')], by=list(gene_name=df_melted$gene_name), function(x) {SE = sqrt(var(x)/length(x))})
+    
+    df_correlations_SE$corr_min = df_correlations_mean$corr-df_correlations_SE$corr
+    df_correlations_SE$corr_max = df_correlations_mean$corr+df_correlations_SE$corr
+    
+    df_correlations_SE$pval_min = df_correlations_mean$pval.adj-df_correlations_SE$pval.adj
+    df_correlations_SE$pval_max = df_correlations_mean$pval.adj+df_correlations_SE$pval.adj
+    
+    df_correlations_SE$corr_mean = df_correlations_mean$corr
+    df_correlations_SE$pval_mean = df_correlations_mean$pval.adj
+    
+    df_correlations_SE_subset = df_correlations_SE[df_correlations_SE$pval_mean<.05, ]
+    
+    df_correlations_SE_subset$gene=shorthand_cutname(df_correlations_SE_subset$gene_name)
+    
+    #
+    if (nrow(df_correlations_SE_subset)>1) {
+    p=ggplot(df_correlations_SE_subset, aes(x=corr_mean, y=-log10(pval_mean))) + 
+        geom_errorbarh(aes(xmin = corr_min,xmax = corr_max),color='darkgrey') + 
+        geom_errorbar(aes(ymin = -log10(pval_mean),ymax = -log10(pval_max)), color='darkgrey') +
+        geom_point()+
+        xlim(c(-1,1))+theme_bw()+
+        geom_text_repel(data=df_correlations_SE_subset[df_correlations_SE_subset$pval_mean<1e-3, ], aes(label=gene), color='red', max.overlaps = 100, min.segment.length = 0) #+ylim(c())
+    } else {p=ggplot(data.frame(x=1,y=1,t='non_found'))+geom_text(aes(x=x,y=y,label=t))}
+    # p
+    ggsave(filename = paste0(base_dir,'Rplots/',CURRENT_DATASET,'_6_CorrelationsGenes_Means_',CURRENT_GENE,'_.pdf'), 
+                plot = p, height=80, width=46*2, units = 'mm') # 185/4
+    
+    # Slightly adjusted plot (for NPPA, mostly)
+    selected_genes=df_correlations_mean[df_correlations_mean$sign.donors>1,]$gene_name
+    df_melted_sel = df_melted[df_melted$gene_name %in% selected_genes,]
+    df_melted_sel$log10_pval_=-log10(df_melted_sel$pval.adj)
+    myymax=max(df_melted_sel$log10_pval_[is.finite(df_melted_sel$log10_pval_)])
+    if (any(is.infinite(df_melted_sel$log10_pval_))) {inf_line=T} else {inf_line=F}
+    df_melted_sel$log10_pval_[is.infinite(df_melted_sel$log10_pval_)]=myymax*1.1
+    # create the plot
+    p=ggplot(df_melted_sel, aes(x=corr, y=log10_pval_, color=donor)) 
+    if (inf_line) {p=p+geom_hline(yintercept = myymax*1.1, color='black', size=0.5, linetype='dotted')}
+    p=p+
+        geom_point()+
+        #geom_errorbarh(aes(xmin = corr_min,xmax = corr_max)) + 
+        #geom_errorbar(aes(ymin = -log10(pval_mean),ymax = -log10(pval_max))) +
+        xlim(c(-1,1))+ylim(c(-myylim*.03,myymax*1.2))+theme_bw()+
+        geom_text_repel(data=df_melted_sel[order(df_melted_sel$pval),][1:20,],aes(label=gene_name_short), color='red', max.overlaps = 100, min.segment.length = 0)
+    # p
+    ggsave(filename = paste0(base_dir,'Rplots/',CURRENT_DATASET,'_6_CorrelationsGenesColor_',CURRENT_GENE,'_.pdf'), 
+                plot = p, height=80, width=46*2, units = 'mm') # 185/4
+
+    # Heatmap displaying significant correlations
+    # determing ordering
+    gene_order = df_correlations_mean[df_correlations_mean$gene_name %in% selected_genes,][order(df_correlations_mean[df_correlations_mean$gene_name %in% selected_genes,]$corr, decreasing = T),]$gene
+    gene_order_short = shorthand_cutname(gene_order)
+    
+    ncol_effective=length(unique(df_melted_sel$donor))
+    nrow_effective=length(unique(df_melted_sel$gene_name_short))
+    # extra selection if necessary (because some plots show MANY genes)
+    if (nrow_effective>100) {
+        df_melted_sel_sel=df_melted_sel[
+            df_melted_sel$gene_name %in% df_correlations_mean[order(df_correlations_mean$sign.donors, decreasing = T),][1:100,]$gene_name,]
+        nrow_effective=100
+    } else {df_melted_sel_sel=df_melted_sel}
+    p=ggplot(df_melted_sel_sel, aes(x=donor, y=factor(gene_name_short, levels=rev(gene_order_short)), fill=corr, color=pval.adj.sign)) +
+        geom_tile(size=.5, width=0.7, height=0.7)+
+        scale_color_manual(values=c('white','black'))+
+        scale_fill_gradientn(colours = rainbow_colors, breaks=seq(-1,1,.5), limits=c(-1,1))+
+        geom_text(aes(label=round(corr,2)), color='#666666', size=8/.pt)+
+        theme_bw()+ylab(element_blank())+give_better_textsize_plot(8)+
+        ggtitle(paste0('Correlations with ',shorthand_cutname(CURRENT_GENE)))+theme(legend.position = 'none')
+    # p 
+    
+    ggsave(filename = paste0(base_dir,'Rplots/',CURRENT_DATASET,'_6_TableSignCorrelations_',CURRENT_GENE,'_.pdf'), 
+                    plot = p, height=5.7*nrow_effective, width=ncol_effective*18, units = 'mm') # 185/4 || 46*2
+    
+    }
+}
+            
 
 
 ################################################################################

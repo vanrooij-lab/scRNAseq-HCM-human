@@ -100,16 +100,18 @@ mySeuratCommonPlots = function(mySeuratObject,
     # Show umap with annotations
     for (current_annotation in c('annotation_sample_str','annotation_patient_str','annotation_paper_str','annotation_region_str','ident')) {
         # create labeled and unlabeled version
-        p=DimPlot(mySeuratObject, group.by = current_annotation, cols = rep(col_vector_60,2), label = T, repel = T, label.size = 7)
+        p=DimPlot(mySeuratObject, group.by = current_annotation, cols = rep(col_vector_60,2), label = T, repel = T, label.size = 7)+
+            theme_void()+ggtitle(element_blank())+theme(legend.position = 'none')
+        # p
         p_nl=DimPlot(mySeuratObject, group.by = current_annotation, cols = rep(col_vector_60,2))
         # remove legend if it's too large (prevents errors)
         if(!(current_annotation=='ident')) {if (dim(unique(mySeuratObject[[current_annotation]]))[1]>30) {
-         p=p+theme(legend.position = 'none')   
+         p=p+theme(legend.position = 'none') # now redundant
          p_nl=p_nl+theme(legend.position = 'none')
         }}
         # Save files
-        ggsave(filename = paste0(base_dir,'Rplots/',run_name,'_2_umapLabeled_by_',current_annotation,'.png'), plot = p, height=7, width=7)
-        ggsave(filename = paste0(base_dir,'Rplots/',run_name,'_2_umap_by_',current_annotation,'.png'), plot = p_nl, height=7, width=7)
+        ggsave(plot = p, filename = paste0(base_dir,'Rplots/',run_name,'_2_umapLabeled_by_',current_annotation,'.pdf'), height=5.5, width=5.5, units='cm')
+        ggsave(plot = p_nl, filename = paste0(base_dir,'Rplots/',run_name,'_2_umap_by_',current_annotation,'.pdf'), height=7, width=7, units='cm')
     }
     
     for (marker in mymarkers_ext[!is.na(mymarkers_ext)]) {
@@ -153,16 +155,27 @@ mySeuratCommonPlots = function(mySeuratObject,
     }
     
     # Custom plot that shows distribution of patients over clusters
+    # mymaxy=1.5*max(table(Idents(mySeuratObject)))
     p=ggplot(data.frame( cluster = Idents(mySeuratObject),
                     Donor = mySeuratObject$annotation_patient_fct))+
         geom_bar(aes(x=cluster, fill=Donor))+theme_bw()+
-        xlab('Cluster')+ylab('Number of cells')+give_better_textsize_plot(10)
-    ggsave(filename = paste0(base_dir,'Rplots/',run_name,'_5_Barplot_PatientCluster_distr.png'), 
-        plot = p, height=7.5, width=7.5, units='cm')
+        xlab('Cluster')+ylab('Number of cells')+
+        give_better_textsize_plot(8)+
+        theme(legend.position = 'right', legend.key.size = unit(3, "mm"))
+        #theme(legend.position=c(.99,.99), legend.justification = c(1,1), legend.key.size = unit(3, "mm"))
+        # ylim(c(0,mymaxy)); p
+    # p
+    ggsave(filename = paste0(base_dir,'Rplots/',run_name,'_5_Barplot_PatientCluster_distr.pdf'), 
+        plot = p, height=4, width=5, units='cm')
     
 }
 
-diff_express_clusters = function(mySeuratObject, mc.cores=8) {
+diff_express_clusters = function(mySeuratObject, mc.cores=8, custom_ident=NULL) {
+    
+    # set custom clustering gruop if desired
+    if (!is.null(custom_ident)) {
+        Idents(mySeuratObject) <- custom_ident
+    }
     
     all_markers = 
         mclapply(X =  levels(Idents(mySeuratObject)), 
@@ -184,19 +197,24 @@ diff_express_clusters = function(mySeuratObject, mc.cores=8) {
     
 }
 
-diff_express_clusters_save_results = function(all_markers, run_name, base_dir, topX=10) {
+# note things are saved like
+# load('/Users/m.wehrens/Data/_2019_02_HCM_SCS/2021_HPC_analysis.3/Rdata/DE_cluster_ROOIJonly_RID2l.Rdata')
+# all_markers=DE_cluster[[ANALYSIS_NAME]]
+diff_express_clusters_save_results = function(all_markers, run_name, base_dir, topX=10, easy_names=T, save=T) {
      
     # Now collect the top-10 (log2fold) genes for each
     topHitsPerCluster=
         data.frame(lapply(all_markers, function(x) {rownames(x[order(x$avg_log2FC, decreasing = T),][1:topX,])} ))
-    names(topHitsPerCluster)=names(all_markers)
+    colnames(topHitsPerCluster)=names(all_markers)
+    if (easy_names) {topHitsPerCluster=shorthand_cutname_table(topHitsPerCluster)}
     # and save
-    openxlsx::write.xlsx(x = topHitsPerCluster, file = paste0(base_dir,'Rplots/ClusterTopHits_',run_name,'.xlsx'))
+    if (save) {openxlsx::write.xlsx(x = topHitsPerCluster, file = paste0(base_dir,'Rplots/ClusterTopHits_',run_name,'.xlsx'))}
     
     # Also save the whole thing to Excel
-    all_markers = lapply(all_markers, function(df) {df$gene = rownames(df); df = df[order(df$avg_log2FC,decreasing = T),]; return(df)})
-    openxlsx::write.xlsx(x = all_markers, file = paste0(base_dir,'Rplots/Cluster_DE_full_',run_name,'.xlsx'))
+    all_markers = lapply(all_markers, function(df) {df$gene = rownames(df); df$gene_short = shorthand_cutname(df$gene); df = df[order(df$avg_log2FC,decreasing = T),]; return(df)})
+    if (save) {openxlsx::write.xlsx(x = all_markers, file = paste0(base_dir,'Rplots/Cluster_DE_full_',run_name,'.xlsx'))}
        
+    return(topHitsPerCluster)
 }
 
 
