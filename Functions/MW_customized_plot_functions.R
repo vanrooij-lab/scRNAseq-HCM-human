@@ -66,50 +66,65 @@ shorthand_plotViolinBox_custom = function(myseuratobjectlist, analysis_name, cat
     
 }
 
-shorthand_cutname = function(gene_names) {
+shorthand_cutname = function(gene_names, PART1OR2=2) {
     
   # if something to be split
   if (any(grepl(gene_names, pattern = ':'))) {
     # split, also for genes w/o 2nd annotation, just return 1st part instead
-    return(sapply(str_split(gene_names, pattern = ':'), function(Y) { if (Y[[2]]=="") {Y[[1]]} else {Y[[2]]} }))
+    return(sapply(str_split(gene_names, pattern = ':'), function(Y) { if (Y[[2]]=="") {Y[[1]]} else {Y[[PART1OR2]]} }))
   } else {return(gene_names)}
     
 }
 
-shorthand_cutname_table = function(gene_table) {
+shorthand_cutname_table = function(gene_table, PART1OR2=2) {
     
  sapply(gene_table, function(X) {
-            sapply(str_split(X, pattern = ':'), function(Y) { if (Y[[2]]=="") {Y[[1]]} else {Y[[2]]} })
+            sapply(str_split(X, pattern = ':'), function(Y) { if (is.na(Y)) {return(NA)} else if (Y[[2]]=="") {Y[[1]]} else {Y[[PART1OR2]]} })
             })   
 }
 
 ################################################################################
 
 # function to plot expression of a gene
-shorthand_seurat_custom_expr = function(seuratObject, gene_of_interest, textsize=8, pointsize=1) {
+shorthand_seurat_custom_expr = function(seuratObject, gene_of_interest, textsize=8, pointsize=1, mypercentile=0.03, custom_title=NULL,mymargin=0.1) {
     
+    if (length(gene_of_interest)>1){
+      print('You gave >1 genes, assuming you want composite expression.')  
+      print('(Otherwise, use lapply & wrap_plots.)')
+    }
+    if (is.null(custom_title)) {
+      mytitle = gene_of_interest
+    } else { mytitle = custom_title }
+  
     # gene_of_interest = 'KRT6A'
     print(paste0('Retrieving ',gene_of_interest))
-    gene_of_interest_fullname =rownames(seuratObject)[grepl(paste0(':',gene_of_interest,'$'),rownames(seuratObject))]
+    gene_of_interest_fullname = shorthand_seurat_fullgenename(seuratObject, gene_of_interest)
     
     # retrieve current expression
     current_expr = seuratObject@assays$RNA@data[gene_of_interest_fullname,]
-    expr_limits=calc_limits(current_expr, percentile = .03)
+    
+    # Create composite expression
+    if (length(gene_of_interest)>1){
+      print('Calculating composite..')
+      scaled_expr = t(scale(t(current_expr),center = F, scale = T))
+      current_expr=colSums(scaled_expr)
+    }
+    
+    expr_limits=calc_limits(current_expr, percentile = mypercentile)
     
     ggplot(data.frame(UMAP_1=seuratObject@reductions$umap@cell.embeddings[,1],
                       UMAP_2=seuratObject@reductions$umap@cell.embeddings[,2],
                       expr=current_expr),
             mapping = aes(x=UMAP_1, y=UMAP_2, color=expr))+
-        geom_point(size = pointsize, stroke = 0, shape = 16)+scale_color_gradientn(colours=rainbow_colors, limits=c(0,expr_limits[2]), oob=squish)+
+        geom_point(size = pointsize, stroke = 0, shape = 16)+
+        scale_color_gradientn(colours=rainbow_colors, limits=c(0,expr_limits[2]), oob=squish)+
         #+ggtitle(gene_of_interest)+
-        annotate("text", -Inf, Inf, label = gene_of_interest, hjust = 0, vjust = 1, size=textsize / .pt)+
+        annotate("text", -Inf, Inf, label = mytitle, hjust = 0, vjust = 1, size=textsize / .pt)+
         theme_void()+
         #give_better_textsize_plot(textsize)+
-        theme(legend.position = 'none', plot.margin = margin(0.1,0.1,0,0,'mm'))
+        theme(legend.position = 'none', plot.margin = margin(mymargin,mymargin,0,0,'mm'))
         
         
-        
-       
 }
 # shorthand to get full names
 shorthand_seurat_fullgenename = function(seuratObject, gene_names) {

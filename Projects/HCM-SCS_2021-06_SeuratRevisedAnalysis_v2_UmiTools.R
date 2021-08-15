@@ -130,8 +130,15 @@ if (exists('LOCAL')) {
         # '/hpc/hub_oudenaarden/mwehrens/fastq/WANG4/mapping/counttables/'
 }
 
-library(Seurat)
-library(SeuratDisk)
+library(Seurat) 
+    # conda install -c bioconda r-seurat
+library(SeuratDisk) 
+    # conda install hdf5 
+        # Now make sure that Rstudio uses the python version
+        # linked to this installation
+    # install.packages('hdf5r')
+    # install.packages("remotes")
+    # remotes::install_github("mojaveazure/seurat-disk")
 library(pryr)
 
 library(ggplot2)
@@ -142,9 +149,12 @@ library(scales)
 
 library(ggrepel)
 
-#####
+# also required:
+# package manager: mutoss, openxlsx
+# biocmanager: biomart, multtest, limma, GOstats, org.Mm.eg.db, org.Hs.eg.db
 
-#####
+#### CONTINUE LOADING STUFF HERE 
+# (install biomart next)
 
 source(paste0(script_dir,'Functions/Load-Pool-Scale_Simple_MW.R'))
 source(paste0(script_dir,'Functions/HCM-SCS_2021-06_SeuratAnalysisPipeline.R'))
@@ -800,9 +810,24 @@ if ('split_datasets' %in% desired_command) {
         filename = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_HUonly.h5seurat'))
     SaveH5Seurat(object = RHL_SeuratObject_nM_sel_TEICHMANNonly, overwrite = T,
         filename = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_TEICHMANNonly.h5seurat'))
+        # RHL_SeuratObject_nM_sel_TEICHMANNonly = LoadH5Seurat(file = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_TEICHMANNonly.h5seurat'))
     SaveH5Seurat(object = RHL_SeuratObject_nM_sel_ROOIJonly, overwrite = T,
         filename = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_ROOIJonly.h5seurat'))
+    
+    # Perhaps a more honest comparison between Rooij and Teichmann is to 
+    # select for septal cells.
+    # So let's also create a Teichmann version of the data which only contains its
+    # septal cells
+    # 
+    # Subset
+    RHL_SeuratObject_nM_sel_TEICHMANN.SP.only =
+        subset(RHL_SeuratObject_nM_sel_TEICHMANNonly, annotation_region_str == 'SP')
+    # Save
+    SaveH5Seurat(object = RHL_SeuratObject_nM_sel_TEICHMANN.SP.only, overwrite = T,
+        filename = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_TEICHMANN.SP.only.h5seurat'))
+    
 }
+
 
 ################################################################################
 

@@ -511,7 +511,7 @@ MW_determine_regulons_part4 = function(regulon_object) {
     return(regulon_object)
 }
 
-MW_determine_regulons_part5 = function(regulon_object, hierarchical_cutoff=NULL, KMAX_GAPTEST=20) {    
+MW_determine_regulons_part5 = function(regulon_object, hierarchical_cutoff=NULL, KMAX_GAPTEST=20, hierarchical_cutoff_fallback=NULL, BIGB=100) {    
     
     GAPSTATMETHOD= 'Tibs2001SEmax' #'Tibs2001SEmax'
     
@@ -526,30 +526,101 @@ MW_determine_regulons_part5 = function(regulon_object, hierarchical_cutoff=NULL,
     # Either calculate optimal number of clusters (# regulons) using gap-stat
     if (is.null(hierarchical_cutoff)) {
         
-        # Using the hierarchical clustering we did previously
-        gap_stat <- cluster::clusGap(cor_out_selected_2, FUN = function(matrix, k, mytree) {return(list(cluster=(cutree(mytree, k = k))))}, 
-            mytree=hclust_out, K.max = min(KMAX_GAPTEST, nrow(cor_out_selected_2)))
+        # It appears an issue can arise in the maxSE function, when not all SE.f >= 0.
+        # (for which by the way I don't see a specific reason for occurring ..)
+        # So I'll just use a try-catch statement here ..
+        return1=tryCatch({
+                
+            # Using the hierarchical clustering we did previously
+            gap_stat <- cluster::clusGap(cor_out_selected_2, FUN = function(matrix, k, mytree) {return(list(cluster=(cutree(mytree, k = k))))}, 
+                mytree=hclust_out, K.max = min(KMAX_GAPTEST, nrow(cor_out_selected_2)), B = BIGB)
+                # Joep used kmeans before 
+                # gap_stat <- cluster::clusGap(cor_out_selected_2, FUN = kmeans, nstart = 10, K.max = 20, B = 10) # note: nstart is #random configs to start, B=bootstrapping, K.max=max. # clusters
+            
+            nCluster = cluster::maxSE(f=gap_stat$Tab[,'gap'], SE.f = gap_stat$Tab[,'SE.sim'], method = GAPSTATMETHOD)
+            p=ggplot(data.frame(gap=gap_stat$Tab[,'gap'],K=1:KMAX_GAPTEST))+
+                geom_vline(xintercept = nCluster)+
+                geom_line(aes(x=K, y=gap))+geom_point(aes(x=K, y=gap))+theme_bw()+
+                ggtitle(paste0('Gap-stat, K=',nCluster,' optimal'))+give_better_textsize_plot(8)
+            p
+            ggsave(paste0(regulon_object$outputDir_sub,'regulon_K_gap_stat.pdf'),plot=p,units='mm',width=100,height=50,dpi=600)
         
-        # Joep used kmeans before 
-        # gap_stat <- cluster::clusGap(cor_out_selected_2, FUN = kmeans, nstart = 10, K.max = 20, B = 10) # note: nstart is #random configs to start, B=bootstrapping, K.max=max. # clusters
+            #gene_clustering_assign_hierarchical <- cutree(hclust_out, k = nCluster)
+            #regulon_object$nCluster=nCluster # save for later
+            return1 = list(gene_clustering_assign_hierarchical = cutree(hclust_out, k = nCluster),
+                            nCluster = nCluster)
+            return(return1)
+            
+        }, error = function(error_condition) {
+            # error-handler-code
+            
+            print('Failed to successfully execute gap-stat strategy.')
+            print('Trying once more with less bootstrapping.')
+            
+            ##########
+            
+                return2=tryCatch({
+                        
+                    # ATTEMPT 2, B=10
+                    # Using the hierarchical clustering we did previously
+                    gap_stat <- cluster::clusGap(cor_out_selected_2, FUN = function(matrix, k, mytree) {return(list(cluster=(cutree(mytree, k = k))))}, 
+                        mytree=hclust_out, K.max = min(KMAX_GAPTEST, nrow(cor_out_selected_2)), B = 10)
+                        # Joep used kmeans before 
+                        # gap_stat <- cluster::clusGap(cor_out_selected_2, FUN = kmeans, nstart = 10, K.max = 20, B = 10) # note: nstart is #random configs to start, B=bootstrapping, K.max=max. # clusters
+                    
+                    nCluster = cluster::maxSE(f=gap_stat$Tab[,'gap'], SE.f = gap_stat$Tab[,'SE.sim'], method = GAPSTATMETHOD)
+                    p=ggplot(data.frame(gap=gap_stat$Tab[,'gap'],K=1:KMAX_GAPTEST))+
+                        geom_vline(xintercept = nCluster)+
+                        geom_line(aes(x=K, y=gap))+geom_point(aes(x=K, y=gap))+theme_bw()+
+                        ggtitle(paste0('Gap-stat, K=',nCluster,' optimal'))+give_better_textsize_plot(8)
+                    p
+                    ggsave(paste0(regulon_object$outputDir_sub,'regulon_K_gap_stat.pdf'),plot=p,units='mm',width=100,height=50,dpi=600)
+                
+                    #gene_clustering_assign_hierarchical <- cutree(hclust_out, k = nCluster)
+                    #regulon_object$nCluster=nCluster # save for later
+                    #regulon_object$errors='2nd attempt'
+                    
+                    return2 = list(gene_clustering_assign_hierarchical = cutree(hclust_out, k = nCluster),
+                                    nCluster = nCluster,
+                                    errors = '2nd attempt')
+                    return(return2)
+                    
+                }, error = function(error_condition) {
+                    # error-handler-code
+                    
+                    print('Failed again to execute gap-stat, falling back to hierarchical_cutoff_fallback.')
+                    
+                    #gene_clustering_assign_hierarchical <- cutree(hclust_out, h=hierarchical_cutoff_fallback)
+                    #regulon_object$nCluster=length(unique(gene_clustering_assign_hierarchical))
+                    #regulon_object$errors='fallback cutoff used'
+                    
+                    gene_clustering_assign_hierarchical=cutree(hclust_out, h=hierarchical_cutoff_fallback)
+                    return2 = list(gene_clustering_assign_hierarchical = gene_clustering_assign_hierarchical,
+                                    nCluster = length(unique(gene_clustering_assign_hierarchical)),
+                                    errors = 'fallback cutoff used')
+                    return(return2)
+                })
+            
+            return1=return2
+            return(return1)
         
-        nCluster = cluster::maxSE(f=gap_stat$Tab[,'gap'], SE.f = gap_stat$Tab[,'SE.sim'], method = GAPSTATMETHOD)
-        p=ggplot(data.frame(gap=gap_stat$Tab[,'gap'],K=1:KMAX_GAPTEST))+
-            geom_vline(xintercept = nCluster)+
-            geom_line(aes(x=K, y=gap))+geom_point(aes(x=K, y=gap))+theme_bw()+
-            ggtitle(paste0('Gap-stat, K=',nCluster,' optimal'))+give_better_textsize_plot(8)
-        p
-        ggsave(paste0(regulon_object$outputDir_sub,'regulon_K_gap_stat.pdf'),plot=p,units='mm',width=100,height=50,dpi=600)
-    
-        gene_clustering_assign_hierarchical <- cutree(hclust_out, k = nCluster)
-        regulon_object$nCluster=nCluster # save for later
+            ##########
+            
+            #gene_clustering_assign_hierarchical <- cutree(hclust_out, h=hierarchical_cutoff_fallback)
+            #regulon_object$nCluster=length(unique(gene_clustering_assign_hierarchical))
+            
+        })
+        
+        gene_clustering_assign_hierarchical = return1$gene_clustering_assign_hierarchical
+        regulon_object$nCluster = return1$nCluster
+        regulon_object$errors = return1$errors
+        
     # Or use manually decided cutoff 
     } else {
         # Now use informed cutoff to determine clusters:
         # there might be multiple good choices 
         gene_clustering_assign_hierarchical <- cutree(hclust_out, h=hierarchical_cutoff)
     }
-    
     
     gene_clustering_colors <- colors_random_100[gene_clustering_assign_hierarchical]
     

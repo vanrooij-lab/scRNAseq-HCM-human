@@ -4,7 +4,10 @@ library(parallel)
 
 if ("biomaRt" %in% rownames(installed.packages())) {
   library(biomaRt)
-} else { warning('Library biomaRt not found; please install (or use existing gene name table).') }
+} else { 
+  print('Use BiocManager::install(\'biomaRt\')')
+  warning('Library biomaRt not found; please install (or use existing gene name table).') 
+}
 
 
 

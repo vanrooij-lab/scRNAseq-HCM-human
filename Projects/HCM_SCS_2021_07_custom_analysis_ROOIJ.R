@@ -185,6 +185,8 @@ ggsave(filename = paste0(base_dir,'Rplots/',run_name,'_5_Barplot_PatientCluster_
 ####################################################################################################
 # Also some other gene lists
 
+ANALYSIS_NAME='ROOIJonly_RID2l'
+
 SETNAME='sarcomere'
 sarcomere_genes_maya = sort(c('MYBPC3', 'MYH6', 'TTN', 'RYR2', 'CMYA5', 'XIRP2', 'ACTN1', 'TNNT2', 'TPM1', 'MYL2', 'MYL3', 'TNNI3', 'ACTC1')) # CMYA3-->XIRP2
 sarcomere_genes_maya = sarcomere_genes_maya[!(sarcomere_genes_maya %in% gene_symbol_table_clExt)]
@@ -197,6 +199,36 @@ ggsave(plot=p, filename = paste0(base_dir,'Rplots/',ANALYSIS_NAME,'_7_GenesOfInt
                 width=3*16, height=4*10, units='mm')
     # 16*10mm per plot
 
+##
+
+SETNAME='NPPA-related'
+# selected_genes
+# "DKK3"   "HSPB1"  "MYL7"   "RTN4"   "IGFBP2" "NPPB"   "CD63"   "TPM3"   "ACTA1"  "ACTC1"  "ATP5MG" "XIRP1"  "MYH6"
+NPPA_related_genes = c('IGFBP2', 'RTN4', 'CRYAB', 'MYH6', 'MYL7','GAPDH','XIRP1')
+p=wrap_plots(lapply(NPPA_related_genes, 
+                        function(x) {shorthand_seurat_custom_expr(current_analysis[[ANALYSIS_NAME]], x, textsize=6, pointsize=.3)}
+                        ), 
+                 nrow=2)*theme(legend.position='none')
+# p
+ggsave(plot=p, filename = paste0(base_dir,'Rplots/',ANALYSIS_NAME,'_7_GenesOfInterest_',SETNAME,'.pdf'), 
+                height=50, width=184/3*2-(4*1), units='mm') 
+
+##
+
+SETNAME='TTN-related'
+# Note: hand picked; I omitted top genes that were already printed
+TTN_related_genes = c('DST', 'NEBL', 'MYOM1', 'COX7A1')
+p=wrap_plots(lapply(TTN_related_genes, 
+                        function(x) {shorthand_seurat_custom_expr(current_analysis[[ANALYSIS_NAME]], x, textsize=6, pointsize=.3)}
+                        ), 
+                 nrow=2)*theme(legend.position='none')
+# p
+ggsave(plot=p, filename = paste0(base_dir,'Rplots/',ANALYSIS_NAME,'_7_GenesOfInterest_',SETNAME,'.pdf'), 
+                height=184/3-4, width=184/3-4, units='mm') 
+
+
+##
+
 SETNAME='TFs'
 TF_genes = sort(c('MEF2A', 'MEF2C', 'MEF2D', 'NR2F2', 'CAMTA1', 'CAMTA2', 'FLII', 'DR1', 'ARNT', # 'MEF2B'
                                 'IRX5', 'DR1', 'SOX4', 'SNAI2', 'RARG', 'NR3C1', 'CENPA',
@@ -208,11 +240,15 @@ p=wrap_plots(lapply(TF_genes,
 ggsave(plot=p, filename = paste0(base_dir,'Rplots/',ANALYSIS_NAME,'_7_GenesOfInterest_',SETNAME,'.pdf'), 
                 height=20, width=184.6, units='mm')
 
-
 ####################################################################################################
 # Some more UMAPs of special interest
 
 CURRENT_GENE='NPPA'
+p=shorthand_seurat_custom_expr(current_analysis[[ANALYSIS_NAME]], CURRENT_GENE, textsize=8, pointsize=1)
+ggsave(plot=p, filename = paste0(base_dir,'Rplots/',ANALYSIS_NAME,'_7_GenesOfInterest_',CURRENT_GENE,'.pdf'), 
+                height=60, width=60, units='mm')
+
+CURRENT_GENE='TTN'
 p=shorthand_seurat_custom_expr(current_analysis[[ANALYSIS_NAME]], CURRENT_GENE, textsize=8, pointsize=1)
 ggsave(plot=p, filename = paste0(base_dir,'Rplots/',ANALYSIS_NAME,'_7_GenesOfInterest_',CURRENT_GENE,'.pdf'), 
                 height=60, width=60, units='mm')
