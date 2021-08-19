@@ -37,13 +37,13 @@ for (current_patient in all_patients) {
 print('all done')
 
 # Save the analyses
-for (current_set in paste0(current_patient,'RID2l')) {
+for (current_set in paste0(all_patients,'RID2l')) {
     SaveH5Seurat(object = current_analysis[[current_set]], overwrite = T,
         filename = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_',current_set,'.h5seurat'))
 }
 
 # Create some plots
-for (current_set in paste0(current_patient,'RID2l')) {
+for (current_set in paste0(all_patients,'RID2l')) {
     mySeuratCommonPlots(mySeuratObject = current_analysis[[current_set]], run_name = current_set)
 }
 

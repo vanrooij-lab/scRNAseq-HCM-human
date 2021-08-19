@@ -86,7 +86,7 @@ shorthand_cutname_table = function(gene_table, PART1OR2=2) {
 ################################################################################
 
 # function to plot expression of a gene
-shorthand_seurat_custom_expr = function(seuratObject, gene_of_interest, textsize=8, pointsize=1, mypercentile=0.03, custom_title=NULL,mymargin=0.1) {
+shorthand_seurat_custom_expr = function(seuratObject, gene_of_interest, textsize=8, pointsize=1, mypercentile=0.03, custom_title=NULL,mymargin=0.1,zscore=F) {
     
     if (length(gene_of_interest)>1){
       print('You gave >1 genes, assuming you want composite expression.')  
@@ -101,13 +101,15 @@ shorthand_seurat_custom_expr = function(seuratObject, gene_of_interest, textsize
     gene_of_interest_fullname = shorthand_seurat_fullgenename(seuratObject, gene_of_interest)
     
     # retrieve current expression
-    current_expr = seuratObject@assays$RNA@data[gene_of_interest_fullname,]
+    current_expr = as.matrix(seuratObject@assays$RNA@data[gene_of_interest_fullname,])
     
     # Create composite expression
     if (length(gene_of_interest)>1){
       print('Calculating composite..')
-      scaled_expr = t(scale(t(current_expr),center = F, scale = T))
-      current_expr=colSums(scaled_expr)
+      if (zscore) { scaled_expr = t(scale(t(current_expr),center = T, scale = T))
+      } else { scaled_expr = t(scale(t(current_expr),center = F, scale = T)) }
+      # current_expr=colSums(scaled_expr)
+      current_expr=colMeans(scaled_expr)
     }
     
     expr_limits=calc_limits(current_expr, percentile = mypercentile)

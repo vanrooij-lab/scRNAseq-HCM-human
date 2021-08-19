@@ -80,6 +80,22 @@ script_dir=/hpc/hub_oudenaarden/mwehrens/scripts/SCS_HCM_analysis/
 jobid_Teich_Cl=$(sbatch --dependency=afterany:${last_jobid} --parsable --output=slurm-${commands}-%x.%j.out --job-name="${commands}" -c ${processors} --time=2-00:00:00 --mem=${memory} --export=ALL,commands="${commands}" ${script_dir}/run_SeuratTask.sh)
 #last_jobid2=$(sbatch --parsable --output=slurm-${commands}-%x.%j.out --job-name="${commands}" -c ${processors} --time=2-00:00:00 --mem=150G --export=ALL,commands="${commands}" ${script_dir}/run_SeuratTask.sh)
 
+# TEICHMANN !SEPTAL-ONLY!
+commands="run_separate-dataset=TEICHMANN.SP.-settings=SETTINGS_RID2l"
+processors=1
+memory=128G
+script_dir=/hpc/hub_oudenaarden/mwehrens/scripts/SCS_HCM_analysis/
+last_jobid=$(sbatch --parsable --output=slurm-${commands}-%x.%j.out --job-name="${commands}" -c ${processors} --time=2-00:00:00 --mem=${memory} --export=ALL,commands="${commands}" ${script_dir}/run_SeuratTask.sh)
+# |
+# V
+processors=20
+commands="run_separate_nowclusterDE-dataset=TEICHMANN.SP.only_RID2l-cores=${processors}"
+memory=128G
+script_dir=/hpc/hub_oudenaarden/mwehrens/scripts/SCS_HCM_analysis/
+jobid_Teich_Cl=$(sbatch --dependency=afterany:${last_jobid} --parsable --output=slurm-${commands}-%x.%j.out --job-name="${commands}" -c ${processors} --time=2-00:00:00 --mem=${memory} --export=ALL,commands="${commands}" ${script_dir}/run_SeuratTask.sh)
+#last_jobid2=$(sbatch --parsable --output=slurm-${commands}-%x.%j.out --job-name="${commands}" -c ${processors} --time=2-00:00:00 --mem=150G --export=ALL,commands="${commands}" ${script_dir}/run_SeuratTask.sh)
+
+
 # HU
 commands="run_separate-dataset=HU-settings=SETTINGS_RID2l"
 processors=1
@@ -221,17 +237,50 @@ script_name=run_SeuratRegulonTask.sh
 #last_jobid=$(sbatch --dependency=afterany:${jobid_Teich_Cl} --parsable --output=slurm-${commands}-%x.%j.out --job-name="${commands}" -c ${processors} --time=3-00:00:00 --mem=${mem} --export=ALL,commands="${commands}" ${script_dir}/${script_name})
 last_jobid=$(sbatch --parsable --output=slurm-${commands}-%x.%j.out --job-name="${commands}" -c ${processors} --time=3-00:00:00 --mem=${mem} --export=ALL,commands="${commands}" ${script_dir}/${script_name})
 
+# Regulons for Teichmann !SEPTAL ONLY!
+processors=14
+commands="run_regulon_step1-dataset=TEICHMANN.SP.only_RID2l-CORES=${processors}"
+mem=255G
+script_dir=/hpc/hub_oudenaarden/mwehrens/scripts/SCS_HCM_analysis/
+script_name=run_SeuratRegulonTask.sh
+#last_jobid=$(sbatch --dependency=afterany:${jobid_Teich_Cl} --parsable --output=slurm-${commands}-%x.%j.out --job-name="${commands}" -c ${processors} --time=3-00:00:00 --mem=${mem} --export=ALL,commands="${commands}" ${script_dir}/${script_name})
+last_jobid=$(sbatch --parsable --output=slurm-${commands}-%x.%j.out --job-name="${commands}" -c ${processors} --time=3-00:00:00 --mem=${mem} --export=ALL,commands="${commands}" ${script_dir}/${script_name})
+
+
 ################################################################################
 # Correlation analysis
 
 processors=1
 commands="correlations_of_interest-CORES=${processors}"
-mem=128G
+mem=156G
 script_dir=/hpc/hub_oudenaarden/mwehrens/scripts/SCS_HCM_analysis/
-script_name=run_SeuratRegulonTask.sh
+script_name=run_SeuratCorrTask.sh
 sbatch --parsable --output=slurm-${commands}-%x.%j.out --job-name="${commands}" -c ${processors} --time=3-00:00:00 --mem=${mem} --export=ALL,commands="${commands}" ${script_dir}/${script_name}
 
+################################################################################
+# SCENIC analysis
+# R.P1
+# R.P2 R.P3 R.P4 R.P5
 
+for patient in R.P2 R.P3 R.P4 R.P5
+do
+    
+  processors=10
+  commands="prep_corr_genie-patient=${patient}-cores=${processors}"
+  mem=32G
+  script_dir=/hpc/hub_oudenaarden/mwehrens/scripts/SCS_HCM_analysis/
+  script_name=run_SeuratScenicTask.sh
+  last_jobid=$(sbatch --parsable --output=slurm-${commands}-%x.%j.out --job-name="${commands}" -c ${processors} --time=3-00:00:00 --mem=${mem} --export=ALL,commands="${commands}" ${script_dir}/${script_name})
+
+  processors=20
+  commands="run_SCENIC-patient=${patient}-cores=${processors}"
+  mem=200G
+  script_dir=/hpc/hub_oudenaarden/mwehrens/scripts/SCS_HCM_analysis/
+  script_name=run_SeuratScenicTask.sh
+  sbatch --parsable --dependency=afterany:${last_jobid} --output=slurm-${commands}-%x.%j.out --job-name="${commands}" -c ${processors} --time=3-00:00:00 --mem=${mem} --export=ALL,commands="${commands}" ${script_dir}/${script_name}
+  # sbatch --parsable --output=slurm-${commands}-%x.%j.out --job-name="${commands}" -c ${processors} --time=3-00:00:00 --mem=${mem} --export=ALL,commands="${commands}" ${script_dir}/${script_name}
+
+done
 ################################################################################
 
 

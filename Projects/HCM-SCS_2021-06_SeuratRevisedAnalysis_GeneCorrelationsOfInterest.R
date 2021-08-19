@@ -35,8 +35,8 @@ library(pheatmap)
 #INTEGRATED_OR_NOT = c('no'              , 'yes'                     ,'no'                 , 'yes')
 #names(INTEGRATED_OR_NOT)=OBJECTS_TO_ANALYZE
 
-OBJECTS_TO_ANALYZE = c('ROOIJonly_RID2l','HUonly_RID2l', 'TEICHMANNonly_RID2l')#, 'TEICHMANN.SP.only_RID2l')
-INTEGRATED_OR_NOT = c('no'              , 'no'                     ,'no'      )#, 'no' )
+OBJECTS_TO_ANALYZE = c('ROOIJonly_RID2l','HUonly_RID2l', 'TEICHMANNonly_RID2l', 'TEICHMANN.SP.only_RID2l')
+INTEGRATED_OR_NOT = c('no'              , 'no'                     ,'no'      , 'no' )
 names(INTEGRATED_OR_NOT)=OBJECTS_TO_ANALYZE
     # Note:
     # For the integrated dataset
@@ -71,7 +71,7 @@ for (analysis_name in OBJECTS_TO_ANALYZE) {
 # Some TTN correlations
 # To do: automate this such that it just loops over multiple datasets, patients, and the pooled/integrated data
 
-if (F) {
+if (T) {
     
     OBJECTS_TO_ANALYZE=OBJECTS_TO_ANALYZE # defined above; this is just a reminder
     GENES_OF_INTEREST_ = c('TTN','NPPA','CMYA5','XIRP2')
@@ -134,11 +134,12 @@ if (F) {
     
             # Export xlsx for all patients at once
             openxlsx::write.xlsx(x = Volcano_df_collection[[gene_name]][[analysis_name]], file = paste0(base_dir,'Rplots/',analysis_name,'_6_Volcano_',gene_name,'.xlsx'), overwrite=T)
+            
+            # export gene corr data per gene, per patient
+            Volcano_df_gene_pt = list(); Volcano_df_gene_pt[[gene_name]][[analysis_name]] = Volcano_df_collection[[gene_name]][[analysis_name]]
+            save(list = c('Volcano_df_gene_pt'), file = paste0(base_dir,'Rdata/Volcano_df_gene_pt__',gene_name,'_',analysis_name,'.Rdata'))
+            rm('Volcano_df_gene_pt')
         }
-        # export gene corr data per gene
-        Volcano_df_gene = list(); Volcano_df_gene[[gene_name]] = Volcano_df_collection[[gene_name]]
-        save(list = c('Volcano_df_gene'), file = paste0(base_dir,'Rdata/Volcano_df_gene_',gene_name,'.Rdata'))
-        rm('Volcano_df_gene')
         
     }#; beepr::beep()
     
@@ -189,9 +190,20 @@ if (F) {
 
 SAVEPLOT=F
 
+SP_SWITCH = '.SP.'
+OBJECTS_TO_ANALYZE = c("ROOIJonly_RID2l",     "HUonly_RID2l",        paste0("TEICHMANN",SP_SWITCH,"only_RID2l"))
+
 if (F) {
     
-    load(paste0(base_dir,'Rdata/Volcano_df_collection__for_all.Rdata'))
+    #load(paste0(base_dir,'Rdata/Volcano_df_collection__for_all.Rdata'))
+    Volcano_df_collection = list()
+    for (CURRENT_DATASET in OBJECTS_TO_ANALYZE) {
+        for (CURRENT_GENE in c('ENSG00000155657:TTN', 'ENSG00000175206:NPPA', "ENSG00000163092:XIRP2", "ENSG00000164309:CMYA5")) {
+            load(file = paste0(base_dir,'Rdata/Volcano_df_gene_pt__',CURRENT_GENE,'_',CURRENT_DATASET,'.Rdata'))
+            Volcano_df_collection[[CURRENT_GENE]][[CURRENT_DATASET]] = Volcano_df_gene_pt[[CURRENT_GENE]][[CURRENT_DATASET]]
+        }
+    }
+    rm('Volcano_df_gene_pt')
     
     df_corr_collection = list()
     for (CURRENT_DATASET in OBJECTS_TO_ANALYZE) {
@@ -318,6 +330,9 @@ if (F) {
 # Another overview plot; expand on what we did above
 # This throws all datasets together
 
+SP_SWITCH = '.SP.'
+OBJECTS_TO_ANALYZE = c("ROOIJonly_RID2l",     "HUonly_RID2l",        paste0("TEICHMANN",SP_SWITCH,"only_RID2l"))
+
 CUSTOM_PATIENT_ORDER = c('R.P1', 'R.P2', 'R.P3', 'R.P4', 'R.P5', 'H.N1', 'H.N2', 'H.N3', 'H.N4', 'H.N5', 'H.N13', 'H.N14', 'T.D1', 'T.D2', 'T.D3', 'T.D4', 'T.D5', 'T.D6', 'T.D7', 'T.D11', 'T.H2', 'T.H3', 'T.H4', 'T.H5', 'T.H6', 'T.H7')
 REFERENCE_DATASET = 'ROOIJonly_RID2l'
 
@@ -329,6 +344,7 @@ if (F) {
         
     for (CURRENT_GENE in c('ENSG00000155657:TTN', 'ENSG00000175206:NPPA', "ENSG00000163092:XIRP2", "ENSG00000164309:CMYA5")) {
         
+        # CURRENT_GENE = 'ENSG00000175206:NPPA'
         # CURRENT_GENE='ENSG00000155657:TTN'
         # CURRENT_GENE="ENSG00000164309:CMYA5"
         # CURRENT_GENE="ENSG00000163092:XIRP2"
@@ -338,7 +354,7 @@ if (F) {
         #shared_genes = shared_genes[!(CURRENT_GENE==shared_genes)]
         
         # Bind data
-        namesData=c("ROOIJonly_RID2l"="R",     "HUonly_RID2l"="H",        "TEICHMANNonly_RID2l"="T")
+        namesData=c("ROOIJonly_RID2l"="R",     "HUonly_RID2l"="H", "TEICHMANNonly_RID2l"="T", "TEICHMANN.SP.only_RID2l"="T")
         current_dfs_donorsNames_selGene_allData =
             # loops over datasets
             unlist(lapply(OBJECTS_TO_ANALYZE, function(current_dataset) {
@@ -441,7 +457,7 @@ if (F) {
             xlab('donor')
         # p 
         
-        ggsave(filename = paste0(base_dir,'Rplots/customALL_6_TableSignCorrelations_',CURRENT_GENE,'_.pdf'), 
+        ggsave(filename = paste0(base_dir,'Rplots/customALL',SP_SWITCH,'_6_TableSignCorrelations_',CURRENT_GENE,'_.pdf'), 
                          plot = p, height=2.5*nrow_effective, width=184.6, units = 'mm') # 185/4 || 46*2 || ncol_effective*7.5
         
         # Slightly adjusted heatmap in case of more information
@@ -457,18 +473,18 @@ if (F) {
                 axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
             xlab('donor')
         # p
-        ggsave(filename = paste0(base_dir,'Rplots/customALL_6_TableSignCorrelations-style2_',CURRENT_GENE,'_.pdf'), 
+        ggsave(filename = paste0(base_dir,'Rplots/customALL',SP_SWITCH,'_6_TableSignCorrelations-style2_',CURRENT_GENE,'_.pdf'), 
                          plot = p, height=min(184.6,3*nrow_effective), width=2/3*184.6-4, units = 'mm') # 185/4 || 46*2 || ncol_effective*7.5
         # Now with legend
         p=p+theme(legend.position='bottom') # p
-        ggsave(filename = paste0(base_dir,'Rplots/customALL_6_TableSignCorrelations-style2_LEGEND_',CURRENT_GENE,'_.pdf'), 
+        ggsave(filename = paste0(base_dir,'Rplots/customALL',SP_SWITCH,'_6_TableSignCorrelations-style2_LEGEND_',CURRENT_GENE,'_.pdf'), 
                          plot = p, height=min(184.6,3.5*nrow_effective), width=2/3*184.6-4, units = 'mm') # 185/4 || 46*2 || ncol_effective*7.5
         
         # Less sophisticated heatmap
         # Note: this isn't 100 rows, because not all top-100 mean genes are also sign. in >1 patient
         current_genes = gene_order_short[gene_order_short %in% df_melted_sel_sel$gene_name_short]
         mtx <- matrix(NA, nrow=length(current_genes), ncol=length(unique(df_melted_sel_sel$donor)) )
-        dimnames(mtx) <- list( current_genes,  CUSTOM_PATIENT_ORDER )
+        dimnames(mtx) <- list( current_genes,  CUSTOM_PATIENT_ORDER[CUSTOM_PATIENT_ORDER %in% df_melted_sel_sel$donor] )
         mtx[cbind(df_melted_sel_sel$gene_name_short, df_melted_sel_sel$donor)] <- df_melted_sel_sel$corr
         
         mtx[is.na(mtx)]=0

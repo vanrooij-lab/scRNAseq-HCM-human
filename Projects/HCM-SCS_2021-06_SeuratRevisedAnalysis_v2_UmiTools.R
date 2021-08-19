@@ -1136,7 +1136,7 @@ if (F) {
 if (F) {
     
     # load the file
-    current_analysis = list()
+    if (!exists('current_analysis')) {current_analysis = list()}
     current_analysis[[DATASET_NAME]] =
         LoadH5Seurat(file = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_',DATASET_NAME,'.h5seurat'))
     

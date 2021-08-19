@@ -89,6 +89,9 @@ if (!exists('desired_command_regulon')) {
 ######################################################################
 # Functions
 
+# For testing purposes:
+# get_GO_terms=F; required_minCellFraction=.05; connectedness_cutoff=10; chosen_cutoff_parameter='p'; p_or_r_cutoff=10^-3
+#
 # Using Tomo code!
 giveMeRegulons_SeuratVersion = function(run_name, base_dir, current_matrix, 
     get_GO_terms=F, strip_object=F, MAX_GENES=NULL,
@@ -190,11 +193,13 @@ giveMeRegulons_SeuratVersion = function(run_name, base_dir, current_matrix,
     # - current_cutoff = regulon_object$auto_cutoff2
     regulon_object = MW_determine_regulons_part5(regulon_object = regulon_object,
         hierarchical_cutoff = NULL, KMAX_GAPTEST = 75, hierarchical_cutoff_fallback = regulon_object$auto_cutoff2, BIGB=BIGB) # current_cutoff)
+        # hierarchical_cutoff = NULL; KMAX_GAPTEST = 75; hierarchical_cutoff_fallback = regulon_object$auto_cutoff2
+    # regulon_object2 = MW_determine_regulons_part5(regulon_object = regulon_object, hierarchical_cutoff = NULL, KMAX_GAPTEST = 75, hierarchical_cutoff_fallback = regulon_object$auto_cutoff2, BIGB=BIGB) # current_cutoff)
         
     
     # Now we can add some information about the genes (are they TF, ligand, receptor?)
     data_container=list() # Change this to get TF ligand stuff (should be easily doable)
-    warning('See above: add TF/ligand stuff')
+    print('See above: add TF/ligand stuff')
     regulon_object = MW_regulon_add_TF_RL_flags(regulon_object, data_container)
     # And we can export the regulon analysis to an excel file:
     MW_regulon_final_export(regulon_object)
@@ -244,7 +249,7 @@ remove_data_regulon_object = function(reg_object) {
 }
 
 
-regulon_overlap_heatmap = function(pooled_regulons, base_dir, run_name, MYTREECUTTINGHEIGHT=2, myfontsize=8) {
+regulon_overlap_heatmap = function(pooled_regulons, base_dir, run_name, MYTREECUTTINGHEIGHT=2, myfontsize=8, makeallheatmaps=T) {
     
     # Create pairs to compare
     df_compare = tidyr::expand_grid(x=names(pooled_regulons), y=names(pooled_regulons))
@@ -259,20 +264,22 @@ regulon_overlap_heatmap = function(pooled_regulons, base_dir, run_name, MYTREECU
     matrix_compare <- reshape2::acast(df_compare, x~y, value.var="overlap")
     
     # Show heatmap
-    p0=pheatmap(matrix_compare, clustering_method = 'ward.D2')
-    p0
-    #ggsave(filename = paste0(base_dir,'Rplots/',run_name,'_7_Regulons_noCats.png'), plot = p0, width=nrow(matrix_compare)*.4, height=nrow(matrix_compare)*.4, units='cm')
-    ggsave(filename = paste0(base_dir,'Rplots/',run_name,'_7_Regulons_noCats.pdf'), plot = p0, width=nrow(matrix_compare)*.44, height=nrow(matrix_compare)*.44, units='cm')
-    #
-    # Without legend
-    p0=pheatmap(matrix_compare, clustering_method = 'ward.D2', legend = F)
-    ggsave(filename = paste0(base_dir,'Rplots/',run_name,'_7_Regulons_noCats_noLegend.pdf'), plot = p0, width=nrow(matrix_compare)*.44, height=nrow(matrix_compare)*.44, units='cm')
+    if (makeallheatmaps) {
+        p0=pheatmap(matrix_compare, clustering_method = 'ward.D2')
+        p0
+        #ggsave(filename = paste0(base_dir,'Rplots/',run_name,'_7_Regulons_noCats.png'), plot = p0, width=nrow(matrix_compare)*.4, height=nrow(matrix_compare)*.4, units='cm')
+        ggsave(filename = paste0(base_dir,'Rplots/',run_name,'_7_Regulons_noCats.pdf'), plot = p0, width=nrow(matrix_compare)*.44, height=nrow(matrix_compare)*.44, units='cm')
+        #
+        # Without legend
+        p0=pheatmap(matrix_compare, clustering_method = 'ward.D2', legend = F)
+        ggsave(filename = paste0(base_dir,'Rplots/',run_name,'_7_Regulons_noCats_noLegend.pdf'), plot = p0, width=nrow(matrix_compare)*.44, height=nrow(matrix_compare)*.44, units='cm')
+    }
     
     # Check out how they group using hclust
     hclust_out = hclust(dist(matrix_compare), method='ward.D2')
     
     # Plot dendrogram
-    p=ggdendrogram(hclust_out)+give_better_textsize_plot(6)+theme_bw()+scale_y_continuous(minor_breaks = seq(1, max(hclust_out$height), .1))
+    p=ggdendrogram(hclust_out)+give_better_textsize_plot(6)+theme_bw()+scale_y_continuous(minor_breaks = seq(0, max(hclust_out$height), .1)) # p
     ggsave(plot = p, filename = paste0(base_dir,'Rplots/',run_name,'_7_Regulons_Dendrogram_',run_name,'.png'), width = 80, height=80, units='mm')
     
     # 
@@ -309,24 +316,25 @@ regulon_overlap_heatmap = function(pooled_regulons, base_dir, run_name, MYTREECU
     print(p)
     ggsave(filename = paste0(base_dir,'Rplots/',run_name,'_7_Regulons.pdf'), 
         plot = p, width=184.6*2/3-4, height=184.6*2/3-4, units='mm')
-    # Version 1b (extra large, scales with #rows)
+    
     ggsave(filename = paste0(base_dir,'Rplots/',run_name,'_7_Regulons-L.pdf'), 
-        plot = p, width=length(pooled_regulons)*2.5, height=length(pooled_regulons)*2.5, units='mm')
+        plot = p, width=length(pooled_regulons)*2.5, height=length(pooled_regulons)*2.5, units='mm', limitsize = F)
     
     # Version 2 (smaller)
-    p=pheatmap(matrix_compare, cluster_rows = hclust_out,cluster_cols = hclust_out, 
-        annotation_col = cutree_df, annotation_row = cutree_df, annotation_colors = annotation_colors, 
-        fontsize = 5, fontsize_col = 5, fontsize_row = 5, treeheight_col = 0, legend=F, annotation_legend=F)
-    ggsave(filename = paste0(base_dir,'Rplots/',run_name,'_7_Regulons-v2.pdf'), 
-        plot = p, width=184.6*2/3-4-12, height=184.6/2-4, units='mm')
+    if (makeallheatmaps) {
+        p=pheatmap(matrix_compare, cluster_rows = hclust_out,cluster_cols = hclust_out, 
+            annotation_col = cutree_df, annotation_row = cutree_df, annotation_colors = annotation_colors, 
+            fontsize = 5, fontsize_col = 5, fontsize_row = 5, treeheight_col = 0, legend=F, annotation_legend=F)
+        ggsave(filename = paste0(base_dir,'Rplots/',run_name,'_7_Regulons-v2.pdf'), 
+            plot = p, width=184.6*2/3-4-12, height=184.6/2-4, units='mm')
     
-    # Now with legend
-    p=pheatmap(matrix_compare, cluster_rows = hclust_out,cluster_cols = hclust_out, 
-        annotation_col = cutree_df, annotation_row = cutree_df, annotation_colors = annotation_colors, 
-        fontsize = 5, fontsize_col = 5, fontsize_row = 5, treeheight_col = 0, legend=T)
-    ggsave(filename = paste0(base_dir,'Rplots/',run_name,'_7_Regulons_LEGEND.pdf'), 
-        plot = p, width=184.6/2-4, height=184.6/2-4, units='mm')
-    
+        # Now with legend
+        p=pheatmap(matrix_compare, cluster_rows = hclust_out,cluster_cols = hclust_out, 
+            annotation_col = cutree_df, annotation_row = cutree_df, annotation_colors = annotation_colors, 
+            fontsize = 5, fontsize_col = 5, fontsize_row = 5, treeheight_col = 0, legend=T)
+        ggsave(filename = paste0(base_dir,'Rplots/',run_name,'_7_Regulons_LEGEND.pdf'), 
+            plot = p, width=184.6/2-4, height=184.6/2-4, units='mm')
+    }
     
     return(list(cutree_df=cutree_df))
     
@@ -389,8 +397,9 @@ if ('run_regulon_step1' %in% desired_command_regulon) {
     
     # Version that is parallelized
     collected_regulon_objects = list()
-    collected_regulon_objects[[ANALYSIS_NAME]] =
+        collected_regulon_objects[[ANALYSIS_NAME]] =
         mclapply(X = all_patients, FUN = function(current_patient) {
+        # for (current_patient in all_patients) {
                 
                 print(paste0('Starting patient ',current_patient))
                 
@@ -407,11 +416,14 @@ if ('run_regulon_step1' %in% desired_command_regulon) {
                     current_analysis_for_patient@assays$RNA@data
                     # expression matrix now in
                     # current_anaysis_temp@assays$RNA@data
-
+                
+                # collected_regulon_objects[[ANALYSIS_NAME]][[current_patient]] = giveMeRegulons_SeuratVersion(run_name=paste0(ANALYSIS_NAME,'_',current_patient), base_dir=base_dir,current_matrix=current_matrix, strip_object = T, MAX_GENES = MAX_GENES, BIGB=30) }
+                
                 return( 
                     giveMeRegulons_SeuratVersion(run_name=paste0(ANALYSIS_NAME,'_',current_patient),
                         base_dir=base_dir,current_matrix=current_matrix, 
                         strip_object = T, MAX_GENES = MAX_GENES, BIGB=10)
+                        # strip_object = T; BIGB=30; run_name=paste0(ANALYSIS_NAME,'_',current_patient)
                 )
         
             }, mc.cores = MYMCCORES)
@@ -444,8 +456,10 @@ if ('run_regulon_step1' %in% desired_command_regulon) {
 # ANALYSIS_NAME='original_HCM_SCS_data'
 # ANALYSIS_NAME = 'original_HCM_SCS_data_sel'
 
-CUTS_PER_DATASET = c(ROOIJonly_RID2l=2.3,TEICHMANNonly_RID2l=3.423,HUonly_RID2l=3, TEICHMANN.SP.only_RID2l=3.423)
+CUTS_PER_DATASET = c(ROOIJonly_RID2l=2.3,TEICHMANNonly_RID2l=3.423,HUonly_RID2l=3, TEICHMANN.SP.only_RID2l=3)
     # TODO (remove this) TEICHMANNonly_RID2l and HUonly_RID2l not calibrated yet
+
+MIN_GENES=100
 
 if ('XXXXXXX' %in% desired_command_regulon) {
     
@@ -455,10 +469,15 @@ if ('XXXXXXX' %in% desired_command_regulon) {
     # Make it "flat" for patients, i.e. it will have entries R.P1.R.2 = Rooij patient 1 regulon 2.
     regulon_gene_names=
         do.call(c, 
-            lapply(collected_regulon_objects[[ANALYSIS_NAME]], function(x) {names(x$the_regulons) = paste0('R.',1:length(x$the_regulons)); x$the_regulons})
+            lapply(collected_regulon_objects[[ANALYSIS_NAME]], function(x) {
+                if (class(x)!='list') {return(NA)}
+                if (length(x$rownames_cor_out_selected_2)<MIN_GENES) {return(NA)}
+                names(x$the_regulons) = paste0('R.',1:length(x$the_regulons)); x$the_regulons}
+                )
         )
         # sizes of regulons:
         # sapply(regulon_gene_names, length)
+    regulon_gene_names=regulon_gene_names[!is.na(regulon_gene_names)]
     
     save(list='regulon_gene_names', file = paste0(base_dir,'Rdata/',ANALYSIS_NAME,'_regulons_per_patient_geneNamesOnly.Rdata'))
     
@@ -509,6 +528,7 @@ if ('XXXXXXX' %in% desired_command_regulon) {
 # ANALYSIS_NAME = "ROOIJonly_RID2l"
 # ANALYSIS_NAME = "HUonly_RID2l"
 # ANALYSIS_NAME = "TEICHMANNonly_RID2l"
+# ANALYSIS_NAME = "TEICHMANN.SP.only_RID2l"
 
 if ('XXXXXXX' %in% desired_command_regulon) {
     
@@ -625,7 +645,7 @@ if ('XXXXXXX' %in% desired_command_regulon) {
     openxlsx::write.xlsx(x= df_core_regulons_padded_shortname, file = paste0(base_dir,'Rplots/',ANALYSIS_NAME,'_core_regulons_shortname.xlsx'), overwrite = T)
 
     # More extensive
-    openxlsx::write.xlsx(x= df_core_regulon_overview_list, file = paste0(base_dir,'Rplots/',ANALYSIS_NAME,'_core_regulons_withInfo.xlsx'))
+    openxlsx::write.xlsx(x= df_core_regulon_overview_list, file = paste0(base_dir,'Rplots/',ANALYSIS_NAME,'_core_regulons_withInfo.xlsx'), overwrite = T)
     
     # Rdata output
     save(list = 'core_regulons_sorted', file = paste0(base_dir,'Rplots/',ANALYSIS_NAME,'_core_regulons_sorted.Rdata'))
@@ -955,11 +975,13 @@ if (F) {
 # approach 1: compare the core regulons
 
 name_conversion = c(ROOIJonly_RID2l='R', TEICHMANNonly_RID2l='T', TEICHMANN.SP.only_RID2l='TS', HUonly_RID2l='H')
+SP_SWITCH='.SP.'
+# SP_SWITCH=''
 
 if (F) {
     
     sorted_regulon_collection=list()
-    for (ANALYSIS_NAME in c('ROOIJonly_RID2l', 'TEICHMANN.SP.only_RID2l')) { #'TEICHMANNonly_RID2l')) {
+    for (ANALYSIS_NAME in c('ROOIJonly_RID2l', paste0('TEICHMANN',SP_SWITCH,'only_RID2l'))) { #'TEICHMANNonly_RID2l')) {
         
         # ANALYSIS_NAME='TEICHMANN.SP.only_RID2l'
         
@@ -977,13 +999,18 @@ if (F) {
     # Upset plot
     upset(fromList(sorted_regulon_pool), order.by = "freq", empty.intersections = "on")
     
-    regulon_overlap_heatmap(pooled_regulons = sorted_regulon_pool, base_dir = base_dir, run_name = 'pool.R.T', MYTREECUTTINGHEIGHT = 1.66, myfontsize = 6)
+    regulon_overlap_heatmap(pooled_regulons = sorted_regulon_pool, base_dir = base_dir, run_name = paste0('pool.R.T',SP_SWITCH), MYTREECUTTINGHEIGHT = 1.66, myfontsize = 6)
+    
+    if (SP_SWITCH=='') { REG_COMBI = c('R.s.R.2','T.s.R.4')
+        } else {REG_COMBI = c('R.s.R.2','TS.s.R.4') }
     
     # sorted_regulon_pool$T.s.R.4 and sorted_regulon_pool$R.s.R.2 seem similar
-    venn_simple_plot_mw(list(T.s.R.4=sorted_regulon_pool$T.s.R.4, R.s.R.2=sorted_regulon_pool$R.s.R.2))
+    vlist=list(sorted_regulon_pool[[REG_COMBI[1]]], sorted_regulon_pool[[REG_COMBI[2]]]);names(vlist)=REG_COMBI
+    venn_simple_plot_mw(vlist)
+    
     # What are top genes?
-    shorthand_cutname(sorted_regulon_pool$T.s.R.4[1:20])
-    shorthand_cutname(sorted_regulon_pool$R.s.R.2[1:20])
+    shorthand_cutname(sorted_regulon_pool[[REG_COMBI[1]]][1:20])
+    shorthand_cutname(sorted_regulon_pool[[REG_COMBI[2]]][1:20])
     sum(shorthand_cutname(sorted_regulon_pool$T.s.R.4[1:20]) %in% shorthand_cutname(sorted_regulon_pool$R.s.R.2[1:20]))
         # 4/10 overlap in top 10, 9/20 in top 20
     shorthand_cutname(sorted_regulon_pool$R.s.R.2[(sorted_regulon_pool$R.s.R.2 %in% sorted_regulon_pool$T.s.R.4)][1:10])
@@ -992,11 +1019,12 @@ if (F) {
     
     # Overview, so print top 20 of both, show whether either both or specific
     symbol_map = c('','X')
-    df_R = data.frame(genes_R=sorted_regulon_pool$R.s.R.2[1:20], genes_R_short=shorthand_cutname(sorted_regulon_pool$R.s.R.2[1:20]), overlapping_R=symbol_map[1+sorted_regulon_pool$R.s.R.2[1:20] %in% sorted_regulon_pool$T.s.R.4[1:20]*1],
-                      genes_T=sorted_regulon_pool$T.s.R.4[1:20], genes_T_short=shorthand_cutname(sorted_regulon_pool$T.s.R.4[1:20]), overlapping_T=symbol_map[1+sorted_regulon_pool$T.s.R.4[1:20] %in% sorted_regulon_pool$R.s.R.2[1:20]*1])
-    openxlsx::write.xlsx(x= df_R, file = paste0(base_dir,'Rplots/customALL_overlap_R.s.R.2_T.s.R.4_.xlsx'), overwrite = T)
+    df_R = data.frame(genes_R=sorted_regulon_pool[[REG_COMBI[1]]][1:20], genes_R_short=shorthand_cutname(sorted_regulon_pool[[REG_COMBI[1]]][1:20]), overlapping_R=symbol_map[1+sorted_regulon_pool[[REG_COMBI[1]]][1:20] %in% sorted_regulon_pool[[REG_COMBI[2]]][1:20]*1],
+                      genes_T=sorted_regulon_pool[[REG_COMBI[2]]][1:20], genes_T_short=shorthand_cutname(sorted_regulon_pool[[REG_COMBI[2]]][1:20]), overlapping_T=symbol_map[1+sorted_regulon_pool[[REG_COMBI[2]]][1:20] %in% sorted_regulon_pool[[REG_COMBI[1]]][1:20]*1])
+    openxlsx::write.xlsx(x= df_R, file = paste0(base_dir,'Rplots/customALL',SP_SWITCH,'_overlap_',paste0(REG_COMBI,collapse='-'),'.xlsx'), overwrite = T)
     
     # For reference, a somewhat lower overlap
+    vlist=list(sorted_regulon_pool[[REG_COMBI[1]]], sorted_regulon_pool[[REG_COMBI[2]]]); names(vlist)=REG_COMBI
     venn_simple_plot_mw(list(R.s.R.5=sorted_regulon_pool$R.s.R.5, T.s.R.7=sorted_regulon_pool$T.s.R.7))
     
     
