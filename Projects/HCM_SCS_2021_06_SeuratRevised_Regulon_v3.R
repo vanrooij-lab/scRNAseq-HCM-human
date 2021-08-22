@@ -308,7 +308,8 @@ regulon_overlap_heatmap = function(pooled_regulons, base_dir, run_name, MYTREECU
     annotation_colors = col_vector_60[1:max(cutree_out)]
     names(annotation_colors) = unique(cutree_out)
     annotation_colors=list(group=annotation_colors)
-    # Version 1
+    
+    # Heatmap Version 1
     p=pheatmap(matrix_compare, cluster_rows = hclust_out,cluster_cols = hclust_out, 
         annotation_col = cutree_df, annotation_row = cutree_df, annotation_colors = annotation_colors, 
         fontsize = myfontsize, fontsize_col = myfontsize, fontsize_row = myfontsize, treeheight_row = 0)
@@ -319,6 +320,17 @@ regulon_overlap_heatmap = function(pooled_regulons, base_dir, run_name, MYTREECU
     
     ggsave(filename = paste0(base_dir,'Rplots/',run_name,'_7_Regulons-L.pdf'), 
         plot = p, width=length(pooled_regulons)*2.5, height=length(pooled_regulons)*2.5, units='mm', limitsize = F)
+    
+    # Version 1b: no annotation, clustered but no tree shown
+    if (makeallheatmaps) {
+        
+        p=pheatmap(matrix_compare, cluster_rows = hclust_out,cluster_cols = hclust_out, 
+            fontsize = myfontsize, fontsize_col = myfontsize, fontsize_row = myfontsize, treeheight_row = 0, treeheight_col = 0, legend = F, limits=c(0,1), border_color = NA)
+            #annotation_colors = list(colors=col_Dark2[1:max(cutree_out)])))
+        print(p)
+        ggsave(filename = paste0(base_dir,'Rplots/',run_name,'_7_Regulons-v1b-L.pdf'), 
+            plot = p, width=length(pooled_regulons)*myfontsize/.pt*1.1+15, height=length(pooled_regulons)*myfontsize/.pt*1.1+15, units='mm', limitsize = F)
+    }
     
     # Version 2 (smaller)
     if (makeallheatmaps) {
@@ -598,6 +610,7 @@ if ('XXXXXXX' %in% desired_command_regulon) {
     
     # So perhaps basically repeat regulon analyis at the shared regulon level
     # such that we can determine which genes are most correlated to the others
+    # I SHOULD MAKE THIS INTO A FUNCTION
     df_core_regulon_overview_list=list()
     for (core_reg_name in names(core_regulons)) {
         

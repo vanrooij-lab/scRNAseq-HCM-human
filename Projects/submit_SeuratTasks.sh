@@ -61,12 +61,36 @@ split_jobid=$(sbatch --parsable --output=slurm-${commands}-%x.%j.out --job-name=
 # little test (parsable makes output ID only)
 last_jobid=$(sbatch --parsable test.sh)
 
+
+
+
+
+
+################################################################################
+# Run all, but with filter for septal cells in Teichmann
+
+# TEICHMANN
+commands="run_separate-dataset=ALL.SP-settings=SETTINGS_RID2l"
+processors=1
+memory=128G
+script_dir=/hpc/hub_oudenaarden/mwehrens/scripts/SCS_HCM_analysis/
+last_jobid=$(sbatch --parsable --output=slurm-${commands}-%x.%j.out --job-name="${commands}" -c ${processors} --time=2-00:00:00 --mem=${memory} --export=ALL,commands="${commands}" ${script_dir}/run_SeuratTask.sh)
+# |
+# V
+processors=20
+commands="run_separate_nowclusterDE-dataset=ALL.SP_RID2l-cores=${processors}"
+memory=128G
+script_dir=/hpc/hub_oudenaarden/mwehrens/scripts/SCS_HCM_analysis/
+jobid_Teich_Cl=$(sbatch --dependency=afterany:${last_jobid} --parsable --output=slurm-${commands}-%x.%j.out --job-name="${commands}" -c ${processors} --time=2-00:00:00 --mem=${memory} --export=ALL,commands="${commands}" ${script_dir}/run_SeuratTask.sh)
+#last_jobid2=$(sbatch --parsable --output=slurm-${commands}-%x.%j.out --job-name="${commands}" -c ${processors} --time=2-00:00:00 --mem=150G --export=ALL,commands="${commands}" ${script_dir}/run_SeuratTask.sh)
+
+
 ################################################################################
 # Now, execute the analyses of the separate datasets
 # RACEID2 like settings
 
 # TEICHMANN
-commands="run_separate-dataset=TEICHMANN-settings=SETTINGS_RID2l"
+commands="run_separate-dataset=TEICHMANNonly-settings=SETTINGS_RID2l"
 processors=1
 memory=128G
 script_dir=/hpc/hub_oudenaarden/mwehrens/scripts/SCS_HCM_analysis/
@@ -81,7 +105,7 @@ jobid_Teich_Cl=$(sbatch --dependency=afterany:${last_jobid} --parsable --output=
 #last_jobid2=$(sbatch --parsable --output=slurm-${commands}-%x.%j.out --job-name="${commands}" -c ${processors} --time=2-00:00:00 --mem=150G --export=ALL,commands="${commands}" ${script_dir}/run_SeuratTask.sh)
 
 # TEICHMANN !SEPTAL-ONLY!
-commands="run_separate-dataset=TEICHMANN.SP.-settings=SETTINGS_RID2l"
+commands="run_separate-dataset=TEICHMANN.SP.only-settings=SETTINGS_RID2l"
 processors=1
 memory=128G
 script_dir=/hpc/hub_oudenaarden/mwehrens/scripts/SCS_HCM_analysis/
@@ -97,7 +121,7 @@ jobid_Teich_Cl=$(sbatch --dependency=afterany:${last_jobid} --parsable --output=
 
 
 # HU
-commands="run_separate-dataset=HU-settings=SETTINGS_RID2l"
+commands="run_separate-dataset=HUonly-settings=SETTINGS_RID2l"
 processors=1
 memory=64G
 script_dir=/hpc/hub_oudenaarden/mwehrens/scripts/SCS_HCM_analysis/
@@ -112,7 +136,7 @@ jobid_Hu_Cl=$(sbatch --dependency=afterany:${last_jobid} --parsable --output=slu
 #last_jobid2=$(sbatch --parsable --output=slurm-${commands}-%x.%j.out --job-name="${commands}" -c ${processors} --time=2-00:00:00 --mem=150G --export=ALL,commands="${commands}" ${script_dir}/run_SeuratTask.sh)
 
 # ROOIJ
-commands="run_separate-dataset=ROOIJ-settings=SETTINGS_RID2l"
+commands="run_separate-dataset=ROOIJonly-settings=SETTINGS_RID2l"
 processors=1
 memory=32G
 script_dir=/hpc/hub_oudenaarden/mwehrens/scripts/SCS_HCM_analysis/
@@ -130,7 +154,7 @@ jobid_Rooij_Cl=$(sbatch --dependency=afterany:${last_jobid} --parsable --output=
 # ROOIJ analysis, default settings
 
 # ROOIJ
-commands="run_separate-dataset=ROOIJ-settings=SETTINGS_default"
+commands="run_separate-dataset=ROOIJonly-settings=SETTINGS_default"
 processors=1
 memory=32G
 script_dir=/hpc/hub_oudenaarden/mwehrens/scripts/SCS_HCM_analysis/
@@ -262,7 +286,7 @@ sbatch --parsable --output=slurm-${commands}-%x.%j.out --job-name="${commands}" 
 # R.P1
 # R.P2 R.P3 R.P4 R.P5
 
-for patient in R.P2 R.P3 R.P4 R.P5
+for patient in R.P1 R.P2 R.P3 R.P4 R.P5
 do
     
   processors=10

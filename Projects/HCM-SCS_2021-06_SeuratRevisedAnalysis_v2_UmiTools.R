@@ -25,6 +25,11 @@
 
 ########################################################################
 
+# For convenience, on HPC, this script can be sourced by:
+# script_dir = '/hpc/hub_oudenaarden/mwehrens/scripts/SCS_HCM_analysis/'; desired_command='dummy'; source(paste0(script_dir, 'HCM-SCS_2021-06_SeuratRevisedAnalysis_v2_UmiTools.R')); rm('desired_command')
+
+########################################################################
+
 # Basically, we'll try to follow 
 # https://satijalab.org/seurat/articles/pbmc3k_tutorial.html
 #
@@ -148,6 +153,8 @@ library(patchwork)
 library(scales)
 
 library(ggrepel)
+
+library(reshape2) 
 
 # also required:
 # package manager: mutoss, openxlsx
@@ -828,6 +835,39 @@ if ('split_datasets' %in% desired_command) {
     
 }
 
+################################################################################
+# To facilitate a full comparison between Rooij and Teichmann, let's also 
+# filter the pooled data sets for septal cells.
+#
+# Naming and procesisng after this selection filter will be consistent with
+# the separate datasets I created.
+
+if ('create_septal_all_dataset' %in% desired_command) {
+    
+    # Load all the data
+    print('Loading')
+    load(file = paste0(base_dir,'Rdata/RHL_SeuratObject_merged_noMito_sel.Rdata'))
+    
+    # Create "all" pooled set filtered for septal
+    print('Filtering Teichmann for septal cells ..')
+    # Note: RHL_SeuratObject_merged_noMito_sel_selSP would also have been a logical name, but 
+    # I'll save it as H5Seurat below for further processing, so will save it with name
+    # that's consistent with separate datasets. 
+    RHL_SeuratObject_nM_sel_ALL.SP =
+        subset(RHL_SeuratObject_merged_noMito_sel, annotation_region_str == 'SP' | annotation_paper_str == 'Hu')
+    
+    RHL_SeuratObject_nM_sel_ALL.SP[['rnaMitoCounts']] <- subset(RHL_SeuratObject_merged_noMito_sel[['rnaMitoCounts']], cells = colnames(RHL_SeuratObject_nM_sel_ALL.SP))
+    if (DISCARD_GENE_OPTION) { RHL_SeuratObject_nM_sel_ALL.SP[['rnaDiscardedCounts']] <- subset(RHL_SeuratObject_merged_noMito_sel[['rnaDiscardedCounts']], cells = colnames(RHL_SeuratObject_nM_sel_ALL.SP)) }
+    
+    print('Saving RHL_SeuratObject_nM_sel_ALL.SP ..')
+    
+    # Now let's save this one as H5Seurat
+    SaveH5Seurat(object = RHL_SeuratObject_nM_sel_ALL.SP, overwrite = T,
+        filename = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_ALL.SP.h5seurat'))
+    
+    # NOTE: FIX: COMPROMISED H5_RHL_SeuratObject_nM_sel_HUonly.h5seurat
+    
+}
 
 ################################################################################
 
@@ -848,7 +888,7 @@ if ('run_separate' %in% desired_command) {
     current_dataset=config$dataset
     desired_settings=config$settings
     
-    seuratObject_name = paste0('RHL_SeuratObject_nM_sel_',current_dataset,'only')
+    seuratObject_name = paste0('RHL_SeuratObject_nM_sel_',current_dataset)
     
     # load the file
     current_analysis = list()
@@ -857,14 +897,14 @@ if ('run_separate' %in% desired_command) {
     
     # run the seurat analysis
     if (desired_settings == 'SETTINGS_RID2l') {
-        CURRENT_RUNNAME = paste0(current_dataset,'only_','RID2l')
+        CURRENT_RUNNAME = paste0(current_dataset,'_RID2l')
         # run RaceID2 like settings
         current_analysis[[seuratObject_name]] = mySeuratAnalysis(current_analysis[[seuratObject_name]],
             run_name=CURRENT_RUNNAME,
             normalization.method='RC', scale.factor=median(current_analysis[[seuratObject_name]]$nCount.nMT),
             do.scale=F,do.center=F,scale.max=Inf, features_to_use_choice = 'variable') # variable because otherwise too large calculation ..
     } else {
-        CURRENT_RUNNAME = paste0(current_dataset,'only_','default')
+        CURRENT_RUNNAME = paste0(current_dataset,'_default')
         # run default
         current_analysis[[seuratObject_name]] = mySeuratAnalysis(current_analysis[[seuratObject_name]],
             run_name=CURRENT_RUNNAME)
@@ -1070,10 +1110,13 @@ if ('run_batch_corr_sep_nowplot_and_DE' %in% desired_command) {
 
 if ('more_custom_plots' %in% desired_command) {
     
-    CURRENT_RUNNAME='all_RID2l_VAR'
+    # CURRENT_RUNNAME='all_RID2l_VAR'
+    CURRENT_RUNNAME='ALL.SP_RID2l'
+    
     current_analysis = list()
     current_analysis[[CURRENT_RUNNAME]] = 
-        LoadH5Seurat(file = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_merged_noMito_sel.',CURRENT_RUNNAME,'.h5seurat'))
+        # LoadH5Seurat(file = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_merged_noMito_sel.',CURRENT_RUNNAME,'.h5seurat'))
+        LoadH5Seurat(file = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_',CURRENT_RUNNAME,'.h5seurat'))
     
     # Add one-letter shorthand for dataset
     name_change = c("vRooij"="R", "Hu"="H", "Teichmann"="T")
@@ -1099,8 +1142,91 @@ if ('more_custom_plots' %in% desired_command) {
                                                     gene_of_interest='MYH6',base_dir=base_dir, cat_name = CATNAME,
                                                     type = 'violin')+theme(legend.position='right')
     ggsave(plot = p_,filename = paste0(base_dir, 'Rplots/',analysis_name,'_6_',type,'_FORLEGEND.pdf'), width = 7, height= 6, units='cm')
+
     
+    # Then look at how genes that came up during analysis are expressed
+    # Load regulon file
+    REGULON_DATASET = 'ROOIJonly_RID2l'
+    if (!(  file.exists(paste0(base_dir,'Rplots/',REGULON_DATASET,'_core_regulons_sorted.Rdata'))  )) {
+        print('Regulon file doesnt exist yet..') 
+    } else { 
+        load(file = paste0(base_dir,'Rplots/',REGULON_DATASET,'_core_regulons_sorted.Rdata')) # core_regulons_sorted 
+        
+        # Super redundant with previous, but here again in case you're doing manual run for regulon plots only
+        if (!('annotation_paper_oneletter_fct' %in% names(current_analysis[[CURRENT_RUNNAME]]))) {
+            name_change = c("vRooij"="R", "Hu"="H", "Teichmann"="T")
+            current_analysis[[CURRENT_RUNNAME]]$annotation_paper_oneletter_fct = 
+                factor(name_change[current_analysis[[CURRENT_RUNNAME]]$annotation_paper_str], levels=c('R','H','T'))
+        }
     
+        # Box plots
+        shorthand_custom_boxplot(seuratObject_list=current_analysis, 
+                                 gene_lists=core_regulons_sorted, 
+                                 seuratObjectNameToTake=CURRENT_RUNNAME, 
+                                 group.by='annotation_paper_oneletter_fct', 
+                                 topX=10, mylimits=.01) 
+        
+        # Summary composite plots
+        p_lists=shorthand_custom_compositeplot(seuratObject_list=current_analysis, 
+                                 gene_lists=core_regulons_sorted, 
+                                 seuratObjectNameToTake=CURRENT_RUNNAME, 
+                                 group.by='annotation_paper_oneletter_fct', 
+                                 group.by2='annotation_patient_fct',
+                                 zscore=T) 
+        p=wrap_plots(p_lists$p_violin_list, nrow=1)
+        ggsave(filename = paste0(base_dir, 'Rplots/', CURRENT_RUNNAME, '_9_customCOMPOSITE_REG.pdf'), plot = p,
+               height=26.5, width=min(184.6-4, 26.5*6), units='mm')
+        p=wrap_plots(p_lists$p_bar_list_g2, nrow=1)
+        ggsave(filename = paste0(base_dir, 'Rplots/', CURRENT_RUNNAME, '_9_customCOMPOSITE_REG_g2.pdf'), plot = p,
+               height=26.5, width=min(184.6-4, 26.5*6), units='mm')
+        
+        # UMAPs
+        p_list = lapply(names(core_regulons_sorted), function(reg_name) {
+                    shorthand_seurat_custom_expr(seuratObject = current_analysis[[CURRENT_RUNNAME]], 
+                                     gene_of_interest = core_regulons_sorted[[reg_name]],
+                                     textsize = 6, pointsize = .5, custom_title = reg_name, mymargin = .1, zscore = T) 
+            })
+        p=wrap_plots(p_list, nrow=1)
+        ggsave(filename = paste0(base_dir, 'Rplots/', CURRENT_RUNNAME, '_9_customUMAPs_REG.pdf'), plot = p,
+               height=30, width=min(184.6-4, 30*6), units='mm')      
+        
+        # Also do SCENIC regulons
+        # ===
+        load(file=paste0(base_dir, 'Rdata/SCENIC_regulons_core_genes_sel.Rdata'))
+        
+        # Box plots
+        shorthand_custom_boxplot(seuratObject_list=current_analysis, 
+                                 gene_lists=SCENIC_regulons_core_genes_sel, 
+                                 seuratObjectNameToTake=CURRENT_RUNNAME, 
+                                 group.by='annotation_paper_oneletter_fct', 
+                                 topX=10, mylimits=.01) 
+        
+        # Summary plots
+        p_lists=shorthand_custom_compositeplot(seuratObject_list=current_analysis, 
+                                 gene_lists=SCENIC_regulons_core_genes_sel, 
+                                 seuratObjectNameToTake=CURRENT_RUNNAME, 
+                                 group.by='annotation_paper_oneletter_fct', 
+                                 group.by2='annotation_patient_fct',
+                                 zscore=T) 
+        p=wrap_plots(p_lists$p_violin_list, nrow=4)
+        ggsave(filename = paste0(base_dir, 'Rplots/', CURRENT_RUNNAME, '_9_customCOMPOSITE_REG_SCENIC.pdf'), plot = p,
+               height=26.5*4, width=min(184.6-4, 26.5*4), units='mm')
+        p=wrap_plots(p_lists$p_bar_list_g2, nrow=4)
+        ggsave(filename = paste0(base_dir, 'Rplots/', CURRENT_RUNNAME, '_9_customCOMPOSITE_REG_SCENIC_g2.pdf'), plot = p,
+               height=26.5*4, width=min(184.6-4, 26.5*4), units='mm')
+        
+        # UMAP
+        p_list = lapply(names(SCENIC_regulons_core_genes_sel), function(reg_name) {
+                    shorthand_seurat_custom_expr(seuratObject = current_analysis[[CURRENT_RUNNAME]], 
+                                     gene_of_interest = SCENIC_regulons_core_genes_sel[[reg_name]],
+                                     textsize = 6, pointsize = .5, custom_title = reg_name, mymargin = .1, zscore = T) 
+            })
+        p=wrap_plots(p_list, nrow=4)
+        ggsave(filename = paste0(base_dir, 'Rplots/', CURRENT_RUNNAME, '_9_customUMAPs_REG_SCENIC.pdf'), plot = p,
+               height=4*30, width=min(184.6-4, 30*4), units='mm')      
+
+        
+    }
     
     
 }
@@ -1128,6 +1254,7 @@ if (F) {
 
 # H5_RHL_SeuratObject_nM_sel_TEICHMANNonly.h5seurat
 
+# DATASET_NAME='ALL.SP_RID2l'
 # DATASET_NAME='TEICHMANNonly_RID2l'
 # DATASET_NAME='ROOIJonly_RID2l'
 # DATASET_NAME='ROOIJonly_Int1c'
