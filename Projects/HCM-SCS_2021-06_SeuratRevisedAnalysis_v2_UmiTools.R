@@ -9,7 +9,7 @@
 # this scripts repeats earlier analyses using the Seurat package.
 #
 # Original RaceID2 analysis by Joep Eding
-# Seurat analysis including healhty hearst by m.wehrens@hubrecht.eu
+# Seurat analysis including healthy hearts by m.wehrens@hubrecht.eu
 # 2021-06
 # 
 # Outline of script:
@@ -27,6 +27,9 @@
 
 # For convenience, on HPC, this script can be sourced by:
 # script_dir = '/hpc/hub_oudenaarden/mwehrens/scripts/SCS_HCM_analysis/'; desired_command='dummy'; source(paste0(script_dir, 'HCM-SCS_2021-06_SeuratRevisedAnalysis_v2_UmiTools.R')); rm('desired_command')
+#
+# Local:
+# LOCAL=1; script_dir = '/Users/m.wehrens/Documents/git_repos/SCS_More_analyses/Projects/'; desired_command='dummy'; source(paste0(script_dir, 'HCM-SCS_2021-06_SeuratRevisedAnalysis_v2_UmiTools.R')); rm('desired_command')
 
 ########################################################################
 
@@ -1104,6 +1107,7 @@ if ('run_batch_corr_sep_nowplot_and_DE' %in% desired_command) {
 
 ################################################################################
 # More plots
+# (Many plots used in paper are generated here)
 
 # Code in:
 # source(paste0(script_dir,'Functions/MW_customized_plot_functions.R'))
@@ -1122,20 +1126,24 @@ if ('more_custom_plots' %in% desired_command) {
     name_change = c("vRooij"="R", "Hu"="H", "Teichmann"="T")
     current_analysis[[CURRENT_RUNNAME]]$annotation_paper_oneletter_fct = factor(
         name_change[current_analysis[[CURRENT_RUNNAME]]$annotation_paper_str], levels=c('R','H','T'))
+    # Custom labeling
+    name_change = c("vRooij"="HCM", "Hu"="Ctrl1", "Teichmann"="Ctrl2")
+    current_analysis[[CURRENT_RUNNAME]]$annotation_paper_beatified = factor(
+        name_change[current_analysis[[CURRENT_RUNNAME]]$annotation_paper_str], levels=c('HCM','Ctrl1','Ctrl2'))
     # Create custom order for annotation
     current_analysis[[CURRENT_RUNNAME]]$annotation_paper_fct = 
         factor(current_analysis[[CURRENT_RUNNAME]]$annotation_paper_str, levels=c("vRooij", "Hu", "Teichmann"))
     
     # Stress gene plots
-    LIST_NAME='stress'; CAT = 'annotation_paper_oneletter_fct'; CATNAME = 'Dataset'; PLOTTYPE='boxplot'
+    LIST_NAME='stress'; CAT = 'annotation_paper_beatified'; CATNAME = 'Dataset'; PLOTTYPE='boxplot'
     genes_of_interest = c('NPPA', 'NPPB', 'ACTA1', 'MYH7')#, 'MYH6')
     plot_list = lapply(genes_of_interest, 
         function(x) {shorthand_plotViolinBox_custom(current_analysis,analysis_name=CURRENT_RUNNAME,cat_by = CAT, 
                                                     gene_of_interest=x,base_dir=base_dir, cat_name = CATNAME,
                                                     type = 'violin')})
-    p=wrap_plots(plot_list, nrow = 1)& theme(plot.margin = margin(t = 0, r = 0, b = 0, l = 5, unit = "pt"))
+    p=wrap_plots(plot_list, nrow = 2)& theme(plot.margin = margin(t = 0, r = 1, b = 0, l = 1, unit = "mm"))
     #p
-    ggsave(plot = p,filename = paste0(base_dir, 'Rplots/',CURRENT_RUNNAME,'_6_',PLOTTYPE,'_by-', CAT, '_',LIST_NAME,'.pdf'), width = min(18.64, 4*length(genes_of_interest)), height= 4, units='cm')
+    ggsave(plot = p,filename = paste0(base_dir, 'Rplots/',CURRENT_RUNNAME,'_6_',PLOTTYPE,'_by-', CAT, '_',LIST_NAME,'.pdf'), width = 172/3-4, height= 172/3-4, units='mm', device=cairo_pdf)
 
     # Now create MYH6 separately, also use to add legend
     p_=shorthand_plotViolinBox_custom(current_analysis,analysis_name=CURRENT_RUNNAME,cat_by = 'annotation_paper_fct', 
@@ -1232,6 +1240,34 @@ if ('more_custom_plots' %in% desired_command) {
 }
 
 ################################################################################
+# Custom plots for our dataset 
+# (Many plots used in paper are generated here)
+# SEE ALSO SCRIPT "CUSTOM_ANALYSIS_ROOIJ"
+
+if ('more_custom_plots' %in% desired_command) {
+    
+    DATASET_NAME='ROOIJonly_RID2l_clExtended'
+    # CURRENT_RUNNAME='ALL.SP_RID2l'
+    
+    current_analysis = list()
+    current_analysis[[DATASET_NAME]] = 
+        LoadH5Seurat(file = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_',DATASET_NAME,'.h5seurat'))
+
+    # UMAP with clusters indicated (ROOIJ only)
+    # ====
+    mySeuratObject=current_analysis[[DATASET_NAME]]
+    run_name=DATASET_NAME
+    mymarkers = c('MALAT1', 'TTN', 'MYH7', 'MYH6', 'NPPA', 'NPPB', 'ACTA1','MYL2','SORBS2','CSRP3','NDUFA4','CRYAB','HSPB1', 'KCNQ1OT1')
+    mypointsize=1
+    
+    mySeuratCommonPlots(mySeuratObject, run_name, mymarkers, mypointsize)
+    # --> Show umap with annotations --> More customized/stylized version, specific size
+    # --> # Distribution of patients over clusters
+    
+
+}    
+    
+################################################################################
 # Some custom stuff (put somewhere else later)
 
 if (F) {
@@ -1260,6 +1296,7 @@ if (F) {
 # DATASET_NAME='ROOIJonly_Int1c'
 # DATASET_NAME='HUonly_RID2l'
 # DATASET_NAME='HUonly'
+# DATASET_NAME='ROOIJonly_default'
 if (F) {
     
     # load the file

@@ -1,11 +1,19 @@
 
 
 # For convenience, little fn to change text size ggplot in one go
-give_better_textsize_plot <- function(TEXTSIZE){
-  theme(#legend.position="none",
-        text = element_text(size=TEXTSIZE),
-        axis.text = element_text(size=TEXTSIZE),
-        plot.title = element_text(size=TEXTSIZE))
+give_better_textsize_plot <- function(TEXTSIZE, myFamily='Arial'){
+  
+  if (is.null(myFamily)) {
+    theme(#legend.position="none",
+          text = element_text(size=TEXTSIZE),
+          axis.text = element_text(size=TEXTSIZE),
+          plot.title = element_text(size=TEXTSIZE))
+  } else {
+    theme(#legend.position="none",
+          text = element_text(size=TEXTSIZE, family=myFamily),
+          axis.text = element_text(size=TEXTSIZE, family=myFamily),
+          plot.title = element_text(size=TEXTSIZE, family=myFamily))
+  }
 }
 
 
@@ -13,7 +21,7 @@ give_better_textsize_plot <- function(TEXTSIZE){
 # Violin plot
 # Use lapply and wrap_plots to create a list of plots
 shorthand_plotViolinBox_custom = function(myseuratobjectlist, analysis_name, cat_by='seurat_clusters', 
-    cat_name = 'category', gene_of_interest,base_dir, percentile=.02, type='boxplot') {
+    cat_name = 'category', gene_of_interest,base_dir, percentile=.02, type='boxplot', myfontsize=8) {
 
     # get full gene names
     gene_of_interest_fullname = rownames(myseuratobjectlist[[analysis_name]])[grepl(paste0(paste0(':',gene_of_interest,'$'),collapse='|'),rownames(myseuratobjectlist[[analysis_name]]))]
@@ -52,14 +60,14 @@ shorthand_plotViolinBox_custom = function(myseuratobjectlist, analysis_name, cat
         ggtitle(gene_of_interest)+theme_bw()+
         theme(legend.position='none')+
         theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
-        xlab(element_blank())+give_better_textsize_plot(8)
+        xlab(element_blank())+ylab('Expression')+give_better_textsize_plot(myfontsize)
     
     # save 1
-    ggsave(plot = p,filename = paste0(base_dir, 'Rplots/',analysis_name,'_6_',type,'_by-', cat_name, '_',gene_of_interest,'.pdf'), width = 4, height= 6, units='cm')
+    ggsave(plot = p,filename = paste0(base_dir, 'Rplots/',analysis_name,'_6_',type,'_by-', cat_name, '_',gene_of_interest,'.pdf'), width = 4, height= 6, units='cm', device=cairo_pdf)
     
     # add ylim and save 2
     p=p+ylim(c(0,my_max_limit))
-    ggsave(plot = p,filename = paste0(base_dir, 'Rplots/',analysis_name,'_6_',type,'_ylim98_by-', cat_name, '_',gene_of_interest,'.pdf'), width = 4, height= 6, units='cm')
+    ggsave(plot = p,filename = paste0(base_dir, 'Rplots/',analysis_name,'_6_',type,'_ylim98_by-', cat_name, '_',gene_of_interest,'.pdf'), width = 4, height= 6, units='cm', device=cairo_pdf)
     
     # return plot
     return(p)
@@ -86,7 +94,7 @@ shorthand_cutname_table = function(gene_table, PART1OR2=2) {
 ################################################################################
 
 # function to plot expression of a gene
-shorthand_seurat_custom_expr = function(seuratObject, gene_of_interest, textsize=8, pointsize=1, mypercentile=0.03, custom_title=NULL,mymargin=0.1,zscore=F) {
+shorthand_seurat_custom_expr = function(seuratObject, gene_of_interest, textsize=8, pointsize=1, mypercentile=0.03, custom_title=NULL,mymargin=0.1,zscore=F,myFamily='Arial') {
     
     if (length(gene_of_interest)>1){
       print('You gave >1 genes, assuming you want composite expression.')  
@@ -126,7 +134,7 @@ shorthand_seurat_custom_expr = function(seuratObject, gene_of_interest, textsize
         geom_point(size = pointsize, stroke = 0, shape = 16)+
         scale_color_gradientn(colours=rainbow_colors, limits=c(0,expr_limits[2]), oob=squish)+
         #+ggtitle(gene_of_interest)+
-        annotate("text", -Inf, Inf, label = mytitle, hjust = 0, vjust = 1, size=textsize / .pt)+
+        annotate("text", -Inf, Inf, label = mytitle, hjust = 0, vjust = 1, size=textsize / .pt, family = myFamily)+
         theme_void()+
         #give_better_textsize_plot(textsize)+
         theme(legend.position = 'none', plot.margin = margin(mymargin,mymargin,0,0,'mm'))
@@ -136,11 +144,37 @@ shorthand_seurat_custom_expr = function(seuratObject, gene_of_interest, textsize
 # shorthand to get full names
 shorthand_seurat_fullgenename = function(seuratObject, gene_names) {
     
-    gene_of_interest_fullname =rownames(seuratObject)[grepl(paste0(paste0(':',gene_names,'$'),collapse = '|'),rownames(seuratObject))]
+    # gene_of_interest_fullname = rownames(seuratObject)[grepl(paste0(paste0(':',gene_names,'$'),collapse = '|'),rownames(seuratObject))]
+    gene_of_interest_fullname = 
+        sapply(gene_names, function(current_name) {
+          hits = grepl(paste0(':',current_name,'$'),rownames(seuratObject))
+          cnt = sum(hits)
+          if (cnt>1) { stop('Multiple genes could be linked to supplied short name(s)..')}
+          if (cnt==0) { stop('Supplied gene name not found..') }
+          return(rownames(seuratObject)[hits])
+          })
     return(gene_of_interest_fullname)
     
 }
 
+shorthand_seurat_fullgenename_faster = function(seuratObject, gene_names) {
+    
+  all_short_names = shorthand_cutname(rownames(seuratObject))
+  unique_selection = !(all_short_names %in% all_short_names[duplicated(all_short_names)])
+  
+  unique_names      = rownames(seuratObject)[unique_selection]
+  unique_shortnames = all_short_names[unique_selection]
+  
+  lookupframe=unique_names
+  names(lookupframe) = unique_shortnames
+  
+  if (!all(gene_names %in% names(lookupframe))) {print(paste0('Supplied list: ',gene_names)); stop('Couldn\'t find all genes in lookuptable.')}
+  
+  # Now return the full names
+  return(lookupframe[gene_names])        
+
+    
+}
 
 
 ################################################################################
@@ -193,7 +227,7 @@ shorthand_custom_boxplot = function(seuratObject_list, gene_lists, seuratObjectN
             theme_bw()+give_better_textsize_plot(6)+
             theme(legend.position = 'none', legend.key.size = unit(3, "mm"), axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
             #ylim(c(min(df$expression),mylims[2]))
-            ylim(c(max(-3,mylims[1]),min(3,mylims[2])))
+            labs(fill = element_blank())
         p 
         
         # p=ggplot(df_agr, mapping=aes_string(x='gene', ymin='ymin', ymax='ymax', y='expression', fill=group.by))+
@@ -207,14 +241,20 @@ shorthand_custom_boxplot = function(seuratObject_list, gene_lists, seuratObjectN
         #     ylim(c(-1,min(3,mylims[2])))
         # p 
         
+        # Save
+        ggsave(filename = paste0(base_dir, 'Rplots/', seuratObjectNameToTake, '_9_customBoxplotGenes_', current_list_name,'.pdf'), plot = p,
+               height=42, width=42, units='mm')
+        
+        # Save with extra limits
+        p=p+ylim(c(max(-3,mylims[1]),min(3,mylims[2])))
         ggsave(filename = paste0(base_dir, 'Rplots/', seuratObjectNameToTake, '_9_customBoxplotGenes_', current_list_name,'.pdf'), plot = p,
                height=42, width=42, units='mm')
         
         # If 1st plot, also print legend for reference
         if (current_list_name == names(gene_lists)[1]) {
         p=p+theme(legend.position='right')
-        ggsave(filename = paste0(base_dir, 'Rplots/', seuratObjectNameToTake, '_9_customBoxplotGenes_LEGEND.pdf'), plot = p,
-               height=42, width=60, units='mm')      
+        ggsave(filename = paste0(base_dir, 'Rplots/', seuratObjectNameToTake, '_9_customBoxplotGenes_',current_list_name,'_LEGEND.pdf'), plot = p,
+               height=42, width=4.2*min(length(current_genes), topX)+18, units='mm')      
         }
     }
 }

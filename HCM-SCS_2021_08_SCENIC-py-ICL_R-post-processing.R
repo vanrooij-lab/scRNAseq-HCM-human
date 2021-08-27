@@ -36,6 +36,7 @@ library(pheatmap)
 DATASET_NAME='ROOIJonly_RID2l'
 
 ################################################################################
+# Export patients for analysis
 
 if (!dir.exists(paste0(base_dir, 'Ldata/'))) { dir.create(paste0(base_dir, 'Ldata/')) }
 
@@ -143,6 +144,7 @@ ggsave(filename = paste0(base_dir,'Rplots/',DATASET_NAME,'_7_RegulonsSCENIC_over
     
 ################################################################################
 # Now retreive the NES scores
+
 myRegScores=list()
 for (CURRENT_PATIENT in ALL_PATIENTS) {
  
@@ -246,6 +248,7 @@ ggsave(filename = paste0(base_dir,'Rplots/',DATASET_NAME,'_7_RegulonsSCENIC_Memb
 ################################################################################
 # Now a secondary thing, let's calculate potential overlap with each other
 # First determine core regulons, genes present in three regulons, only consider regulons that show >50% gene overlap, finally only take regulons >10 genes
+
 PERCENTAGE_TRESHOLD=.5
 SCENIC_regulons_core_genes = 
     sapply(current_selection_regulons_SCENIC[overlapping_scores_regulons>PERCENTAGE_TRESHOLD], function(tf) { # [overlapping_scores_regulons>.1]
@@ -332,6 +335,70 @@ lists_of_regulon_genes =
         
         
     })
+
+
+################################################################################
+# Create new regulon overview where all genes are sorted
+
+# First whole df
+SCENIC_reg_top_genes_sorted_full_dfs = 
+    lapply(names(SCENIC_regulons_core_genes_sel), function(tf) {
+    
+        # tf = 'ZEB1(+)'
+        # tf = 'MEF2A(+)'
+        # tf = 'USF2(+)'
+        current_member_list = SCENIC_regulons_core_genes_sel[[tf]]
+    
+        tf_ = gsub('\\([+-]\\)', '', tf)
+        
+        relevant_weight_values_per_pt = lapply(regulon_gene_importance, function(X) {X[[tf_]]})
+        
+        importance_df = data.frame(lapply(relevant_weight_values_per_pt, function(X) {rownames(X) = X$target; X[current_member_list,]$importance}), row.names=current_member_list)
+        importance_df$median_nona = apply(importance_df, 1, function(x) {median(x[!is.na(x)])})
+        
+        # top_genes = rownames(importance_df[order(importance_df$median_nona, decreasing = T),])[1:100]
+        importance_df[order(importance_df$median_nona, decreasing = T),]
+    })
+names(SCENIC_reg_top_genes_sorted_full_dfs) = gsub('\\([+-]\\)', '', names(SCENIC_regulons_core_genes_sel))
+
+# Now just lists of names
+SCENIC_reg_top_genes_sorted_full =
+    lapply(names(SCENIC_regulons_core_genes_sel), function(tf) {
+            tf_ = gsub('\\([+-]\\)', '', tf)
+            rownames(SCENIC_reg_top_genes_sorted_full_dfs[[tf_]])
+        })
+names(SCENIC_reg_top_genes_sorted_full) = gsub('\\([+-]\\)', '', names(SCENIC_regulons_core_genes_sel))
+
+
+# Save the list of SCENIC regulon genes
+save(x='SCENIC_reg_top_genes_sorted_full', file=paste0(base_dir,'Rdata/',DATASET_NAME,'__SCENIC_reg_top_genes_sorted_full.Rdata'))
+
+#####
+
+lapply(SCENIC_reg_top_genes_sorted_full, function(X) {which(X %in% 'MYL2')})
+lapply(SCENIC_reg_top_genes_sorted_full, length)
+
+
+lapply(SCENIC_reg_top_genes_top100, function(X) {which(X %in% 'MYL2')})
+
+# Sanity check:
+GENE='SRF'
+target_genes= shorthand_seurat_fullgenename_faster(current_analysis$ROOIJonly_RID2l, rownames(SCENIC_reg_top_genes_sorted_full_dfs[[GENE]]))
+gene_of_interest=shorthand_seurat_fullgenename_faster(current_analysis$ROOIJonly_RID2l, GENE)
+correlations=
+    sapply(target_genes[target_genes!=gene_of_interest], function(t) {
+        #out=cor.test(current_analysis$ROOIJonly_RID2l@assays$RNA@data[gene_of_interest,], current_analysis$ROOIJonly_RID2l@assays$RNA@data[t,])
+        #out$estimate
+        cor(current_analysis$ROOIJonly_RID2l@assays$RNA@data[gene_of_interest,], current_analysis$ROOIJonly_RID2l@assays$RNA@data[t,])
+        })
+
+df_toplot=data.frame(corr=correlations, importance=SCENIC_reg_top_genes_sorted_full_dfs[[GENE]][names(target_genes)[target_genes!=gene_of_interest],]$median_nona, name=names(correlations))
+high_corr=rownames(df_toplot[order(df_toplot$corr, decreasing = T),][1:15,])
+high_importance=rownames(df_toplot[1:15,])
+ggplot(df_toplot,aes(x=corr, y=importance))+
+    geom_point()+
+    geom_text_repel(data=df_toplot[unique(c(high_corr,high_importance)),], aes(label=name), color='red')+
+    geom_smooth(method='lm')+theme_bw()+ggtitle(GENE)
 
 ################################################################################
 # Now determine the relateness of their regulons to my regulons
