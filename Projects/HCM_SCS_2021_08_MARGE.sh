@@ -2,6 +2,15 @@
 
 ################################################################################
 
+# Note: I got MARGE running in the end, but it yielded empty output files;
+# note sure why. In any case, I've switched to using LISA, which seems 
+# to be a follow-up of this tool.
+
+# Note2: when installing LISA, i might have accidentally broken
+# the MARGE conda env.
+
+################################################################################
+
 # To install MARGE see notes in Word file also,
 if [[ "" == "install" ]]; then
   conda create -n MARGE

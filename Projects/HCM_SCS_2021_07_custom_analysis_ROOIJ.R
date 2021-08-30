@@ -122,13 +122,25 @@ Idents(current_analysis$ROOIJonly_RID2l_clExtended) <- current_analysis$ROOIJonl
 DimPlot(current_analysis$ROOIJonly_RID2l_clExtended)
 DE_cluster$ROOIJonly_RID2l_clExtended =
     diff_express_clusters(mySeuratObject = current_analysis$ROOIJonly_RID2l_clExtended, mc.cores = MYMCCORES)
-table_topDE = diff_express_clusters_save_results(all_markers = DE_cluster$ROOIJonly_RID2l_clExtended, run_name = 'ROOIJonly_RID2l_clExtended', base_dir = base_dir, topX = 30)
+
+DE_out_ROOIJonly_RID2l_clExtended = diff_express_clusters_save_results(
+  all_markers = DE_cluster$ROOIJonly_RID2l_clExtended, run_name = 'ROOIJonly_RID2l_clExtended', base_dir = base_dir, topX = 30, extendedOutput = T)
+
+table_topDE = DE_out_ROOIJonly_RID2l_clExtended$topHitsPerCluster
+enriched_genes_lists_clusters_ROOIJ = DE_out_ROOIJonly_RID2l_clExtended$enriched_genes_lists
 
 ####################################################################################################
 # Now save these results for later use
 
-save(list='DE_cluster', file = paste0(base_dir,'Rdata/DE_cluster__ROOIJonly_RID2l_clExtended.Rdata'))
+# Save Seurat analysis
 SaveH5Seurat(current_analysis$ROOIJonly_RID2l_clExtended, file = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_','ROOIJonly_RID2l_clExtended','.h5seurat'))
+  # if (!exists('current_analysis')) {current_analysis = list()}
+  # current_analysis$ROOIJonly_RID2l_clExtended = LoadH5Seurat(file = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_','ROOIJonly_RID2l_clExtended','.h5seurat'))
+
+# Save differential expression results
+save(list='DE_cluster', file = paste0(base_dir,'Rdata/DE_cluster__ROOIJonly_RID2l_clExtended.Rdata'))
+save(list='enriched_genes_lists_clusters_ROOIJ', file = paste0(base_dir,'Rdata/enriched_genes_lists_clusters_ROOIJ__ROOIJonly_RID2l_clExtended.Rdata'))
+
 
 ####################################################################################################
 

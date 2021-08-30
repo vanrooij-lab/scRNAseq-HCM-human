@@ -271,17 +271,26 @@ diff_express_clusters_save_results = function(all_markers, run_name, base_dir, t
         
         # ****
         
+        # Enriched genes list based on FC_cutoff and pval_cutoff
+        enriched_genes_lists=list(); enriched_genes_lists_down=list()
         for (subset_name in names(all_markers)) { 
             
             marker_df = all_markers[[subset_name]]
             
-            x_sel = marker_df[marker_df$p_val_adj<pval_cutoff & 2^(marker_df$avg_log2FC>FC_cutoff),]
+            x_sel      = marker_df[marker_df$p_val_adj<pval_cutoff & 2^(marker_df$avg_log2FC)>FC_cutoff,]
+            x_sel_down = marker_df[marker_df$p_val_adj<pval_cutoff & 2^(marker_df$avg_log2FC)<(1/FC_cutoff),]
             
-            current_genes = shorthand_cutname (  rownames(x_sel[order(x_sel$avg_log2FC, decreasing = T),])   )
-            print(paste0('Genes for cl.',subset_name,':',length(current_genes)))
+            current_genes      = rownames(x_sel[order(x_sel$avg_log2FC, decreasing = T),])
+            current_genes_down = rownames(x_sel_down[order(x_sel_down$avg_log2FC, decreasing = F),])
+            
+            print(paste0('Genes for cl.',subset_name,':  ',length(current_genes)))
+            print(paste0('Genes down for cl.',subset_name,':  ',length(current_genes_down)))
                     
             write.table(x=data.frame(gene=shorthand_cutname(current_genes)), file=paste0(base_dir,'GeneLists/ClusterHits_',run_name,'_table_cl',subset_name,'.txt'), quote = F, row.names = F, col.names = F)
+            write.table(x=data.frame(gene=shorthand_cutname(current_genes_down)), file=paste0(base_dir,'GeneLists/ClusterHitsDown_',run_name,'_table_cl',subset_name,'.txt'), quote = F, row.names = F, col.names = F)
             
+            enriched_genes_lists[[subset_name]] = current_genes
+            enriched_genes_lists_down[[subset_name]] = current_genes_down
         }
         
         # Now also produce lists of genes of interest
@@ -291,11 +300,12 @@ diff_express_clusters_save_results = function(all_markers, run_name, base_dir, t
     # Also save the whole thing to Excel
     all_markers = lapply(all_markers, function(df) {df$gene = rownames(df); df$gene_short = shorthand_cutname(df$gene); df = df[order(df$avg_log2FC,decreasing = T),]; return(df)})
     if (save) {openxlsx::write.xlsx(x = all_markers, file = paste0(base_dir,'Rplots/Cluster_DE_full_',run_name,'.xlsx'), overwrite=T)}
-       
     
-    
-    
-    return(topHitsPerCluster)
+    if (extendedOutput) {
+        return(list(topHitsPerCluster=topHitsPerCluster, enriched_genes_lists=enriched_genes_lists, enriched_genes_lists_down=enriched_genes_lists_down))
+    } else {
+        return(topHitsPerCluster)
+    }
 }
 
 
