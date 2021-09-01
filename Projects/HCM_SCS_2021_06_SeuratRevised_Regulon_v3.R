@@ -14,6 +14,8 @@
 
 # Note, for HPC custom analyses, this script can be sourced as
 # desired_command_regulon='dummy'; source('/hpc/hub_oudenaarden/mwehrens/scripts/SCS_HCM_analysis/HCM_SCS_2021_06_SeuratRevised_Regulon_v3.R')
+#
+# LOCAL=1; desired_command_regulon='dummy'; source('/Users/m.wehrens/Documents/git_repos/SCS_More_analyses/Projects/HCM_SCS_2021_06_SeuratRevised_Regulon_v3.R')
 
 ######################################################################
 # libraries
@@ -27,12 +29,12 @@ print(paste0('myargs=',myargs))
 if (exists('LOCAL')) {
     script_dir = '/Users/m.wehrens/Documents/git_repos/SCS_More_analyses/'
     desired_command='dummy'
-    source(paste0(script_dir, 'Projects/HCM-SCS_2021-06_SeuratRevisedAnalysis_v2_UmiTools.R'))
+    source(paste0(script_dir, 'Projects/HCM_SCS_2021_06_SeuratRevisedAnalysis_v2_UmiTools.R'))
     rm('desired_command')
 } else {
     script_dir = '/hpc/hub_oudenaarden/mwehrens/scripts/SCS_HCM_analysis/'
     desired_command='dummy'
-    source(paste0(script_dir, 'HCM-SCS_2021-06_SeuratRevisedAnalysis_v2_UmiTools.R'))
+    source(paste0(script_dir, 'HCM_SCS_2021_06_SeuratRevisedAnalysis_v2_UmiTools.R'))
     rm('desired_command')
 }
 
@@ -52,8 +54,9 @@ library(openxlsx)
 library(UpSetR)
 
 source(paste0(script_dir, 'Functions/MW_regulon_analysis_COPY.R'))
+    # file.edit(paste0(script_dir, 'Functions/MW_regulon_analysis_COPY.R'))
 source(paste0(script_dir, 'Functions/MW_regulon_analysis_supportFns_COPIES.R'))
-    # file.edit(paste0(script_dir, 'Functions/MW_general_functions.R'))
+    # file.edit(paste0(script_dir, 'Functions/MW_regulon_analysis_supportFns_COPIES.R'))
 
 ########################################################################
 
@@ -249,7 +252,7 @@ remove_data_regulon_object = function(reg_object) {
 }
 
 
-regulon_overlap_heatmap = function(pooled_regulons, base_dir, run_name, MYTREECUTTINGHEIGHT=2, myfontsize=8, makeallheatmaps=T) {
+regulon_overlap_heatmap = function(pooled_regulons, base_dir, run_name, MYTREECUTTINGHEIGHT=2, myfontsize=8, makeallheatmaps=T, cutree_k=NULL) {
     
     # Create pairs to compare
     df_compare = tidyr::expand_grid(x=names(pooled_regulons), y=names(pooled_regulons))
@@ -300,7 +303,12 @@ regulon_overlap_heatmap = function(pooled_regulons, base_dir, run_name, MYTREECU
     # ggtitle(paste0('Gap-stat, K=',nCluster,' optimal'))+give_better_textsize_plot(8)
     # p
 
-    cutree_out = cutree(hclust_out, h = MYTREECUTTINGHEIGHT) # MYTREECUTTINGHEIGHT=2.3
+    if (!is.null(cutree_k)) {
+        cutree_out = cutree(hclust_out, k = cutree_k) # MYTREECUTTINGHEIGHT=2.3
+        print('Using provided cutree_k value, ignoring MYTREECUTTINGHEIGHT.')
+    } else {
+        cutree_out = cutree(hclust_out, h = MYTREECUTTINGHEIGHT) # MYTREECUTTINGHEIGHT=2.3
+    }
     # cutree_out = cutree(hclust_out, k = nCluster)
     cutree_df  = as.data.frame(as.factor(cutree_out)); colnames(cutree_df) = c('group')
     #annotation_colors = col_Dark2[1:max(cutree_out)]
@@ -460,6 +468,7 @@ if ('run_regulon_step1' %in% desired_command_regulon) {
 ################################################################################
 
 # ANALYSIS_NAME='ROOIJonly_RID2l'
+# ANALYSIS_NAME='ROOIJonly_RID2l_clExtended'
 # ANALYSIS_NAME='HUonly_RID2l'
 # ANALYSIS_NAME='TEICHMANNonly_RID2l'
 # ANALYSIS_NAME='TEICHMANN.SP.only_RID2l'
@@ -468,7 +477,8 @@ if ('run_regulon_step1' %in% desired_command_regulon) {
 # ANALYSIS_NAME='original_HCM_SCS_data'
 # ANALYSIS_NAME = 'original_HCM_SCS_data_sel'
 
-CUTS_PER_DATASET = c(ROOIJonly_RID2l=2.3,TEICHMANNonly_RID2l=3.423,HUonly_RID2l=3, TEICHMANN.SP.only_RID2l=3)
+K_PER_DATASET = c(ROOIJonly_RID2l=6)
+CUTS_PER_DATASET = c(ROOIJonly_RID2l=3.5,TEICHMANNonly_RID2l=3.423,HUonly_RID2l=3, TEICHMANN.SP.only_RID2l=3)
     # TODO (remove this) TEICHMANNonly_RID2l and HUonly_RID2l not calibrated yet
 
 MIN_GENES=100
@@ -497,7 +507,9 @@ if ('XXXXXXX' %in% desired_command_regulon) {
     
     overlap_output=
         regulon_overlap_heatmap(pooled_regulons = regulon_gene_names, base_dir=base_dir, run_name =ANALYSIS_NAME, 
-            MYTREECUTTINGHEIGHT = CUTS_PER_DATASET[ANALYSIS_NAME], myfontsize = 7)
+            #MYTREECUTTINGHEIGHT = CUTS_PER_DATASET[ANALYSIS_NAME], 
+            cutree_k = K_PER_DATASET[ANALYSIS_NAME],
+            myfontsize = 7)
         #regulon_overlap_heatmap(pooled_regulons = regulon_gene_names, base_dir=base_dir, run_name =ANALYSIS_NAME, 
         #    MYTREECUTTINGHEIGHT = CUTS_PER_DATASET[ANALYSIS_NAME], myfontsize = 3)
 
@@ -686,22 +698,23 @@ if ('XXXXXXX' %in% desired_command_regulon) {
 
 if (F) {
     
-    # X=shorthand_cutname(core_regulons$s.R.4)
+    # X=core_regulons_sorted_shortname$s.R.4
     
-    core_regulons_ = lapply(core_regulons[sapply(core_regulons,length)>0],shorthand_cutname)
-    plotlist=lapply(1:length(core_regulons_),
+    # core_regulons_sorted_shortname
+    
+    plotlist=lapply(1:length(core_regulons_sorted_shortname),
         function(X) {shorthand_seurat_custom_expr(seuratObject = current_analysis[[ANALYSIS_NAME]], 
-                                                    gene_of_interest = core_regulons_[[X]], textsize=6, pointsize=.5, 
-                                                    custom_title = names(core_regulons_)[X], mymargin = .5)})
+                                                    gene_of_interest = core_regulons_sorted_shortname[[X]], textsize=6, pointsize=.5, 
+                                                    custom_title = names(core_regulons_sorted_shortname)[X], mymargin = .5)})
     p=wrap_plots(plotlist, nrow = 2)
-    
+    # p
     ggsave(filename = paste0(base_dir,'Rplots/',ANALYSIS_NAME,'_7_Regulons_UMAP_compositeExpr.pdf'), 
-        plot = p, width=30*3, height=30*2, units='mm') # 184.6/3*2-4
+        plot = p, width=172/2-4, height=(172/2-4)/3*2, units='mm', device = cairo_pdf) # 184.6/3*2-4
     
     # 2nd version of plots
     p=wrap_plots(plotlist, nrow = 1)
-    ggsave(filename = paste0(base_dir,'Rplots/',ANALYSIS_NAME,'_7_Regulons_UMAP_compositeExpr.pdf'), 
-        plot = p, width=184/3*2-4, height=20*1, units='mm') # 184.6/3*2-4
+    ggsave(filename = paste0(base_dir,'Rplots/',ANALYSIS_NAME,'_7_Regulons_UMAP_compositeExpr_v2.pdf'), 
+        plot = p, width=172/3*2-4, height=20*1, units='mm', device = cairo_pdf) # 184.6/3*2-4
     
     
 }

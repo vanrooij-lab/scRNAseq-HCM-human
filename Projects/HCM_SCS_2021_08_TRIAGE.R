@@ -1,10 +1,13 @@
 
 
+# Load regulon analysis file
+# LOCAL=1; desired_command_regulon='dummy'; source(paste0(script_dir, 'Projects/HCM_SCS_2021_06_SeuratRevised_Regulon_v3.R'))
+
+
 
 # TRIAGE analysis
-
 RTS_table = 
-    read.table('/Users/m.wehrens/Documents/git_repos/SCS_More_analyses/Resources/TRIAGE_human_rts.txt', head=0)
+    read.table(paste0(script_dir, 'Resources/TRIAGE_human_rts.txt'), head=0)
 colnames(RTS_table) = c('gene','RTS','TF')
 rownames(RTS_table) = RTS_table$gene
 # View(RTS_table)
@@ -69,7 +72,10 @@ write.table(file = paste0(base_dir, 'TRIAGE/exp_matrix_counts.tsv'), x = matrix_
 # Usually you'd do scaling by Seurat, but that is now not necessary since i did it manually
 current_analysis$ROOIJonly_TRIAGE =
     mySeuratAnalysis_verybasic_part2only(mySeuratObject = current_analysis$ROOIJonly_TRIAGE, 
-                                         skip_scaling = T, features_to_use_choice = 'all', cluster_resolution = 1)
+                                         skip_scaling = T, features_to_use_choice = 'all', cluster_resolution = .1)
+
+# Different levels of clustering
+DimPlot(current_analysis$ROOIJonly_TRIAGE, group.by='RNA_snn_res.0.3')
 
 # all_features = rownames(current_analysis$ROOIJonly_TRIAGE@assays$RNA@scale.data)
 # current_analysis$ROOIJonly_TRIAGE <- RunPCA(object=current_analysis$ROOIJonly_TRIAGE, npcs = 30, verbose = FALSE, features=all_features)
@@ -96,8 +102,9 @@ regulon_overlap_heatmap(pooled_regulons = top10_markers_list, base_dir = base_di
 
 DE_cluster=list()
 
+# This was done above already
 # Run different clustering resolutions
-current_analysis$ROOIJonly_TRIAGE_clExt=FindClusters(current_analysis$ROOIJonly_TRIAGE, resolution = seq(.1,1,.1))
+# current_analysis$ROOIJonly_TRIAGE_clExt=FindClusters(current_analysis$ROOIJonly_TRIAGE, resolution = seq(.1,1,.1))
 
 # First do for max. resolution
 DimPlot(current_analysis$ROOIJonly_TRIAGE_clExt, group.by = 'RNA_snn_res.1')
@@ -139,27 +146,28 @@ ggplot(df_compare, aes(x=factor(x, levels=hclust_out$labels[hclust_out$order]), 
     scale_fill_gradientn(colors=rainbow_colors)+give_better_textsize_plot(8)+theme(legend.position = 'none')
 
 # Based on this analysis, we can merge certain clusters
-cutree_out=cutree(hclust_out, k = 5)
+cutree_out=cutree(hclust_out, k = 4)
 df_annotation=data.frame(row.names = names(cutree_out), group=factor(cutree_out))
 pheatmap(matrix_compare, cluster_cols = hclust_out, cluster_rows = hclust_out, annotation_col = df_annotation)
 
 # re-assign clusters
-reassignment_lookup = cutree_out
-current_analysis$ROOIJonly_TRIAGE_clExt[['clusters_custom']]=factor(cutree_out[current_analysis$ROOIJonly_TRIAGE_clExt$RNA_snn_res.1], 
-    levels=1:length(reassignment_lookup))
+# reassignment_lookup = cutree_out
+#current_analysis$ROOIJonly_TRIAGE_clExt[['clusters_custom']]=factor(cutree_out[current_analysis$ROOIJonly_TRIAGE_clExt$RNA_snn_res.1], 
+#     levels=1:length(reassignment_lookup))
+
+# Based on above, let's take 0.2 (5 clusters)
+current_analysis$ROOIJonly_TRIAGE_clExt$clusters_custom = current_analysis$ROOIJonly_TRIAGE_clExt$RNA_snn_res.0.2
+DimPlot(current_analysis$ROOIJonly_TRIAGE_clExt, group.by='clusters_custom')
 
 # Show it
 DimPlot(current_analysis$ROOIJonly_TRIAGE_clExt, group.by = 'clusters_custom')
-
-
-# Coarse grain cluster duplicates out
-# Merge 0 and 2, 1 and 4.
 
 ################################################################################
 
 # Now run diff. expr.
 # First set identities to the custom ones
-Idents(current_analysis$ROOIJonly_TRIAGE_clExt) <- current_analysis$ROOIJonly_TRIAGE_clExt$clusters_custom
+new_clusters = as.numeric(current_analysis$ROOIJonly_TRIAGE_clExt$clusters_custom)
+Idents(current_analysis$ROOIJonly_TRIAGE_clExt) <- factor(new_clusters, levels=min(new_clusters):max(new_clusters))
 DimPlot(current_analysis$ROOIJonly_TRIAGE_clExt)
 DE_cluster$ROOIJonly_TRIAGE_clExt =
     diff_express_clusters(mySeuratObject = current_analysis$ROOIJonly_TRIAGE_clExt, mc.cores = MYMCCORES)
@@ -178,8 +186,8 @@ p=DimPlot(object = current_analysis$ROOIJonly_TRIAGE_clExt, group.by = 'annotati
                 guides(colour = guide_legend(override.aes = list(size=.5)))
         
 p
-ggsave(plot=p, filename = paste0(base_dir,'Rplots/',TRIAGE_DATASET,'_9_Patients.pdf'), 
-                height=40, width=40, units='mm')
+ggsave(plot=p, filename = paste0(base_dir,'Rplots/','ROOIJonly_TRIAGE_clExt','_9_Patients.pdf'), 
+                height=172/4-5, width=172/4-5, units='mm', device = cairo_pdf)
 
 ################################################################################
 # Now compare with previous analysis
@@ -196,8 +204,8 @@ p=DimPlot(object = current_analysis$ROOIJonly_RID2l, group.by = 'Cl_TRIAGE', lab
                 guides(colour = guide_legend(override.aes = list(size=.5)))
         
 p
-ggsave(plot=p, filename = paste0(base_dir,'Rplots/',TRIAGE_DATASET,'_9_ClustersProjectedOnRID2l.pdf'), 
-                height=40, width=40, units='mm')
+ggsave(plot=p, filename = paste0(base_dir,'Rplots/','ROOIJonly_TRIAGE_clExt','_9_ClustersProjectedOnRID2l.pdf'), 
+                height=40, width=40, units='mm', device = cairo_pdf)
     
 
 
@@ -211,7 +219,6 @@ DimPlot(current_analysis$ROOIJonly_TRIAGE_clExt, group.by='Cl_RID2l')
 
 TRIAGE_DATASET='ROOIJonly_TRIAGE_clExt'
 
-TRIAGE_DATASET='ROOIJonly_TRIAGE_clExt'
 save(list='DE_cluster', file=paste0(base_dir, 'Rdata/DE_cluster__ROOIJonly_TRIAGE_clExt.Rdata'))
 SaveH5Seurat(object = current_analysis[[TRIAGE_DATASET]], filename = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_',TRIAGE_DATASET,'.h5seurat'), overwrite = T)
 
@@ -236,12 +243,13 @@ plot_list2 = lapply(TRIAGE_topXMarkers, function(g) {
 
 list_p=list(); list_p2=list()
 NR_GENES_PER_CLUSTER=2
-for (cluster_idx in 1:dim(table_topDE)[2]) {
+for (cluster_idx in 1:(dim(table_topDE)[2])) {
 
     # cluster_idx=1
     # cluster_idx=2
     
     current_genes = table_topDE[,cluster_idx][1:NR_GENES_PER_CLUSTER]
+    current_genes = current_genes[!is.na(current_genes)]
     
     # On triage dataset
     # ====
@@ -254,7 +262,7 @@ for (cluster_idx in 1:dim(table_topDE)[2]) {
     print(list_p[[cluster_idx]])
     
     ggsave(plot=list_p[[cluster_idx]], filename = paste0(base_dir,'Rplots/',TRIAGE_DATASET,'_7_clExt_ClusterMarkers_cl_',cluster_idx,'.pdf'), 
-                height=20, width=16, units='mm')
+                height=20, width=16, units='mm', device = cairo_pdf)
     #VlnPlot(current_analysis$ROOIJonly_RID2l, features = shorthand_seurat_fullgenename(current_genes))
     
     # On original dataset (plots little bit bigger)
@@ -266,12 +274,12 @@ for (cluster_idx in 1:dim(table_topDE)[2]) {
     print(list_p2[[cluster_idx]])
     
     ggsave(plot=list_p2[[cluster_idx]], filename = paste0(base_dir,'Rplots/',DATASET_NAME,'_7_PROJECTIONoriginal_clExt_ClusterMarkers_cl_',cluster_idx,'.pdf'), 
-                height=40, width=32, units='mm')
+                height=40, width=32, units='mm', device = cairo_pdf)
 
 }
 # Save one additional plot with a legend to use for figures
 p=list_p[[cluster_idx]][[1]]+theme(legend.position = 'right', )
-ggsave(plot=p, filename = paste0(base_dir,'Rplots/_0_LEGENDBAR_rainbow.pdf'), height=40, width=16, units='mm')
+ggsave(plot=p, filename = paste0(base_dir,'Rplots/_0_LEGENDBAR_rainbow.pdf'), height=40, width=16, units='mm', device = cairo_pdf)
 
 ########################################################
 
@@ -322,6 +330,48 @@ rownames(matrix_for_export_mini) = g2[1:30]
 write.table(file = paste0(base_dir, 'TRIAGE/exp_matrix_counts_mini.tsv'), x = matrix_for_export_mini, quote = F, sep='\t')
 
 View(as.matrix(matrix_for_export_mini))
+
+
+
+
+
+####################################################################################################
+
+# Perhaps interesting to check which enriched genes per cluster are top-RTS genes
+
+# load(file = paste0(base_dir,'Rdata/DE_cluster__ROOIJonly_RID2l_clExtended.Rdata'))
+
+DE_cluster$ROOIJonly_RID2l_clExtended
+
+# Add RTS values
+DE_cluster$ROOIJonly_RID2l_clExtended_withRTS = 
+    lapply(DE_cluster$ROOIJonly_RID2l_clExtended, function(X) {
+           X$RTS = RTS_table[shorthand_cutname(rownames(X)),]$RTS
+           return(X)}
+    )
+
+ggplot(RTS_table[RTS_table$RTS>0.1,])+
+    geom_freqpoly(aes(x=RTS), bins=100)
+
+TRIAGE_clusterTops = 
+    data.frame(lapply(DE_cluster$ROOIJonly_RID2l_clExtended_withRTS, function(X) {
+        #X = DE_cluster$ROOIJonly_RID2l_clExtended_withRTS$'1'
+        #X_sel = X[X$p_val_adj<0.01,]
+        #X_sort = X_sel[order(X_sel$RTS, decreasing = T),][1:5,]
+        #toString(shorthand_cutname(rownames(X_sort)))
+        X_sel = X[X$p_val_adj<0.01 & X$RTS>0.03 & !is.na(X$RTS),] # note that 0.03 is from Shim2020
+        X_sort = X_sel[order(X_sel$RTS, decreasing = T),][1:min(5, dim(X_sel)[1]),]
+        toString(shorthand_cutname(rownames(X_sort)))
+    }))
+colnames(TRIAGE_clusterTops)=names(DE_cluster$ROOIJonly_RID2l_clExtended_withRTS)
+
+openxlsx::write.xlsx(x=TRIAGE_clusterTops, file=paste0(base_dir,'Rplots/Triage_clusters_short_summary.xlsx'), overwrite = T)
+
+
+
+
+
+
 
 
 

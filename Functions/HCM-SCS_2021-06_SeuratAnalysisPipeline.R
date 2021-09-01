@@ -122,7 +122,7 @@ mySeuratCommonPlots = function(mySeuratObject,
         ggsave(plot = p_nl, filename = paste0(base_dir,'Rplots/',run_name,'_2_umap_by_',current_annotation,'.pdf'), height=7, width=7, units='cm')
         
         # More customized/stylized version, specific size
-        current_annotation='Seurat_Clusters_plus1'
+        if(!(current_annotation=='ident')) {current_annotation='Seurat_Clusters_plus1'}
         p=DimPlot(mySeuratObject, group.by = current_annotation, cols = rep(col_vector_60,2), label = T, repel = T, label.size = 6/.pt, pt.size = 1, label.box=T)+
                 theme_void()+ggtitle(element_blank())+theme(legend.position = 'none')
         # p
@@ -286,8 +286,10 @@ diff_express_clusters_save_results = function(all_markers, run_name, base_dir, t
             print(paste0('Genes for cl.',subset_name,':  ',length(current_genes)))
             print(paste0('Genes down for cl.',subset_name,':  ',length(current_genes_down)))
                     
-            write.table(x=data.frame(gene=shorthand_cutname(current_genes)), file=paste0(base_dir,'GeneLists/ClusterHits_',run_name,'_table_cl',subset_name,'.txt'), quote = F, row.names = F, col.names = F)
-            write.table(x=data.frame(gene=shorthand_cutname(current_genes_down)), file=paste0(base_dir,'GeneLists/ClusterHitsDown_',run_name,'_table_cl',subset_name,'.txt'), quote = F, row.names = F, col.names = F)
+            write.table(x=data.frame(gene=shorthand_cutname(current_genes)), file=paste0(base_dir,'GeneLists/ClusterHits_',run_name,'_table_cl',subset_name,'.txt'), 
+                        quote = F, row.names = F, col.names = F)
+            write.table(x=data.frame(gene=shorthand_cutname(current_genes_down)), file=paste0(base_dir,'GeneLists/ClusterHitsDown_',run_name,'_table_cl',subset_name,'.txt'), 
+                        quote = F, row.names = F, col.names = F)
             
             enriched_genes_lists[[subset_name]] = current_genes
             enriched_genes_lists_down[[subset_name]] = current_genes_down

@@ -62,28 +62,29 @@ ggsave(plot=clustree_out, filename = paste0(base_dir,'Rplots/',ANALYSIS_NAME,'_7
 
 if (!exists('DE_cluster')) {DE_cluster = list()}
 
-# First do for max. resolution
-DimPlot(current_analysis$ROOIJonly_RID2l_clExtended, group.by = 'RNA_snn_res.1')
-DE_cluster$ROOIJonly_RID2l_clExtended =
-    diff_express_clusters(mySeuratObject = current_analysis$ROOIJonly_RID2l_clExtended, mc.cores = MYMCCORES, custom_ident = 'RNA_snn_res.1')
+# Check overlap @0.4
+# (Previously: do for max. resolution)
+DimPlot(current_analysis$ROOIJonly_RID2l_clExtended, group.by = 'RNA_snn_res.0.4')
+DE_cluster$ROOIJonly_RID2l_clExtended_scanning =
+    diff_express_clusters(mySeuratObject = current_analysis$ROOIJonly_RID2l_clExtended, mc.cores = MYMCCORES, custom_ident = 'RNA_snn_res.0.4')
 
 # Then look at the overlap of clusters
 
 # Create pairs to compare
-df_compare = tidyr::expand_grid(x=names(DE_cluster$ROOIJonly_RID2l_clExtended), y=names(DE_cluster$ROOIJonly_RID2l_clExtended))
+df_compare = tidyr::expand_grid(x=names(DE_cluster$ROOIJonly_RID2l_clExtended_scanning), y=names(DE_cluster$ROOIJonly_RID2l_clExtended_scanning))
 
 # Calculate overlaps
 df_compare$overlap = sapply(1:dim(df_compare)[1], function(X) {
-    df1=DE_cluster$ROOIJonly_RID2l_clExtended[[     df_compare$x[[X]]     ]]
-    df2=DE_cluster$ROOIJonly_RID2l_clExtended[[     df_compare$y[[X]]     ]]
+    df1=DE_cluster$ROOIJonly_RID2l_clExtended_scanning[[     df_compare$x[[X]]     ]]
+    df2=DE_cluster$ROOIJonly_RID2l_clExtended_scanning[[     df_compare$y[[X]]     ]]
     topX_1=rownames(df1[order(df1$avg_log2FC, decreasing = T),][1:min(dim(df1)[1],20),])
     topX_2=rownames(df2[order(df2$avg_log2FC, decreasing = T),][1:min(dim(df2)[1],20),])
     sum(topX_1 %in% topX_2) /
         min(length(topX_1), length(topX_2))
     })
 df_compare$overlap_N = sapply(1:dim(df_compare)[1], function(X) {
-    df1=DE_cluster$ROOIJonly_RID2l_clExtended[[     df_compare$x[[X]]     ]]
-    df2=DE_cluster$ROOIJonly_RID2l_clExtended[[     df_compare$y[[X]]     ]]
+    df1=DE_cluster$ROOIJonly_RID2l_clExtended_scanning[[     df_compare$x[[X]]     ]]
+    df2=DE_cluster$ROOIJonly_RID2l_clExtended_scanning[[     df_compare$y[[X]]     ]]
     topX_1=rownames(df1[order(df1$avg_log2FC, decreasing = T),][1:min(dim(df1)[1],20),])
     topX_2=rownames(df2[order(df2$avg_log2FC, decreasing = T),][1:min(dim(df2)[1],20),])
     sum(topX_1 %in% topX_2)
@@ -101,18 +102,29 @@ ggplot(df_compare, aes(x=factor(x, levels=hclust_out$labels[hclust_out$order]), 
     xlab('Cluster')+ylab('Cluster')+
     scale_fill_gradientn(colors=rainbow_colors)+give_better_textsize_plot(8)+theme(legend.position = 'none')
 
-# Based on this analysis, we can merge certain clusters
+# Based on this analysis, we could merge certain clusters
 cutree_out=cutree(hclust_out, k = 5)
 df_annotation=data.frame(row.names = names(cutree_out), group=factor(cutree_out))
 pheatmap(matrix_compare, cluster_cols = hclust_out, cluster_rows = hclust_out, annotation_col = df_annotation)
 
-# re-assign clusters
-reassignment_lookup = cutree_out
-current_analysis$ROOIJonly_RID2l_clExtended[['clusters_custom']]=factor(cutree_out[current_analysis$ROOIJonly_RID2l_clExtended$RNA_snn_res.1], 
-    levels=1:length(reassignment_lookup))
+# Previously, we did re-assign them, but for now, I think 0.4 will be OK
+if (F) {
+  reassignment_lookup = cutree_out
+  current_analysis$ROOIJonly_RID2l_clExtended[['clusters_custom']]=factor(cutree_out[current_analysis$ROOIJonly_RID2l_clExtended$RNA_snn_res.1], 
+      levels=1:max(reassignment_lookup))
+}
+new_cls=as.numeric(current_analysis$ROOIJonly_RID2l_clExtended$RNA_snn_res.0.4)
+current_analysis$ROOIJonly_RID2l_clExtended[['clusters_custom']]=factor(new_cls, levels=min(new_cls):max(new_cls))
+
 
 # Show it
+DimPlot(current_analysis$ROOIJonly_RID2l_clExtended, group.by = 'clusters_custom', label =  T, label.box = T)
+
+# Some additional info
+current_analysis$ROOIJonly_RID2l_clExtended$nCount.nMT.log10 = log10(.1+current_analysis$ROOIJonly_RID2l_clExtended$nCount.nMT)
+FeaturePlot(current_analysis$ROOIJonly_RID2l_clExtended, features = 'nCount.nMT.log10', cols = rainbow_colors)
 DimPlot(current_analysis$ROOIJonly_RID2l_clExtended, group.by = 'clusters_custom')
+
 
 ####################################################################################################
 
@@ -123,17 +135,19 @@ DimPlot(current_analysis$ROOIJonly_RID2l_clExtended)
 DE_cluster$ROOIJonly_RID2l_clExtended =
     diff_express_clusters(mySeuratObject = current_analysis$ROOIJonly_RID2l_clExtended, mc.cores = MYMCCORES)
 
+# Export results
 DE_out_ROOIJonly_RID2l_clExtended = diff_express_clusters_save_results(
-  all_markers = DE_cluster$ROOIJonly_RID2l_clExtended, run_name = 'ROOIJonly_RID2l_clExtended', base_dir = base_dir, topX = 30, extendedOutput = T)
+  all_markers = DE_cluster$ROOIJonly_RID2l_clExtended, run_name = 'ROOIJonly_RID2l_clExtended', base_dir = base_dir, topX = 30, extendedOutput = T, FC_cutoff = 1.1, pval_cutoff = .05)
 
+# Create convenient parameters for later use/export below
 table_topDE = DE_out_ROOIJonly_RID2l_clExtended$topHitsPerCluster
 enriched_genes_lists_clusters_ROOIJ = DE_out_ROOIJonly_RID2l_clExtended$enriched_genes_lists
 
 ####################################################################################################
-# Now save these results for later use
+# Now save important data for later use
 
 # Save Seurat analysis
-SaveH5Seurat(current_analysis$ROOIJonly_RID2l_clExtended, file = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_','ROOIJonly_RID2l_clExtended','.h5seurat'))
+SaveH5Seurat(current_analysis$ROOIJonly_RID2l_clExtended, file = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_','ROOIJonly_RID2l_clExtended','.h5seurat'), overwrite = T)
   # if (!exists('current_analysis')) {current_analysis = list()}
   # current_analysis$ROOIJonly_RID2l_clExtended = LoadH5Seurat(file = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_','ROOIJonly_RID2l_clExtended','.h5seurat'))
 
@@ -148,11 +162,12 @@ save(list='enriched_genes_lists_clusters_ROOIJ', file = paste0(base_dir,'Rdata/e
 
 ####################################################################################################
 # Run cluster plotting script again
+# Note: I used other scripts for the publication figures
+
 ANALYSIS_NAME_clExtended='ROOIJonly_RID2l_clExtended'
-ANALYSIS_NAME_cl0.4='ROOIJonly_RID2l_clExtended'
 NR_GENES_PER_CLUSTER=4
 # Retrieve 4 top genes
-gene_symbol_table_clExt=diff_express_clusters_save_results(DE_cluster$ROOIJonly_RID2l_clExtended, run_name=ANALYSIS_NAME_cl0.4, base_dir, 
+gene_symbol_table_clExt=diff_express_clusters_save_results(DE_cluster$ROOIJonly_RID2l_clExtended, run_name=ANALYSIS_NAME_clExtended, base_dir, 
     topX=NR_GENES_PER_CLUSTER, easy_names=T, save=F) 
 list_p=list()
 for (cluster_idx in 1:dim(gene_symbol_table_clExt)[2]) {
@@ -163,34 +178,42 @@ for (cluster_idx in 1:dim(gene_symbol_table_clExt)[2]) {
     current_genes = gene_symbol_table_clExt[,cluster_idx][1:NR_GENES_PER_CLUSTER]
     
     list_p[[cluster_idx]]=wrap_plots(lapply(current_genes, 
-                        function(x) {shorthand_seurat_custom_expr(current_analysis[[ANALYSIS_NAME_cl0.4]], x, textsize=6, pointsize=.3)}
+                        function(x) {shorthand_seurat_custom_expr(current_analysis[[ANALYSIS_NAME_clExtended]], x, textsize=6, pointsize=.3, mypercentile = .02)}
                         ), 
                  nrow=NR_GENES_PER_CLUSTER)*theme(legend.position='none')#+
         #plot_annotation(title = paste0('Cluster ', cluster_idx-1))
     print(list_p[[cluster_idx]])
     
-    ggsave(plot=list_p[[cluster_idx]], filename = paste0(base_dir,'Rplots/',ANALYSIS_NAME_cl0.4,'_7_clExt_ClusterMarkers_cl_',cluster_idx,'.pdf'), 
-                height=60, width=20, units='mm', device = cairo_pdf)
+    ggsave(plot=list_p[[cluster_idx]], filename = paste0(base_dir,'Rplots/',ANALYSIS_NAME_clExtended,'_7_clExt_ClusterMarkers_cl_',cluster_idx,'.pdf'), 
+                height=18*3, width=18, units='mm', device = cairo_pdf)
     #VlnPlot(current_analysis$ROOIJonly_RID2l, features = shorthand_seurat_fullgenename(current_genes))
 
 }
 # Save one additional plot with a legend to use for figures
 p=list_p[[cluster_idx]][[1]]+theme(legend.position = 'right', )
-ggsave(plot=p, filename = paste0(base_dir,'Rplots/_0_LEGENDBAR_rainbow.pdf'), height=40, width=16, units='mm')
+ggsave(plot=p, filename = paste0(base_dir,'Rplots/_0_LEGENDBAR_rainbow.pdf'), height=40, width=16, units='mm', device = cairo_pdf)
+
+################################################################################
+
+shorthand_seurat_fullgenename(seuratObject = current_analysis[[ANALYSIS_NAME_clExtended]],gene_names = 'KRT14')
+shorthand_seurat_custom_expr(seuratObject = current_analysis[[ANALYSIS_NAME_clExtended]], gene_of_interest = 'KRT14', textsize=6, pointsize=2)
+VlnPlot(current_analysis[[ANALYSIS_NAME_clExtended]], features = 'ENSG00000186847:KRT14')
 
 ################################################################################
 # Print new umap
 
 p=DimPlot(current_analysis$ROOIJonly_RID2l_clExtended, cols = rep(col_vector_60,2), label = T, repel = T, label.size = 7)+
     theme_void()+ggtitle(element_blank())+theme(legend.position = 'none')
+# p
 # Save files
-ggsave(plot = p, filename = paste0(base_dir,'Rplots/',run_name,'_2_umapLabeled_by_',current_annotation,'.pdf'), height=5.5, width=5.5, units='cm')
+ggsave(plot = p, filename = paste0(base_dir,'Rplots/','ANALYSIS_NAME_clExtended','_2_umapLabeled_by_','idents','.pdf'), height=5.5, width=5.5, units='cm')
 
 ################################################################################
 # New custom plot with patient - cluster distr.
 
 # Custom plot that shows distribution of patients over clusters
 # mymaxy=1.5*max(table(Idents(mySeuratObject)))
+mySeuratObject = current_analysis[[ANALYSIS_NAME_clExtended]]
 p=ggplot(data.frame( cluster = Idents(mySeuratObject),
                 Donor = mySeuratObject$annotation_patient_fct))+
     geom_bar(aes(x=cluster, fill=Donor))+theme_bw()+

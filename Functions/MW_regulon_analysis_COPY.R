@@ -131,16 +131,16 @@ MW_determine_regulons_part1 = function(expression_matrix, calculate_p = F,
         theme(legend.position = c(.8,.8))+
         xlim(-0.5,0.5)+
         give_better_textsize_plot(10)
-    print(p_corr_distr)
+    # print(p_corr_distr)
     
     ggsave(paste0(regulon_object$outputDir_sub,'hist_observed_corrs.pdf'),plot=p_corr_distr,
-            units='mm',width=75,height=75,dpi=600)
+            units='mm',width=75,height=75,dpi=600, device = cairo_pdf)
     
     p_corr_distr_ylog10=p_corr_distr+scale_y_continuous(trans='log10')+theme(legend.position = 'top')
-    print(p_corr_distr_ylog10)
+    # print(p_corr_distr_ylog10)
     
     ggsave(paste0(regulon_object$outputDir_sub,'hist_observed_corrs_ylog10.pdf'),plot=p_corr_distr_ylog10,
-            units='mm',width=75,height=75,dpi=600)
+            units='mm',width=75,height=75,dpi=600, device = cairo_pdf)
 
     ################################################################################
     # To determine the cutoff of the correlation, let's look at the estimated
@@ -192,10 +192,10 @@ MW_determine_regulons_part1 = function(expression_matrix, calculate_p = F,
         theme(legend.position = c(.8,.8))+
         #theme(legend.position = 'none')+#c(.8,.8))+
         give_better_textsize_plot(10)
-    print(p_cutoff_decision)
+    # print(p_cutoff_decision)
     
     ggsave(paste0(regulon_object$outputDir_sub,'Correlations_FPR.pdf'),plot=p_cutoff_decision,
-            units='mm',width=100,height=75,dpi=600)
+            units='mm',width=100,height=75,dpi=600, device = cairo_pdf)
     
     ################################################################################
     # An alternative method to determining significance for multiple testing
@@ -228,10 +228,10 @@ MW_determine_regulons_part1 = function(expression_matrix, calculate_p = F,
         theme(legend.position = c(.8,.8))+give_better_textsize_plot(10)+
         geom_vline(xintercept = 5)+geom_vline(xintercept = 10)+
         ggtitle('red=FPR, black,FPR=0.01, 0.05\nblack,p=10^-5,10^-10, grey=FPR for 1 obs')
-    print(p_cutoff_decision2)
+    # print(p_cutoff_decision2)
     
     ggsave(paste0(regulon_object$outputDir_sub,'Correlations_FPR_pvals.pdf'),plot=p_cutoff_decision2,
-            units='mm',width=100,height=75,dpi=600)
+            units='mm',width=100,height=75,dpi=600, device = cairo_pdf)
     
     
     # Then calculate the p-values (if desired)
@@ -284,12 +284,12 @@ MW_determine_regulons_part1 = function(expression_matrix, calculate_p = F,
             #theme(legend.position = c(.8,.8))+
             theme(legend.position = 'bottom')+
             ggtitle('Calculating p-val for R (student-t)')
-        print(p_tdist)
+        # print(p_tdist)
     
     }
     
     ggsave(paste0(regulon_object$outputDir_sub,'Correlations_Pvalue_Relation.pdf'),plot=p_tdist,
-            units='mm',width=75,height=75,dpi=600)
+            units='mm',width=75,height=75,dpi=600, device = cairo_pdf)
 
     # Prepare return value and return
     if (calculate_p) {
@@ -350,20 +350,20 @@ MW_determine_regulons_part2 = function(regulon_object, chosen_cutoff_parameter='
         theme_bw()+give_better_textsize_plot(10)+
         ggtitle('Connectedness of genes')
         #xlim(c(0,100))
-    print(p_connectedness)
+    # print(p_connectedness)
     
     ggsave(paste0(regulon_object$outputDir_sub,'Connectedness.pdf'),plot=p_connectedness,
-            units='mm',width=75,height=75,dpi=600)
+            units='mm',width=75,height=75,dpi=600, device = cairo_pdf)
     
     p_connectedness2 = ggplot(data=data.frame(x=hist_out_intrx$mids,y=sum(hist_out_intrx$counts)-cumsum(hist_out_intrx$counts)))+
         geom_line(aes(x=x,y=y))+
         xlab('Cutoff treshold connectedness')+ylab('Genes that will remain in analysis')+
         theme_bw()+give_better_textsize_plot(10)+
         ggtitle('Connectedness of genes')
-    print(p_connectedness2)
+    # print(p_connectedness2)
     
     ggsave(paste0(regulon_object$outputDir_sub,'Connectedness_vs_treshold.pdf'),plot=p_connectedness2,
-            units='mm',width=75,height=75,dpi=600)
+            units='mm',width=75,height=75,dpi=600, device = cairo_pdf)
     
     regulon_object$p_connectedness  = p_connectedness
     regulon_object$p_connectedness2 = p_connectedness2
@@ -427,17 +427,17 @@ MW_determine_regulons_part3 = function(regulon_object,
         # ggtitle(paste0('For genes that are expressed in ',round(min_expression_fraction_genes*100,2),'% of cells'))+
         theme_bw()+give_better_textsize_plot(10)
         #xlim(c(0,100))+
-    print(p)
+    # print(p)
     
     ggsave(paste0(regulon_object$outputDir_sub,'Connectedness_selectedgenes.pdf'),plot=p,
-            units='mm',width=75,height=75,dpi=600)
+            units='mm',width=75,height=75,dpi=600, device = cairo_pdf)
     
     # now select that subsection of the matrix that only contains those genes
     cor_out_selected_2 <- cor_out[sel_genes_2,][,sel_genes_2]
     # and display the heatmap
     if (show_heatmap) {
         pheatmap_out_sel2 <- pheatmap(cor_out_selected_2)
-        print(pheatmap_out_sel2)
+        # print(pheatmap_out_sel2)
         #pheatmap(cor_out_selected_2, cluster_rows = F, cluster_cols = F)
         #image(cor_out_selected_2)
     }
@@ -490,20 +490,20 @@ MW_determine_regulons_part4 = function(regulon_object) {
         # see also comments inside this function; it looks at how
         # the distances between points that are joined develops.
     
-    print(clust_dens_out$p2)
+    # print(clust_dens_out$p2)
     
     ggsave(paste0(regulon_object$outputDir_sub,'regulons_dendrogram_cutoff_analysis1.pdf'),plot=clust_dens_out$p1+give_better_textsize_plot(10),
-            units='mm',width=75,height=75,dpi=600)
+            units='mm',width=75,height=75,dpi=600, device = cairo_pdf)
     ggsave(paste0(regulon_object$outputDir_sub,'regulons_dendrogram_cutoff_analysis2.pdf'),plot=clust_dens_out$p2+give_better_textsize_plot(10),
-            units='mm',width=75,height=75,dpi=600)
+            units='mm',width=75,height=75,dpi=600, device = cairo_pdf)
     
     p=p+geom_hline(yintercept = clust_dens_out$y_cutoff[1], color='blue')+
         geom_hline(yintercept = clust_dens_out$y_cutoff[2], color='red')
         
     ggsave(paste0(regulon_object$outputDir_sub,'regulons_dendrogram.pdf'),plot=p,
-            units='mm',width=75,height=150,dpi=600)
+            units='mm',width=75,height=150,dpi=600, device = cairo_pdf)
     
-    print(p)
+    # print(p)
     
     regulon_object$auto_cutoff1 = clust_dens_out$y_cutoff[1]
     regulon_object$auto_cutoff2 = clust_dens_out$y_cutoff[2]
@@ -545,7 +545,7 @@ MW_determine_regulons_part5 = function(regulon_object, hierarchical_cutoff=NULL,
                 geom_line(aes(x=K, y=gap))+geom_point(aes(x=K, y=gap))+theme_bw()+
                 ggtitle(paste0('Gap-stat, K=',nCluster,' optimal'))+give_better_textsize_plot(8)
             p
-            ggsave(paste0(regulon_object$outputDir_sub,'regulon_K_gap_stat.pdf'),plot=p,units='mm',width=100,height=50,dpi=600)
+            ggsave(paste0(regulon_object$outputDir_sub,'regulon_K_gap_stat.pdf'),plot=p,units='mm',width=100,height=50,dpi=600, device = cairo_pdf)
         
             gene_clustering_assign_hierarchical <- cutree(hclust_out, k = nCluster)
             regulon_object$nCluster=nCluster # save for later

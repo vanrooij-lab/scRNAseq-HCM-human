@@ -4,4 +4,4 @@
 script_dir=/hpc/hub_oudenaarden/mwehrens/scripts/SCS_HCM_analysis/
 
 # execute the scripts
-Rscript --vanilla $script_dir/HCM-SCS_2021-06_SeuratRevisedAnalysis_GeneCorrelationsOfInterest.R $commands
+Rscript --vanilla $script_dir/HCM_SCS_2021_06_SeuratRevisedAnalysis_GeneCorrelationsOfInterest.R $commands

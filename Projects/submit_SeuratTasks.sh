@@ -30,6 +30,8 @@ sbatch --dependency=afterany:${last_jobid} --output=slurm-${commands}-%x.%j.out 
 # Without dependency
 # sbatch --output=slurm-${commands}-%x.%j.out --job-name=${commands} -c ${processors} --time=2-00:00:00 --mem=150G --export=ALL,commands="${commands}" ${script_dir}/run_SeuratTask.sh
   
+################################################################################    
+  
 # Again analysis, but now for RID2l
 commands=runf_all_RID2l_VAR  
 processors=1
@@ -69,7 +71,7 @@ last_jobid=$(sbatch --parsable test.sh)
 ################################################################################
 # Run all, but with filter for septal cells in Teichmann
 
-# TEICHMANN
+# ALL, septal sel Teichmann
 commands="run_separate-dataset=ALL.SP-settings=SETTINGS_RID2l"
 processors=1
 memory=128G
@@ -193,6 +195,9 @@ last_jobid2=$(sbatch --dependency=afterany:${last_jobid} --parsable --output=slu
 
 ################################################################################
 # ANALYSIS OF ROOIJ DATA, INTEGRATED 
+# (We didn't use this -- I'm highly suspicious of these integration methods
+# as they also flawlessly integrate and mix different cell types, which obviously
+# is undesired behavior.)
 
 # Integration 
 commands="run_batch_corr_sep-dataset=ROOIJonly"
@@ -282,7 +287,11 @@ script_name=run_SeuratCorrTask.sh
 sbatch --parsable --output=slurm-${commands}-%x.%j.out --job-name="${commands}" -c ${processors} --time=3-00:00:00 --mem=${mem} --export=ALL,commands="${commands}" ${script_dir}/${script_name}
 
 ################################################################################
-# SCENIC analysis
+# SCENIC analysis [ D O   N O T   R U N ]
+# Don't run this; in the end I used the command line interface;
+# see HCM_SCS_2021_08_SCENIC-py-ICL.sh
+
+
 # R.P1
 # R.P2 R.P3 R.P4 R.P5
 
@@ -306,8 +315,12 @@ do
 
 done
 ################################################################################
+# Additionally, for Homer and Lisa, see:
 
+# HCM_SCS_2021_08_LISA.sh
+# HCM_SCS_2021_08_HOMER.sh
 
+################################################################################
 
 #####
 
@@ -317,6 +330,8 @@ processors=1
 script_dir=/hpc/hub_oudenaarden/mwehrens/scripts/SCS_HCM_analysis/
 last_jobid=$(sbatch --parsable --output=slurm-${commands}-%x.%j.out --job-name="${commands}" -c ${processors} --time=0-00:05:00 --mem=1G --export=ALL,commands="${commands}" ${script_dir}/run_SeuratTask.sh)
 
+
+################################################################################
 
 
 

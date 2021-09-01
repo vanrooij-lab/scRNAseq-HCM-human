@@ -112,7 +112,8 @@ plot_clust_join_density <- function(hclust_out) {
             give_better_textsize_plot(8)
     #p3
     
-    g1<-grid.arrange(p2,p3,nrow=2)
+    # g1<-grid.arrange(p2,p3,nrow=2)
+    g1=wrap_plots(p2,p3,nrow=2)
 
     return(list(p1=p1,
         p2=p2,

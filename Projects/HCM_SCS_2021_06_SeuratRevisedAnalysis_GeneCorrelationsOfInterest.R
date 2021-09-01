@@ -17,7 +17,7 @@ if (exists('LOCAL')) {
 }
 
 desired_command='dummy'
-source(paste0(script_dir, 'HCM-SCS_2021-06_SeuratRevisedAnalysis_v2_UmiTools.R'))
+source(paste0(script_dir, 'HCM_SCS_2021_06_SeuratRevisedAnalysis_v2_UmiTools.R'))
     # Also loads already
     # source(paste0(script_dir,'Functions/MW_general_functions.R'))
     # file.edit('/Users/m.wehrens/Documents/git_repos/SCS_More_analyses/Functions/MW_general_functions.R')
@@ -89,7 +89,7 @@ if (T) {
         for (analysis_name in OBJECTS_TO_ANALYZE) {
             
             # analysis_name='ROOIJonly_RID2l'; gene_name=shorthand_seurat_fullgenename('TTN')
-            # analysis_name='ROOIJonly_RID2l'; gene_name=shorthand_seurat_fullgenename('NPPA')
+            # analysis_name='ROOIJonly_RID2l'; gene_name=shorthand_seurat_fullgenename(current_analysis$ROOIJonly_RID2l, 'NPPA')
             # analysis_name='ROOIJonly_RID2l'; gene_name=shorthand_seurat_fullgenename('CMYA5')
             # analysis_name='TEICHMANNonly_RID2l'; gene_name='TTN'
             
@@ -121,14 +121,17 @@ if (T) {
                     
                 # Make a plot
                 p=plot_volcano3(my_corrs_df_current = Volcano_df_collection[[gene_name]][[analysis_name]][[current_patient]],mycex=3,
-                                NRLABELED=20,mypvaltreshold=0.01,manual_gene_name = shorthand_cutname(gene_name),
-                                  mypointsize=.1, mylinesize=.25, mytextsize=10)+
+                                NRLABELED=10,mypvaltreshold=0.01,manual_gene_name = shorthand_cutname(gene_name),
+                                  mypointsize=.1, mylinesize=.25, mytextsize=6)+
                     ggtitle(paste0('Correlations with ',gene_name,'\n(',analysis_name,'); ',current_patient,''))
                 # p
                 
                 # Save & export it
-                ggsave(filename = paste0(base_dir,'Rplots/',analysis_name,'_6_Volcano_',gene_name,'_',current_patient,'.png'), 
-                    plot = p, height=7.5, width=7.5, units = 'cm')
+                ggsave(filename = paste0(base_dir,'Rplots/',analysis_name,'_6_Volcano_',gene_name,'_',current_patient,'.pdf'), 
+                    plot = p, height=172/3-4, width=172/3-4, units = 'mm', device = cairo_pdf)
+                p=p+ggtitle(paste0('Correlations with ',shorthand_cutname(gene_name)))
+                ggsave(filename = paste0(base_dir,'Rplots/',analysis_name,'_6_Volcano_',gene_name,'_',current_patient,'_v2.pdf'), 
+                    plot = p, height=172/3-4, width=172/3-4, units = 'mm', device = cairo_pdf)
                 
             }    
     
@@ -265,7 +268,7 @@ if (F) {
         # p
         if (SAVEPLOT) {
         ggsave(filename = paste0(base_dir,'Rplots/',CURRENT_DATASET,'_6_CorrelationsGenes_Means_',CURRENT_GENE,'_.pdf'), 
-                    plot = p, height=80, width=46*2, units = 'mm') # 185/4
+                    plot = p, height=80, width=46*2, units = 'mm', device=cairo_pdf) # 185/4
         }
         
         # Slightly adjusted plot (for NPPA, mostly)
@@ -287,7 +290,7 @@ if (F) {
         # p
         if (SAVEPLOT) {
         ggsave(filename = paste0(base_dir,'Rplots/',CURRENT_DATASET,'_6_CorrelationsGenesColor_',CURRENT_GENE,'_.pdf'), 
-                    plot = p, height=80, width=46*2, units = 'mm') # 185/4
+                    plot = p, height=80, width=46*2, units = 'mm', device=cairo_pdf) # 185/4
         }
     
         # Heatmap displaying significant correlations
@@ -313,7 +316,7 @@ if (F) {
         # p 
         if (SAVEPLOT) {
         ggsave(filename = paste0(base_dir,'Rplots/',CURRENT_DATASET,'_6_TableSignCorrelations_',CURRENT_GENE,'_.pdf'), 
-                        plot = p, height=5.7*nrow_effective, width=ncol_effective*18, units = 'mm') # 185/4 || 46*2
+                        plot = p, height=5.7*nrow_effective, width=ncol_effective*18, units = 'mm', device=cairo_pdf) # 185/4 || 46*2
         }
         
         # Now save for future use
@@ -428,9 +431,10 @@ if (F) {
             xlim(c(-1,1))+ylim(c(-myymax*.03,myymax*1.2))+theme_bw()+
             geom_text_repel(data=df_melted_sel[order(df_melted_sel$pval),][1:20,],aes(label=gene_name_short), color='red', max.overlaps = 100, min.segment.length = 0)+
             scale_color_manual(values = col_vector_60)
+        # Note: multiple dots per patient: ugly
         # p
-        # ggsave(filename = paste0(base_dir,'Rplots/',CURRENT_DATASET,'_6_CorrelationsGenesColor_',CURRENT_GENE,'_.pdf'), 
-        #             plot = p, height=80, width=46*2, units = 'mm') # 185/4
+        #ggsave(filename = paste0(base_dir,'Rplots/',CURRENT_DATASET,'_6_CorrelationsGenesColor_',CURRENT_GENE,'_.pdf'), 
+        #         plot = p, height=172/3-4, width=172/3-4, units = 'mm', device = cairo_pdf) # 185/4
         
         # Heatmap displaying significant correlations, using selection made above, based on 
         # whether they are significant in reference dataset (Rooij) in >1 patient
@@ -458,7 +462,7 @@ if (F) {
         # p 
         
         ggsave(filename = paste0(base_dir,'Rplots/customALL',SP_SWITCH,'_6_TableSignCorrelations_',CURRENT_GENE,'_.pdf'), 
-                         plot = p, height=2.5*nrow_effective, width=184.6, units = 'mm') # 185/4 || 46*2 || ncol_effective*7.5
+                         plot = p, height=2.5*nrow_effective, width=172, units = 'mm', device=cairo_pdf) # 185/4 || 46*2 || ncol_effective*7.5
         
         # Slightly adjusted heatmap in case of more information
         p=ggplot(df_melted_sel_sel, aes(x=factor(donor, levels=CUSTOM_PATIENT_ORDER), y=factor(gene_name_short, levels=rev(gene_order_short)), fill=corr)) +
@@ -474,11 +478,11 @@ if (F) {
             xlab('donor')
         # p
         ggsave(filename = paste0(base_dir,'Rplots/customALL',SP_SWITCH,'_6_TableSignCorrelations-style2_',CURRENT_GENE,'_.pdf'), 
-                         plot = p, height=min(184.6,3*nrow_effective), width=2/3*184.6-4, units = 'mm') # 185/4 || 46*2 || ncol_effective*7.5
+                         plot = p, height=min(172,3*nrow_effective+20), width=2/3*172-4, units = 'mm', device=cairo_pdf) # 185/4 || 46*2 || ncol_effective*7.5
         # Now with legend
         p=p+theme(legend.position='bottom') # p
         ggsave(filename = paste0(base_dir,'Rplots/customALL',SP_SWITCH,'_6_TableSignCorrelations-style2_LEGEND_',CURRENT_GENE,'_.pdf'), 
-                         plot = p, height=min(184.6,3.5*nrow_effective), width=2/3*184.6-4, units = 'mm') # 185/4 || 46*2 || ncol_effective*7.5
+                         plot = p, height=min(172,3.5*nrow_effective+5), width=2/3*172-4, units = 'mm', device=cairo_pdf) # 185/4 || 46*2 || ncol_effective*7.5
         
         # Less sophisticated heatmap
         # Note: this isn't 100 rows, because not all top-100 mean genes are also sign. in >1 patient
@@ -554,7 +558,7 @@ if (F) {
     mtx[is.na(mtx)]=0
     p=pheatmap(mtx, fontsize_row = 3)
     p
-    ggsave(filename = paste0(base_dir,'Rplots/combined_TTN_corrs.pdf'), plot = p, height=30, width=15, units='cm')
+    ggsave(filename = paste0(base_dir,'Rplots/combined_TTN_corrs.pdf'), plot = p, height=30, width=15, units='cm', device=cairo_pdf)
 }
 ################################################################################
 

@@ -1,26 +1,31 @@
 #!/bin/bash
 
 # ==============================================================================
-# Run using
+# This code is not run
+# 
+# It's only here as a reminder how to submit the jobs.
 
 if [[ 0 -eq 1 ]]; then
   
+  # Execute this code manually on the cluster to submit the job:
   script_dir=/hpc/hub_oudenaarden/mwehrens/scripts/SCS_HCM_analysis
   processors=20
   mem=50G
   # for patient in R.P1 R.P2 R.P3 R.P4 R.P5 
   for patient in R.P2 R.P3 R.P4 R.P5 
   do
-    sbatch --output=slurm-scenic-${patient}-%x.%j.out --job-name=SCN_${patient} -c ${processors} --time=1-00:00:00 --mem=${mem} --export=ALL,patient="${patient}" ${script_dir}/HCM-SCS_2021_08_SCENIC-py-ICL.sh
+    sbatch --output=slurm-scenic-${patient}-%x.%j.out --job-name=SCN_${patient} -c ${processors} --time=1-00:00:00 --mem=${mem} --export=ALL,patient="${patient}" ${script_dir}/HCM_SCS_2021_08_SCENIC-py-ICL.sh
     # --parsable 
   done
   
 fi
 
 # ==============================================================================
+# Actual script
+
 # prepare script
 
-# activate correct environment
+# activate correct environment where SCENIC is installed
 # Note, use "conda env list" to see all env
 # First make conda accessible in this shell (https://github.com/conda/conda/issues/7980)
 condapath=$(conda info --base)

@@ -26,10 +26,10 @@
 ########################################################################
 
 # For convenience, on HPC, this script can be sourced by:
-# script_dir = '/hpc/hub_oudenaarden/mwehrens/scripts/SCS_HCM_analysis/'; desired_command='dummy'; source(paste0(script_dir, 'HCM-SCS_2021-06_SeuratRevisedAnalysis_v2_UmiTools.R')); rm('desired_command')
+# script_dir = '/hpc/hub_oudenaarden/mwehrens/scripts/SCS_HCM_analysis/'; desired_command='dummy'; source(paste0(script_dir, 'HCM_SCS_2021_06_SeuratRevisedAnalysis_v2_UmiTools.R')); rm('desired_command')
 #
 # Local:
-# LOCAL=1; script_dir = '/Users/m.wehrens/Documents/git_repos/SCS_More_analyses/Projects/'; desired_command='dummy'; source(paste0(script_dir, 'HCM-SCS_2021-06_SeuratRevisedAnalysis_v2_UmiTools.R')); rm('desired_command')
+# LOCAL=1; script_dir = '/Users/m.wehrens/Documents/git_repos/SCS_More_analyses/Projects/'; desired_command='dummy'; source(paste0(script_dir, 'HCM_SCS_2021_06_SeuratRevisedAnalysis_v2_UmiTools.R')); rm('desired_command')
 
 ########################################################################
 
@@ -477,6 +477,23 @@ if ('create_merged_seurat' %in% desired_command) {
 
 ################################################################################
 
+if ('create_separate_raw' %in% desired_command) {
+
+    load(file = paste0(base_dir,'Rdata/RHL_SeuratObject_merged.Rdata'))
+    
+    # Create raw object for statistics
+    RHL_SeuratObject_Rooij_raw = subset(RHL_SeuratObject_merged, annotation_paper_str=='vRooij')
+    SaveH5Seurat(object = RHL_SeuratObject_Rooij_raw, overwrite = T,
+            filename = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_Rooij_raw.h5seurat'))
+    # Create raw object for statistics
+    RHL_SeuratObject_Hu_raw = subset(RHL_SeuratObject_merged, annotation_paper_str=='Hu')
+    SaveH5Seurat(object = RHL_SeuratObject_Hu_raw, overwrite = T,
+            filename = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_Hu_raw.h5seurat'))
+
+}
+
+################################################################################
+
 # Previously, I mapped all data from Hu, and it was necessary to select for 
 # vCMs in that data.
 # However, I now performed this selection before mapping, using their metadata, 
@@ -649,7 +666,11 @@ if ('select_genes_cells' %in% desired_command) {
     RHL_SeuratObject_merged_noMito[['nFeature.nMT']] = CalcN_out_merged$nFeature
     
     # Then perform cell selection
-    RHL_SeuratObject_merged_noMito_sel <- subset(RHL_SeuratObject_merged_noMito, subset = nFeature.nMT > 50 & nFeature.nMT > 1000 & percent.mt < 80)
+    # RHL_SeuratObject_merged_noMito_sel <- subset(RHL_SeuratObject_merged_noMito, subset = nFeature.nMT > 50 & nFeature.nMT > 1000 & percent.mt < 80)
+    #
+    # BUGFIX!! --> previously, I accidentically selected for nFeature.nMT > 1000
+    RHL_SeuratObject_merged_noMito_sel <- subset(RHL_SeuratObject_merged_noMito, subset = nCount.nMT > 1000)
+    
     # Little boilerplate, additional selection of Hu cells based on region
     # unique(RHL_SeuratObject_merged_noMito_sel[["annotation_region_str"]][RHL_SeuratObject_merged_noMito_sel[["annotation_paper_str"]]=='Hu'])
     RHL_SeuratObject_merged_noMito_sel = RHL_SeuratObject_merged_noMito_sel[,!(RHL_SeuratObject_merged_noMito_sel[["annotation_region_str"]]=='LA'&
@@ -674,7 +695,7 @@ if ('select_genes_cells' %in% desired_command) {
     rm('RHL_SeuratObject_merged_noMito')
     
 }
-
+    
 ################################################################################
 # Now we can start using the Seurat analysis pipeline as defined in
 # HCM-SCS_2021-06_SeuratAnalysisPipeline.R
@@ -1146,10 +1167,11 @@ if ('more_custom_plots' %in% desired_command) {
     ggsave(plot = p,filename = paste0(base_dir, 'Rplots/',CURRENT_RUNNAME,'_6_',PLOTTYPE,'_by-', CAT, '_',LIST_NAME,'.pdf'), width = 172/3-4, height= 172/3-4, units='mm', device=cairo_pdf)
 
     # Now create MYH6 separately, also use to add legend
+    TYPE='violin'
     p_=shorthand_plotViolinBox_custom(current_analysis,analysis_name=CURRENT_RUNNAME,cat_by = 'annotation_paper_fct', 
                                                     gene_of_interest='MYH6',base_dir=base_dir, cat_name = CATNAME,
-                                                    type = 'violin')+theme(legend.position='right')
-    ggsave(plot = p_,filename = paste0(base_dir, 'Rplots/',analysis_name,'_6_',type,'_FORLEGEND.pdf'), width = 7, height= 6, units='cm')
+                                                    type = TYPE)+theme(legend.position='right')
+    ggsave(plot = p_,filename = paste0(base_dir, 'Rplots/',CURRENT_RUNNAME,'_6_',TYPE,'_FORLEGEND.pdf'), width = 7, height= 6, units='cm', device=cairo_pdf)
 
     
     # Then look at how genes that came up during analysis are expressed
@@ -1183,10 +1205,10 @@ if ('more_custom_plots' %in% desired_command) {
                                  zscore=T) 
         p=wrap_plots(p_lists$p_violin_list, nrow=1)
         ggsave(filename = paste0(base_dir, 'Rplots/', CURRENT_RUNNAME, '_9_customCOMPOSITE_REG.pdf'), plot = p,
-               height=26.5, width=min(184.6-4, 26.5*6), units='mm')
+               height=26.5, width=min(184.6-4, 26.5*6), units='mm', device=cairo_pdf)
         p=wrap_plots(p_lists$p_bar_list_g2, nrow=1)
         ggsave(filename = paste0(base_dir, 'Rplots/', CURRENT_RUNNAME, '_9_customCOMPOSITE_REG_g2.pdf'), plot = p,
-               height=26.5, width=min(184.6-4, 26.5*6), units='mm')
+               height=26.5, width=min(184.6-4, 26.5*6), units='mm', device=cairo_pdf)
         
         # UMAPs
         p_list = lapply(names(core_regulons_sorted), function(reg_name) {
@@ -1196,7 +1218,7 @@ if ('more_custom_plots' %in% desired_command) {
             })
         p=wrap_plots(p_list, nrow=1)
         ggsave(filename = paste0(base_dir, 'Rplots/', CURRENT_RUNNAME, '_9_customUMAPs_REG.pdf'), plot = p,
-               height=30, width=min(184.6-4, 30*6), units='mm')      
+               height=30, width=min(184.6-4, 30*6), units='mm', device=cairo_pdf)      
         
         # Also do SCENIC regulons
         # ===
@@ -1218,10 +1240,10 @@ if ('more_custom_plots' %in% desired_command) {
                                  zscore=T) 
         p=wrap_plots(p_lists$p_violin_list, nrow=4)
         ggsave(filename = paste0(base_dir, 'Rplots/', CURRENT_RUNNAME, '_9_customCOMPOSITE_REG_SCENIC.pdf'), plot = p,
-               height=26.5*4, width=min(184.6-4, 26.5*4), units='mm')
+               height=26.5*4, width=min(184.6-4, 26.5*4), units='mm', device=cairo_pdf)
         p=wrap_plots(p_lists$p_bar_list_g2, nrow=4)
         ggsave(filename = paste0(base_dir, 'Rplots/', CURRENT_RUNNAME, '_9_customCOMPOSITE_REG_SCENIC_g2.pdf'), plot = p,
-               height=26.5*4, width=min(184.6-4, 26.5*4), units='mm')
+               height=26.5*4, width=min(184.6-4, 26.5*4), units='mm', device=cairo_pdf)
         
         # UMAP
         p_list = lapply(names(SCENIC_regulons_core_genes_sel), function(reg_name) {
@@ -1231,7 +1253,7 @@ if ('more_custom_plots' %in% desired_command) {
             })
         p=wrap_plots(p_list, nrow=4)
         ggsave(filename = paste0(base_dir, 'Rplots/', CURRENT_RUNNAME, '_9_customUMAPs_REG_SCENIC.pdf'), plot = p,
-               height=4*30, width=min(184.6-4, 30*4), units='mm')      
+               height=4*30, width=min(184.6-4, 30*4), units='mm', device=cairo_pdf)      
 
         
     }
@@ -1249,7 +1271,7 @@ if ('more_custom_plots' %in% desired_command) {
     DATASET_NAME='ROOIJonly_RID2l_clExtended'
     # CURRENT_RUNNAME='ALL.SP_RID2l'
     
-    current_analysis = list()
+    if (!exists('current_analysis')) {current_analysis = list()}
     current_analysis[[DATASET_NAME]] = 
         LoadH5Seurat(file = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_',DATASET_NAME,'.h5seurat'))
 
@@ -1264,6 +1286,48 @@ if ('more_custom_plots' %in% desired_command) {
     # --> Show umap with annotations --> More customized/stylized version, specific size
     # --> # Distribution of patients over clusters
     
+    # Some more custom UMAPs
+    for (GENE in c('MYH7', 'MYH6')) {
+        p=shorthand_seurat_custom_expr(seuratObject = current_analysis[[DATASET_NAME]], 
+                                         gene_of_interest = GENE,
+                                         textsize = 8, pointsize = 1, custom_title = GENE, mymargin = .1) 
+        # p
+        ggsave(filename = paste0(base_dir, 'Rplots/', DATASET_NAME, '_9_customUMAPs_',GENE,'.pdf'), plot = p,
+               height=172/3-4, width=172/3-4, units='mm', device = cairo_pdf)     
+    }
+    
+    # Generate QC plots for this dataset that look pretty
+    # Automatically saves plots
+    newfact=gsub('R\\.','',current_analysis[[DATASET_NAME]]$annotation_patient_fct)
+    current_analysis[[DATASET_NAME]]$annotation_patient_simplified_fct = factor(newfact, levels=sort(unique(newfact)))
+    shorthand_plotViolinBox_custom(myseuratobjectlist = current_analysis,analysis_name = DATASET_NAME,
+                                   cat_by = 'annotation_patient_simplified_fct',cat_name = 'patient',base_dir = base_dir, 
+                                   manual_expr = current_analysis[[DATASET_NAME]]$percent.mt[colnames(current_analysis[[DATASET_NAME]])],
+                                   manual_expr_featname='Mitochondrial percentage', type='violin', custom_ylim=c(0,100),
+                                   custom_ylab = 'Mitochondrial percentage', custom_title=element_blank())
+    
+    # For comparison
+    HU_DATASET = 'HUonly_RID2l'
+    if (!(HU_DATASET %in% names(current_analysis))) {
+        current_analysis[[HU_DATASET]] = 
+            LoadH5Seurat(file = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_',HU_DATASET,'.h5seurat')) 
+    }
+
+    custom_levels=c('H.N1', 'H.N2', 'H.N3', 'H.N4', 'H.N5', 'H.N13', 'H.N14') 
+    current_analysis[[HU_DATASET]]$annotation_patient_fct = factor(current_analysis[[HU_DATASET]]$annotation_patient_str, levels=custom_levels)
+    shorthand_plotViolinBox_custom(myseuratobjectlist = current_analysis,analysis_name = HU_DATASET,
+                               cat_by = 'annotation_patient_fct',cat_name = 'patient',base_dir = base_dir, 
+                               manual_expr = current_analysis[[HU_DATASET]]$percent.mt[colnames(current_analysis[[HU_DATASET]])],
+                               manual_expr_featname='Mitochondrial percentage', type='violin', custom_ylab = 'Mitochondrial percentage', 
+                               custom_title=element_blank(), custom_ylim=c(0,100))
+    
+    # Now distribution of read counts
+    current_analysis$ROOIJonly_RID2l_clExtended$nCount_rnaMitoCounts[1:10]
+    current_analysis$ROOIJonly_RID2l_clExtended$n_counts
+    current_analysis$ROOIJonly_RID2l_clExtended$nCount.nMT[1:10]
+    ggplot(data.frame(count=log10(.1+current_analysis$ROOIJonly_RID2l_clExtended$nCount.nMT)), aes(x=count))+
+        geom_histogram(binwidth = .1)
+
 
 }    
     

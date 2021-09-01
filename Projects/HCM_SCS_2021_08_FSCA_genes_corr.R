@@ -1,5 +1,7 @@
 
-DATASET_NAME = 'ROOIJonly_RID2l'
+library(dplyr)
+
+DATASET_NAME = 'ROOIJonly_RID2l_clExtended'
 TRIAGE_DATASET_NAME='ROOIJonly_TRIAGE_clExt'
 
 if (!exists('current_analysis')) {current_analysis = list()}
@@ -10,7 +12,7 @@ current_analysis[[TRIAGE_DATASET_NAME]] =
 
 
 
-# Also required:
+# Also required: ---->
 load(paste0(base_dir,'Rplots/ROOIJonly_RID2l_core_regulons_sorted.Rdata'))
     # core_regulons_sorted
     # core_regulons
@@ -58,12 +60,13 @@ rownames(indexData_MW) = indexData_MW$Cell_newname
 ################################################################################
 # Project data on UMAP
 
-current_analysis$ROOIJonly_RID2l[['FSCA']]=indexData_MW[colnames(current_analysis$ROOIJonly_RID2l),]$FSC_A
+current_analysis$ROOIJonly_RID2l_clExtended[['FSCA']]=indexData_MW[colnames(current_analysis$ROOIJonly_RID2l_clExtended),]$FSC_A
 
-FeaturePlot(object = current_analysis$ROOIJonly_RID2l, features = 'FSCA', cols = rainbow_colors, pt.size = 2)
-VlnPlot(object = current_analysis$ROOIJonly_RID2l, features = 'FSCA')#, cols = rainbow_colors, pt.size = 2)
+FeaturePlot(object = current_analysis$ROOIJonly_RID2l_clExtended, features = 'FSCA', cols = rainbow_colors, pt.size = 2)
+VlnPlot(object = current_analysis$ROOIJonly_RID2l_clExtended, features = 'FSCA')#, cols = rainbow_colors, pt.size = 2)
 
-current_analysis$ROOIJonly_TRIAGE_clExt[['FSCA']]=indexData_MW[colnames(current_analysis$ROOIJonly_RID2l),]$FSC_A
+# Triage clusters
+current_analysis$ROOIJonly_TRIAGE_clExt[['FSCA']]=indexData_MW[colnames(current_analysis$ROOIJonly_RID2l_clExtended),]$FSC_A
 FeaturePlot(object = current_analysis$ROOIJonly_TRIAGE_clExt, features = 'FSCA', cols = rainbow_colors, pt.size = 2)
 VlnPlot(object = current_analysis$ROOIJonly_TRIAGE_clExt, features = 'FSCA')#, cols = rainbow_colors, pt.size = 2)
 
@@ -75,8 +78,8 @@ GENE_MIN_PERCENTAGE=.1
 GENE_MIN_PERCENTAGE=.33
 
 # First subset on where we have data for
-selected_cells = colnames(current_analysis$ROOIJonly_RID2l)[colnames(current_analysis$ROOIJonly_RID2l) %in% indexData_MW$Cell_newname]
-current_analysis$ROOIJonly_RID2l_FSCA = subset(current_analysis$ROOIJonly_RID2l, cells = selected_cells)
+selected_cells = colnames(current_analysis$ROOIJonly_RID2l_clExtended)[colnames(current_analysis$ROOIJonly_RID2l_clExtended) %in% indexData_MW$Cell_newname]
+current_analysis$ROOIJonly_RID2l_FSCA = subset(current_analysis$ROOIJonly_RID2l_clExtended, cells = selected_cells)
 # Re-arrange df such that cell order matches (redundant because already in right order, but to make sure..)
 rownames(indexData_MW) = indexData_MW$Cell_newname
 indexData_MW=indexData_MW[selected_cells,]
@@ -128,6 +131,7 @@ tresholds_p5
 
 selected_genes=correlations_FSCA_per_patient_combined$P4_cor>.2&correlations_FSCA_per_patient_combined$P5_cor>.1
 selected_genes=correlations_FSCA_per_patient_combined$P4_cor>tresholds_p4&correlations_FSCA_per_patient_combined$P5_cor>tresholds_p5
+shorthand_cutname(rownames(correlations_FSCA_per_patient_combined[selected_genes,]))
 
 p=ggplot(correlations_FSCA_per_patient_combined, aes(x=P4_cor, y=P5_cor))+
     geom_point(size=.5, shape=1, color='grey')+
@@ -141,10 +145,32 @@ p=ggplot(correlations_FSCA_per_patient_combined, aes(x=P4_cor, y=P5_cor))+
     xlab('Gene-cell size correlation patient 4')+ylab('Gene-cell size correlation patient 5')
     #geom_smooth(method = 'lm')+ylim(c(-.5,.5))+xlim(c(-.5,.5))
 p
-ggsave(plot = p,filename = paste0(base_dir, 'Rplots/ROOIJonly_RID2l_8_FSCA_corrs_Both-10pct.pdf'), 
-       width = 184.6/3-4, height= 184.6/3-4, units='mm')
-ggsave(plot = p,filename = paste0(base_dir, 'Rplots/ROOIJonly_RID2l_8_FSCA_corrs_Both-10pct_L.pdf'), 
-       width = 184.6/2-4, height= 184.6/2-4, units='mm')
+ggsave(plot = p,filename = paste0(base_dir, 'Rplots/ROOIJonly_RID2l_clExtended_8_FSCA_corrs_Both-10pct.pdf'), 
+       width = 172/3-4, height= 172/3-4, units='mm', device = cairo_pdf)
+ggsave(plot = p,filename = paste0(base_dir, 'Rplots/ROOIJonly_RID2l_clExtended_8_FSCA_corrs_Both-10pct_L.pdf'), 
+       width = 172/2-4, height= 172/2-4, units='mm', device = cairo_pdf)
+
+# With fitted line
+p=ggplot(correlations_FSCA_per_patient_combined, aes(x=P4_cor, y=P5_cor))+
+    geom_point(size=.5, shape=1, color='grey')+
+    geom_point(size=.5, shape=1, data=correlations_FSCA_per_patient_combined[selected_genes,], color='red')+
+    geom_text_repel(data=correlations_FSCA_per_patient_combined[selected_genes,], color='red',
+                    mapping=aes(label=gene_symbol), 
+                    max.overlaps = Inf, min.segment.length = 0, force = 4, size=6/.pt, segment.size=.25)+
+    theme_bw()+give_better_textsize_plot(8)+
+    xlim(c(min(correlations_FSCA_per_patient_combined$P4_cor)*1.01,max(correlations_FSCA_per_patient_combined$P4_cor)*1.01))+
+    ylim(c(min(correlations_FSCA_per_patient_combined$P5_cor)*1.01,max(correlations_FSCA_per_patient_combined$P5_cor)*1.01))+
+    xlab('Gene-cell size correlation patient 4')+ylab('Gene-cell size correlation patient 5')+
+    geom_smooth(method = 'lm', size=.25)#+ylim(c(-.5,.5))+xlim(c(-.5,.5))
+p
+ggsave(plot = p,filename = paste0(base_dir, 'Rplots/ROOIJonly_RID2l_clExtended_8_FSCA_corrs_Both-10pct_withFit.pdf'), 
+       width = 172/3-4, height= 172/3-4, units='mm', device = cairo_pdf)
+ggsave(plot = p,filename = paste0(base_dir, 'Rplots/ROOIJonly_RID2l_clExtended_8_FSCA_corrs_Both-10pct_L_withFit.pdf'), 
+       width = 172/2-4, height= 172/2-4, units='mm', device = cairo_pdf)
+
+
+
+
 
 # Export list for analyis
 gene_list_FSCA = shorthand_cutname( rownames(correlations_FSCA_per_patient_combined[selected_genes,]) )
@@ -155,52 +181,126 @@ tresholds_p5_extended=calc_limits(correlations_FSCA_per_patient_combined$P5_cor[
 tresholds_p5_extended
 selected_genes_extended = correlations_FSCA_per_patient_combined$P4_cor>tresholds_p4_extended&correlations_FSCA_per_patient_combined$P5_cor>tresholds_p5_extended
 
-# Show selected genes
-p=ggplot(correlations_FSCA_per_patient_combined, aes(x=P4_cor, y=P5_cor))+
-    geom_point(size=.5, shape=1, color='grey')+
-    geom_point(size=.5, shape=1, data=correlations_FSCA_per_patient_combined[selected_genes_extended,], color='red')+
-    theme_bw()+give_better_textsize_plot(8)+
-    xlim(c(min(correlations_FSCA_per_patient_combined$P4_cor)*1.1,max(correlations_FSCA_per_patient_combined$P4_cor)*1.3))+
-    ylim(c(min(correlations_FSCA_per_patient_combined$P5_cor)*1.1,max(correlations_FSCA_per_patient_combined$P5_cor)*1.3))+
-    xlab('Gene-cell size correlation patient 4')+ylab('Gene-cell size correlation patient 5')
-p
-gene_list_FSCA_extended = shorthand_cutname( rownames(correlations_FSCA_per_patient_combined[selected_genes_extended,]) )
-write.table(x = gene_list_FSCA_extended, file = paste0(base_dir,'Rdata/','ROOIJonly_RID2l','__gene_list_FSCA_extended.txt'), quote = F, row.names = F, col.names = F)
-
-# Now with linear fit
-# (Important genes (ie. regulons) are consistently high in both patients, but in general 
-# patient consistency is not reflected in linear fit)
-p=ggplot(correlations_FSCA_per_patient_combined, aes(x=P4_cor, y=P5_cor))+
-    geom_point(size=.5, shape=1, color='grey')+
-    geom_point(size=.5, shape=1, data=correlations_FSCA_per_patient_combined[correlations_FSCA_per_patient_combined$P4_cor>.2&correlations_FSCA_per_patient_combined$P5_cor>.1,], color='red')+
-    geom_text_repel(data=correlations_FSCA_per_patient_combined[correlations_FSCA_per_patient_combined$P4_cor>.2&correlations_FSCA_per_patient_combined$P5_cor>.1,], color='red',
-                    mapping=aes(label=gene_symbol), 
-                    max.overlaps = Inf, min.segment.length = 0, force = 4, size=6/.pt, segment.size=.25)+
-    theme_bw()+give_better_textsize_plot(8)+
-    xlim(c(min(correlations_FSCA_per_patient_combined$P4_cor)*1.1,max(correlations_FSCA_per_patient_combined$P4_cor)*1.3))+
-    ylim(c(min(correlations_FSCA_per_patient_combined$P5_cor)*1.1,max(correlations_FSCA_per_patient_combined$P5_cor)*1.3))+
-    xlab('Gene-cell size correlation patient 4')+ylab('Gene-cell size correlation patient 5')+
-    geom_smooth(method = 'lm')+ylim(c(-.5,.5))+xlim(c(-.5,.5))
-p
-ggsave(plot = p,filename = paste0(base_dir, 'Rplots/ROOIJonly_RID2l_8_FSCA_corrs_Above02_withfit.pdf'), 
-       width = 184.6/3-4, height= 184.6/3-4, units='mm')
-ggsave(plot = p,filename = paste0(base_dir, 'Rplots/ROOIJonly_RID2l_8_FSCA_corrs_Above02_L_withfit.pdf'), 
-       width = 184.6/2-4, height= 184.6/2-4, units='mm')
-
+################################################################################
 # Now show some regulons
+load(file=paste0(base_dir, 'Rdata/SCENIC_regulons_core_genes_sel.Rdata'))
+load(file=paste0(base_dir, 'Rplots/ROOIJonly_RID2l_core_regulons_sorted_shortname.Rdata'))
+
+REGULON_SETS = list(custom=core_regulons_sorted_shortname, SCENIC=SCENIC_regulons_core_genes_sel)
+
+for (reg_set_name in names(REGULON_SETS)) {
+
+    current_regulon_set = REGULON_SETS[[reg_set_name]]
+    
+    list_p=list()
+    for (reg_name in names(current_regulon_set)) {
+        
+        current_highlight_genes = current_regulon_set[[reg_name]]
+        
+        correlations_FSCA_per_patient_combined$regulon_membership = 'no'
+        correlations_FSCA_per_patient_combined$regulon_membership[correlations_FSCA_per_patient_combined$gene_symbol %in% current_highlight_genes] = 'yes'
+        correlations_FSCA_per_patient_combined$regulon_membership = as.factor(correlations_FSCA_per_patient_combined$regulon_membership)
+        # list_p[[reg_name]]=ggplot(correlations_FSCA_per_patient_combined %>% arrange(regulon_membership), aes(x=P4_cor, y=P5_cor))+
+        #     geom_point(aes(color=regulon_membership))+
+        #     geom_density_2d(aes(color=regulon_membership))+theme_bw()+give_better_textsize_plot(6)+ggtitle(gsub('\\(\\+\\)','',reg_name))+
+        #     scale_color_manual(values=c('grey','black'))+theme(legend.position = 'none')
+        
+        list_p[[reg_name]]=ggplot(correlations_FSCA_per_patient_combined %>% arrange(regulon_membership), aes(x=P4_cor, y=P5_cor))+
+            #geom_point(shape=1,alpha=.1,aes(color=regulon_membership))+
+            geom_point(data=correlations_FSCA_per_patient_combined %>% subset(regulon_membership=='no'), color='grey', size=.5)+
+            geom_density_2d(data=correlations_FSCA_per_patient_combined %>% subset(regulon_membership=='no'), color='dodgerblue2', size=.1)+
+            geom_point(data=correlations_FSCA_per_patient_combined %>% subset(regulon_membership=='yes'), color='black', size=.5)+
+            geom_density_2d(data=correlations_FSCA_per_patient_combined %>% subset(regulon_membership=='yes'), color='black', size=.1)+theme_bw()+give_better_textsize_plot(6)+ggtitle(gsub('\\(\\+\\)','',reg_name))+
+            theme(legend.position = 'none')
+            
+        
+    }
+    myncol=5
+    mynrow=ceiling(length(current_regulon_set)/myncol)
+    p=wrap_plots(list_p, ncol=myncol)&theme(plot.margin = margin(t = 1, r = 1, b = 1, l = 1, unit = "mm"))
+    p
+    ggsave(plot = p,filename = paste0(base_dir, 'Rplots/ROOIJonly_RID2l_clExtended_8_FSCA_corrs_',reg_set_name,'_RegulonsHighlighted.pdf'), 
+           width = 172-4, height= (172/5*mynrow)-4, units='mm', device = cairo_pdf)
+    
+}
+
+# Show selected regulons
+REG_NAMES=c('NFE2L1(+)', 's.R.2')
+REG_SETS =c('SCENIC', 'custom')
+wil_out=list(); tt_out = list()
+pval_overview_df = data.frame(patient=character(), test=character(), regulon=character(), pval=numeric())
+for (idx in 1:2) {
+    REG_NAME = REG_NAMES[idx]
+    REG_SET = REG_SETS[idx]
+        
+    current_highlight_genes = REGULON_SETS[[REG_SET]][[REG_NAME]]
+    correlations_FSCA_per_patient_combined$regulon_membership = 'no'
+    correlations_FSCA_per_patient_combined$regulon_membership[correlations_FSCA_per_patient_combined$gene_symbol %in% current_highlight_genes] = 'yes'
+    correlations_FSCA_per_patient_combined$regulon_membership = as.factor(correlations_FSCA_per_patient_combined$regulon_membership)
+    
+    p=ggplot(correlations_FSCA_per_patient_combined, aes(x=P4_cor, y=P5_cor))+
+        geom_point(size=.5, shape=1, color='grey')+
+        geom_density_2d(data=correlations_FSCA_per_patient_combined %>% subset(regulon_membership=='no'), color='dodgerblue2', size=.1, bins=3)+
+        geom_density_2d(data=correlations_FSCA_per_patient_combined %>% subset(regulon_membership=='yes'), color='red', size=.1, bins=3)+
+        geom_point(size=.5, shape=1, data=correlations_FSCA_per_patient_combined[correlations_FSCA_per_patient_combined$gene_symbol %in% current_highlight_genes,], color='red')+
+        geom_text_repel(data=correlations_FSCA_per_patient_combined[correlations_FSCA_per_patient_combined$gene_symbol %in% current_highlight_genes[1:min(20,length(current_highlight_genes))],], color='black',
+                        mapping=aes(label=gene_symbol), 
+                        max.overlaps = Inf, min.segment.length = 0, force = 6, size=4/.pt, segment.size=.25)+
+        theme_bw()+give_better_textsize_plot(8)+
+        xlim(c(min(correlations_FSCA_per_patient_combined$P4_cor)*1.01,max(correlations_FSCA_per_patient_combined$P4_cor)*1.01))+
+        ylim(c(min(correlations_FSCA_per_patient_combined$P5_cor)*1.01,max(correlations_FSCA_per_patient_combined$P5_cor)*1.01))+
+        xlab('Gene-cell size correlation patient 4')+ylab('Gene-cell size correlation patient 5')+ggtitle(paste0('Regulated by ',gsub('\\(\\+\\)','',REG_NAME)))
+        #geom_smooth(method = 'lm', size=.25)#+ylim(c(-.5,.5))+xlim(c(-.5,.5))
+    p
+    
+    ggsave(plot = p,filename = paste0(base_dir, 'Rplots/ROOIJonly_RID2l_clExtended_8_FSCA_corrs_Reg',REG_NAME,'_withFit.pdf'), 
+           width = 172/3-4, height= 172/3-4, units='mm', device = cairo_pdf)
+    ggsave(plot = p,filename = paste0(base_dir, 'Rplots/ROOIJonly_RID2l_clExtended_8_FSCA_corrs_Reg',REG_NAME,'_L_withFit.pdf'), 
+           width = 172/2-4, height= 172/2-4, units='mm', device = cairo_pdf)
+ 
+    print(paste0('Wilcox test P4 --', REG_NAME))
+    wil_out[[REG_NAME]][['P4']] = wilcox.test(correlations_FSCA_per_patient_combined[correlations_FSCA_per_patient_combined$regulon_membership=='no',]$P4_cor, correlations_FSCA_per_patient_combined[correlations_FSCA_per_patient_combined$regulon_membership=='yes',]$P4_cor)
+    tt_out[[REG_NAME]][['P4']] = t.test(correlations_FSCA_per_patient_combined[correlations_FSCA_per_patient_combined$regulon_membership=='no',]$P4_cor, correlations_FSCA_per_patient_combined[correlations_FSCA_per_patient_combined$regulon_membership=='yes',]$P4_cor)
+    pval_overview_df = rbind(pval_overview_df, data.frame(patient='P4', test='Wilcoxon', regulon=REG_NAME, pval=wil_out[[REG_NAME]][['P4']]$p.value))
+    pval_overview_df = rbind(pval_overview_df, data.frame(patient='P4', test='t-test', regulon=REG_NAME, pval=tt_out[[REG_NAME]][['P4']]$p.value))
+    
+    print(paste0('Wilcox test P5 --', REG_NAME))
+    wil_out[[REG_NAME]][['P5']] = wilcox.test(correlations_FSCA_per_patient_combined[correlations_FSCA_per_patient_combined$regulon_membership=='no',]$P5_cor, correlations_FSCA_per_patient_combined[correlations_FSCA_per_patient_combined$regulon_membership=='yes',]$P5_cor)
+    tt_out[[REG_NAME]][['P5']] = t.test(correlations_FSCA_per_patient_combined[correlations_FSCA_per_patient_combined$regulon_membership=='no',]$P5_cor, correlations_FSCA_per_patient_combined[correlations_FSCA_per_patient_combined$regulon_membership=='yes',]$P5_cor)
+    pval_overview_df = rbind(pval_overview_df, data.frame(patient='P5', test='Wilcoxon', regulon=REG_NAME, pval=wil_out[[REG_NAME]][['P5']]$p.value))
+    pval_overview_df = rbind(pval_overview_df, data.frame(patient='P5', test='t-test', regulon=REG_NAME, pval=tt_out[[REG_NAME]][['P5']]$p.value))
+    
+    
+    
+}
+
+openxlsx::write.xlsx(x = pval_overview_df, file = paste0(base_dir, 'Rplots/ROOIJonly_RID2l_FSCA_Regulons_pvals.xlsx'))
+
+# Now do a statistical test on this
+ggplot(correlations_FSCA_per_patient_combined)+
+    geom_freqpoly(aes(x=P4_cor, color=regulon_membership))+theme_bw()
+ggplot(correlations_FSCA_per_patient_combined)+
+    geom_freqpoly(aes(x=P5_cor, color=regulon_membership))+theme_bw()
+
+# Also export lists
+gene_list_FSCA_extended = shorthand_cutname( rownames(correlations_FSCA_per_patient_combined[selected_genes_extended,]) )
+write.table(x = gene_list_FSCA_extended, file = paste0(base_dir,'Rdata/','ROOIJonly_RID2l_clExtended','__gene_list_FSCA_extended.txt'), quote = F, row.names = F, col.names = F)
+
+
+################################################################################
+# Old version for custom regulon analysis only
+
+
 regulon_membership = 
-    Reduce(f=rbind, x=
-        lapply(names(core_regulons_sorted[sapply(core_regulons_sorted, length)>0]), function(n) {data.frame(gene=core_regulons_sorted[[n]], regulon=n)}))
-membership_mapping = regulon_membership$regulon
-names(membership_mapping) = regulon_membership$gene
-correlations_FSCA_per_patient_combined$regulon_membership = membership_mapping[correlations_FSCA_per_patient_combined$gene]
-ggplot(correlations_FSCA_per_patient_combined, aes(x=P4_cor, y=P5_cor))+
-    geom_point(shape=1,alpha=.1)+
-    geom_density_2d(color='black')+
-    geom_point(data=correlations_FSCA_per_patient_combined[!is.na(correlations_FSCA_per_patient_combined$regulon_membership),], aes(color=regulon_membership))+theme_bw()
-    #geom_point(data=correlations_FSCA_per_patient_combined[correlations_FSCA_per_patient_combined$P4_cor>.1&correlations_FSCA_per_patient_combined$P5_cor>.1,], )
-    #geom_text_repel(data=correlations_FSCA_per_patient_combined[correlations_FSCA_per_patient_combined$P4_cor>.1&correlations_FSCA_per_patient_combined$P5_cor>.1,], color='red',
-    #                mapping=aes(label=gene_symbol))+theme_bw()
+        Reduce(f=rbind, x=
+            lapply(names(core_regulons_sorted[sapply(core_regulons_sorted, length)>0]), function(n) {data.frame(gene=core_regulons_sorted[[n]], regulon=n)}))
+    membership_mapping = regulon_membership$regulon
+    names(membership_mapping) = regulon_membership$gene
+    correlations_FSCA_per_patient_combined$regulon_membership = membership_mapping[correlations_FSCA_per_patient_combined$gene]
+    ggplot(correlations_FSCA_per_patient_combined, aes(x=P4_cor, y=P5_cor))+
+        geom_point(shape=1,alpha=.1)+
+        geom_density_2d(color='black')+
+        geom_point(data=correlations_FSCA_per_patient_combined[!is.na(correlations_FSCA_per_patient_combined$regulon_membership),], aes(color=regulon_membership))+theme_bw()
 
 ggplot(correlations_FSCA_per_patient_combined, aes(x=P4_cor, y=P5_cor))+
     geom_point(shape=1,alpha=.1)+
@@ -220,10 +320,10 @@ p=ggplot(correlations_FSCA_per_patient_combined, aes(x=P4_cor, y=P5_cor))+
     #                 max.overlaps = Inf, min.segment.length = 0, force = 4, size=4/.pt, segment.size=.1)+
     theme_bw()+give_better_textsize_plot(8)+xlab('Gene-cell size correlation patient 4')+ylab('Gene-cell size correlation patient 5')
 p
-ggsave(plot = p,filename = paste0(base_dir, 'Rplots/ROOIJonly_RID2l_8_FSCA_corrs_reg2.pdf'), 
-       width = 184.6/3-4, height= 184.6/3-4, units='mm')
-ggsave(plot = p,filename = paste0(base_dir, 'Rplots/ROOIJonly_RID2l_8_FSCA_corrs_reg2_L.pdf'), 
-       width = 184.6/2-4, height= 184.6/2-4, units='mm')
+ggsave(plot = p,filename = paste0(base_dir, 'Rplots/ROOIJonly_RID2l_clExtended_8_FSCA_corrs_reg2.pdf'), 
+       width = 172/3-4, height= 172/3-4, units='mm')
+ggsave(plot = p,filename = paste0(base_dir, 'Rplots/ROOIJonly_RID2l_clExtended_8_FSCA_corrs_reg2_L.pdf'), 
+       width = 172/2-4, height= 172/2-4, units='mm')
     
 
 

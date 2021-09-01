@@ -21,10 +21,9 @@ give_better_textsize_plot <- function(TEXTSIZE, myFamily='Arial'){
 # Violin plot
 # Use lapply and wrap_plots to create a list of plots
 shorthand_plotViolinBox_custom = function(myseuratobjectlist, analysis_name, cat_by='seurat_clusters', 
-    cat_name = 'category', gene_of_interest,base_dir, percentile=.02, type='boxplot', myfontsize=8) {
-
-    # get full gene names
-    gene_of_interest_fullname = rownames(myseuratobjectlist[[analysis_name]])[grepl(paste0(paste0(':',gene_of_interest,'$'),collapse='|'),rownames(myseuratobjectlist[[analysis_name]]))]
+    cat_name = 'category', gene_of_interest=NULL,base_dir, percentile=.02, type='boxplot', 
+    myfontsize=8, manual_expr=NULL,manual_expr_featname=NULL,custom_ylab=NULL, custom_title=NULL, custom_ylim=NULL) {
+  # TO DO: rename gene_of_interest to feature_of_interest
     
     # create df for plotting
     #plot_df = data.frame(count=numeric(), cat=character(), gene=character())
@@ -37,8 +36,16 @@ shorthand_plotViolinBox_custom = function(myseuratobjectlist, analysis_name, cat
     #}
     
     # retrieve expression
-    current_expr = myseuratobjectlist[[analysis_name]]@assays$RNA@data[gene_of_interest_fullname,]
-    print(paste0('Retrieved gene ',gene_of_interest_fullname))
+    if (is.null(manual_expr)) {
+      
+      # get full gene names
+      gene_of_interest_fullname = rownames(myseuratobjectlist[[analysis_name]])[grepl(paste0(paste0(':',gene_of_interest,'$'),collapse='|'),rownames(myseuratobjectlist[[analysis_name]]))]
+      # retrieve expression
+      print(paste0('Retrieved gene ',gene_of_interest_fullname))
+      current_expr = myseuratobjectlist[[analysis_name]]@assays$RNA@data[gene_of_interest_fullname,] 
+      
+    }else{ print('Using manually supplied expression'); current_expr=manual_expr; gene_of_interest_fullname = 'manual'; gene_of_interest = manual_expr_featname }
+    
     
     # create dataframe to plot
     plot_df = data.frame(count=current_expr, cat=myseuratobjectlist[[analysis_name]][[cat_by]], gene=gene_of_interest_fullname)
@@ -57,17 +64,22 @@ shorthand_plotViolinBox_custom = function(myseuratobjectlist, analysis_name, cat
     p=p+
         #geom_bar(aes_string(y='count', fill=as.factor(cat_name)),stat='summary',fun='mean',fill='grey',color='black')+
         #geom_boxplot(alpha=0)+
-        ggtitle(gene_of_interest)+theme_bw()+
+        ggtitle(if(is.null(custom_title)){gene_of_interest}else{custom_title})+theme_bw()+
         theme(legend.position='none')+
         theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
-        xlab(element_blank())+ylab('Expression')+give_better_textsize_plot(myfontsize)
+        xlab(element_blank())+ylab(if(is.null(custom_ylab)){'Expression'}else{custom_ylab})+give_better_textsize_plot(myfontsize)
+    # p
+    
+    if (!is.null(custom_ylim)) {p=p+ylim(custom_ylim)}
     
     # save 1
     ggsave(plot = p,filename = paste0(base_dir, 'Rplots/',analysis_name,'_6_',type,'_by-', cat_name, '_',gene_of_interest,'.pdf'), width = 4, height= 6, units='cm', device=cairo_pdf)
+    ggsave(plot = p,filename = paste0(base_dir, 'Rplots/',analysis_name,'_6_',type,'_by-', cat_name, '_',gene_of_interest,'_172mm.pdf'), width = 172/3-4, height= 172/3-4, units='mm', device=cairo_pdf)
     
     # add ylim and save 2
     p=p+ylim(c(0,my_max_limit))
     ggsave(plot = p,filename = paste0(base_dir, 'Rplots/',analysis_name,'_6_',type,'_ylim98_by-', cat_name, '_',gene_of_interest,'.pdf'), width = 4, height= 6, units='cm', device=cairo_pdf)
+    ggsave(plot = p,filename = paste0(base_dir, 'Rplots/',analysis_name,'_6_',type,'_ylim98_by-', cat_name, '_',gene_of_interest,'_172mm.pdf'), width = 172/3-4, height= 172/3-4, units='mm', device=cairo_pdf)
     
     # return plot
     return(p)
@@ -110,7 +122,10 @@ shorthand_seurat_custom_expr = function(seuratObject, gene_of_interest, textsize
     if ((substr(x = gene_of_interest[1], 1, 3)=='ENS')) {
       gene_of_interest_fullname = gene_of_interest
     } else {
-      gene_of_interest_fullname = shorthand_seurat_fullgenename(seuratObject, gene_of_interest)
+      # gene_of_interest_fullname = shorthand_seurat_fullgenename(seuratObject, gene_of_interest)
+      gene_of_interest_fullname = shorthand_seurat_fullgenename_faster(seuratObject, gene_of_interest, return_NA = T)
+      if (any(is.na(gene_of_interest_fullname))) {warning('Not all genes found uniquely, filtering those out ..')}
+      gene_of_interest_fullname = gene_of_interest_fullname[!is.na(gene_of_interest_fullname)]
     }
     
     # retrieve current expression
@@ -126,6 +141,7 @@ shorthand_seurat_custom_expr = function(seuratObject, gene_of_interest, textsize
     }
     
     expr_limits=calc_limits(current_expr, percentile = mypercentile)
+    # expr_limits
     
     ggplot(data.frame(UMAP_1=seuratObject@reductions$umap@cell.embeddings[,1],
                       UMAP_2=seuratObject@reductions$umap@cell.embeddings[,2],
@@ -157,7 +173,7 @@ shorthand_seurat_fullgenename = function(seuratObject, gene_names) {
     
 }
 
-shorthand_seurat_fullgenename_faster = function(seuratObject, gene_names) {
+shorthand_seurat_fullgenename_faster = function(seuratObject, gene_names, return_NA=F) {
     
   all_short_names = shorthand_cutname(rownames(seuratObject))
   unique_selection = !(all_short_names %in% all_short_names[duplicated(all_short_names)])
@@ -168,7 +184,9 @@ shorthand_seurat_fullgenename_faster = function(seuratObject, gene_names) {
   lookupframe=unique_names
   names(lookupframe) = unique_shortnames
   
-  if (!all(gene_names %in% names(lookupframe))) {print(paste0('Supplied list: ',gene_names)); stop('Couldn\'t find all genes in lookuptable.')}
+  if (!return_NA) {
+    if (!all(gene_names %in% names(lookupframe))) {print(paste0('Supplied list: ',gene_names)); stop('Couldn\'t find all genes in lookuptable.')}
+  }
   
   # Now return the full names
   return(lookupframe[gene_names])        
@@ -199,7 +217,9 @@ shorthand_custom_boxplot = function(seuratObject_list, gene_lists, seuratObjectN
         if ((substr(x = current_genes[1], 1, 3)=='ENS')) {
           gene_of_interest_fullname = current_genes
         } else {
-          gene_of_interest_fullname = shorthand_seurat_fullgenename(seuratObject_list[[seuratObjectNameToTake]], current_genes)
+          gene_of_interest_fullname = shorthand_seurat_fullgenename_faster(seuratObject_list[[seuratObjectNameToTake]], current_genes, return_NA = T)
+          if (any(is.na(gene_of_interest_fullname))) {warning('Not all genes found uniquely, filtering those out ..')}
+          gene_of_interest_fullname = gene_of_interest_fullname[!is.na(gene_of_interest_fullname)]
         }
         
         current_exprs = as.matrix(seuratObject_list[[seuratObjectNameToTake]]@assays$RNA@data[gene_of_interest_fullname,]) # removes dgMatrix class if there
@@ -243,18 +263,18 @@ shorthand_custom_boxplot = function(seuratObject_list, gene_lists, seuratObjectN
         
         # Save
         ggsave(filename = paste0(base_dir, 'Rplots/', seuratObjectNameToTake, '_9_customBoxplotGenes_', current_list_name,'.pdf'), plot = p,
-               height=42, width=42, units='mm')
+               height=42, width=42, units='mm', device=cairo_pdf)
         
         # Save with extra limits
         p=p+ylim(c(max(-3,mylims[1]),min(3,mylims[2])))
         ggsave(filename = paste0(base_dir, 'Rplots/', seuratObjectNameToTake, '_9_customBoxplotGenes_', current_list_name,'.pdf'), plot = p,
-               height=42, width=42, units='mm')
+               height=42, width=42, units='mm', device=cairo_pdf)
         
         # If 1st plot, also print legend for reference
         if (current_list_name == names(gene_lists)[1]) {
         p=p+theme(legend.position='right')
         ggsave(filename = paste0(base_dir, 'Rplots/', seuratObjectNameToTake, '_9_customBoxplotGenes_',current_list_name,'_LEGEND.pdf'), plot = p,
-               height=42, width=4.2*min(length(current_genes), topX)+18, units='mm')      
+               height=42, width=4.2*min(length(current_genes), topX)+18, units='mm', device=cairo_pdf)      
         }
     }
 }
@@ -263,7 +283,7 @@ shorthand_custom_compositeplot = function(seuratObject_list, gene_lists, seuratO
     
   print('Note: this function assumes input names are long format.')
   
-    p_violin_list=list(); p_bar_list = list(); p_bar_list_g2 = list()
+    p_violin_list=list(); p_bar_list = list(); p_bar_list_g2 = list(); p_boxplot_list = list()
     for (current_list_name in names(gene_lists)) {
         
         # Overall mean
@@ -274,12 +294,21 @@ shorthand_custom_compositeplot = function(seuratObject_list, gene_lists, seuratO
         if ((substr(x = current_genes[1], 1, 3)=='ENS')) {
           gene_of_interest_fullname = current_genes
         } else {
-          gene_of_interest_fullname = shorthand_seurat_fullgenename(seuratObject_list[[seuratObjectNameToTake]], current_genes)
+          # gene_of_interest_fullname = shorthand_seurat_fullgenename(seuratObject_list[[seuratObjectNameToTake]], current_genes)
+          gene_of_interest_fullname = shorthand_seurat_fullgenename_faster(seuratObject_list[[seuratObjectNameToTake]], current_genes, return_NA = T)
+          if (any(is.na(gene_of_interest_fullname))) {warning('Not all genes found uniquely, filtering those out ..')}
+          gene_of_interest_fullname = gene_of_interest_fullname[!is.na(gene_of_interest_fullname)]
         }
         
         current_exprs = as.matrix(seuratObject_list[[seuratObjectNameToTake]]@assays$RNA@data[gene_of_interest_fullname,]) # removes dgMatrix class if there
         
         # Create composite expression
+        zero_rows=apply(current_exprs, 1, function(x) {all(x==0)})
+        if (any(zero_rows)) {
+          warnings('Rows with all zero values were found and removed.')  
+          print('Rows with all zero values were found and removed.')  
+          current_exprs=current_exprs[!zero_rows,]
+        }
         if (zscore) { 
           scaled_exprs = t(scale(t(current_exprs),center = T, scale = T))
         } else { 
@@ -320,7 +349,21 @@ shorthand_custom_compositeplot = function(seuratObject_list, gene_lists, seuratO
         p
         p_violin_list[[current_list_name]]=p
         ggsave(filename = paste0(base_dir, 'Rplots/', seuratObjectNameToTake, '_9_customSummaryComposite_', current_list_name,'_for_',group.by,'.pdf'), plot = p,
-               height=26.5, width=26.5, units='mm')
+               height=26.5, width=26.5, units='mm', device=cairo_pdf)
+        
+        # Plot boxplot (simmilar plot as earlier)
+        p=ggplot(df, aes_string(x=group.by, y='expression',fill=group.by))+
+            geom_boxplot()+
+            ggtitle(current_list_name)+theme_bw()+
+            theme(legend.position='none', plot.margin = margin(mymargin,mymargin,0,0,'mm'))+
+            # theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
+            xlab(element_blank())+give_better_textsize_plot(myfontsize)+
+            ylab('Expression')
+        if (nrow(df)<100) {p=p+geom_jitter()}
+        # p
+        p_boxplot_list[[current_list_name]]=p
+        ggsave(filename = paste0(base_dir, 'Rplots/', seuratObjectNameToTake, '_9_customSummaryCompositeBoxPlot_', current_list_name,'_for_',group.by,'.pdf'), plot = p,
+               height=26.5, width=26.5, units='mm', device=cairo_pdf)
         
         # Now plot bars
         p=ggplot(df_agr, mapping=aes_string(x=group.by, y='expression', fill=group.by))+
@@ -336,7 +379,7 @@ shorthand_custom_compositeplot = function(seuratObject_list, gene_lists, seuratO
         p 
         
         ggsave(filename = paste0(base_dir, 'Rplots/', seuratObjectNameToTake, '_9_customSummaryMean_', current_list_name,'_for_',group.by,'.pdf'), plot = p,
-               height=26.5, width=26.5, units='mm')
+               height=26.5, width=26.5, units='mm', device=cairo_pdf)
         
         # If 1st plot, also print legend for reference
         if (current_list_name == names(gene_lists)[1]) {
@@ -344,7 +387,7 @@ shorthand_custom_compositeplot = function(seuratObject_list, gene_lists, seuratO
         #if (group.by==group.by=='annotation_paper_str') {p=p+scale_fill_discrete(name = "Set")}
         if (!is.null(custom_legend)) {p=p+scale_fill_discrete(name = custom_legend)}
         ggsave(filename = paste0(base_dir, 'Rplots/', seuratObjectNameToTake, '_9_customSummaryMean_LEGEND_', current_list_name,'_for_',group.by,'.pdf'), plot = p,
-               height=26.5, width=26.5, units='mm')
+               height=26.5, width=26.5, units='mm', device=cairo_pdf)
         
         }
         
@@ -362,13 +405,13 @@ shorthand_custom_compositeplot = function(seuratObject_list, gene_lists, seuratO
               #ylim(c(max(-3,mylims[1]),min(3,mylims[2])))
           p_bar_list_g2[[current_list_name]]=p
           ggsave(filename = paste0(base_dir, 'Rplots/', seuratObjectNameToTake, '_9_customSummaryMean_SPLIT2_', current_list_name,'_for_',group.by,'.pdf'), plot = p,
-               height=26.5, width=26.5, units='mm')
+               height=26.5, width=26.5, units='mm', device=cairo_pdf)
           
         }
         
     }
     
-    return(list(p_violin_list=p_violin_list, p_bar_list=p_bar_list, p_bar_list_g2=p_bar_list_g2))
+    return(list(p_violin_list=p_violin_list, p_bar_list=p_bar_list, p_bar_list_g2=p_bar_list_g2, p_boxplot_list=p_boxplot_list))
         
 }
     

@@ -5,7 +5,19 @@
 
 ################################################################################
 
+ANALYSIS_NAME='ROOIJonly_RID2l'
+if (!exists('current_analysis')) {current_analysis = list()}
+current_analysis[[ANALYSIS_NAME]] =
+    LoadH5Seurat(file = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_',ANALYSIS_NAME,'.h5seurat'))
+ANALYSIS_NAME = 'ROOIJonly_RID2l_clExtended'
+current_analysis[[ANALYSIS_NAME]] =
+    LoadH5Seurat(file = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_',ANALYSIS_NAME,'.h5seurat'))
+
+################################################################################
+
 # Generating background tables for LISA and HOMER, symbol format
+
+ANALYSIS_NAME = 'ROOIJonly_RID2l_clExtended'
 
 # Background treshold: at least 1% of all cells 
 # Strict treshold
@@ -29,6 +41,13 @@ write.table(x = background_genes, file = paste0(base_dir,'GeneLists/',ANALYSIS_N
 
 
 ################################################################################
+# For running HOMER and LISA, see:
+# - HCM_SCS_2021_08_HOMER.sh
+# - HCM_SCS_2021_08_LISA.sh
+
+# Note: MARGE wasn't used in the end.
+
+################################################################################
 
 # Run GO analyses
 if (F) {
@@ -39,20 +58,21 @@ if (F) {
     # Load clusters
     ANALYSIS_NAME = 'ROOIJonly_RID2l_clExtended'
     load(paste0(base_dir,'Rdata/enriched_genes_lists_clusters_ROOIJ__ROOIJonly_RID2l_clExtended.Rdata')) # loads enriched_genes_lists_clusters_ROOIJ
-    
+ 
     # Requires 
     # background_genes, all_genes
     # all_genes is used to generate the conversion table
     all_genes = shorthand_cutname( rownames(current_analysis[[ANALYSIS_NAME]]@assays$RNA@counts), PART1OR2 = 1 )
     # Background treshold: at least 1% of all cells 
-    TRESHOLD_PCT = 0.01
+    TRESHOLD_PCT = 0.05
     background_genes = shorthand_cutname(
         rownames(current_analysis[[ANALYSIS_NAME]]@assays$RNA@data[
             rowMeans(current_analysis[[ANALYSIS_NAME]]@assays$RNA@data>0)>TRESHOLD_PCT,]
             ), PART1OR2 = 1)
     # Export for additional testing
-    write.table(x = background_genes, file = paste0(base_dir,'Rplots/',ANALYSIS_NAME,'_background_table_',TRESHOLD_PCT,'.txt'), 
+    write.table(x = background_genes, file = paste0(base_dir,'Rplots/',ANALYSIS_NAME,'_background_table_GO_',TRESHOLD_PCT,'.txt'), 
                 row.names = F, col.names = F, quote = F)
+    save(list='background_genes', file=paste0(base_dir,'Rplots/GO_analysis__background_genes.Rdata'))
     
     # Perform GO analysis on clusters
     # ==
@@ -72,8 +92,10 @@ if (F) {
     })
     names(GO_all_clusters)=names(enriched_genes_lists_clusters_ROOIJ_)
     
+    save(list = 'GO_all_clusters', file = paste0(base_dir,'Rdata/',ANALYSIS_NAME,'__GO_all_clusters.Rdata'))
+    
     # Now create a summary parameter that we'll use for plotting
-    TOPX=4
+    TOPX=5
     GO_clusters_summary_list = lapply(names(GO_all_clusters), function(n) {x=GO_all_clusters[[n]]; x$regulon=n; return(x[1:TOPX,])})
     GO_clusters_summary = Reduce(f = rbind, x= GO_clusters_summary_list)
     max_str_length = median(nchar(GO_clusters_summary$Term)*2)
@@ -85,6 +107,12 @@ if (F) {
             })
     # put back to get abbreviated names
     GO_clusters_summary_list = split(x = GO_clusters_summary, f = GO_clusters_summary$regulon)
+    
+    # Export to xlsx
+    GO_collected_top_terms_clusters = lapply(GO_clusters_summary_list, function(X) {data.frame(Term=X$Term, pval=paste0('10^-',round(-log10(X$Pvalue),1)))})
+    GO_collected_top_terms_clusters$overview = Reduce(cbind, GO_collected_top_terms_clusters)
+    # save to xlsx
+    openxlsx::write.xlsx(x = GO_collected_top_terms_clusters, file = paste0(base_dir,'Rplots/',ANALYSIS_NAME,'__GO_all_clusters_summarized.xlsx'), overwrite = T)
     
     # Plot 1
     ggplot(GO_clusters_summary, aes(x=Term_short, y=-log10(Pvalue), fill=regulon))+
@@ -179,3 +207,63 @@ if (F) {
     #                   plot.margin = margin(1,1,0,0,'mm'))
     
 }
+
+################################################################################
+
+if (F) {
+
+    # Requires above to be partially run
+    
+    load(file = paste0(base_dir,'Rdata/SCENIC_regulons_core_genes_sel'))
+    load(file=paste0(base_dir,'Rplots/GO_analysis__background_genes.Rdata'))
+    
+    
+    # Repetition of above
+    
+    # Analysis
+    config_GO=list(geneIdentifierType='ensembl_id', species='human')
+    SCENIC_regulons_core_genes_sel__ = lapply(SCENIC_regulons_core_genes_sel, function(X) {
+        shorthand_seurat_fullgenename_faster(seuratObject = current_analysis$ROOIJonly_RID2l_clExtended, gene_names = X)})
+    SCENIC_regulons_core_genes_sel_ = shorthand_cutname_table( SCENIC_regulons_core_genes_sel__ , PART1OR2 = 1 )
+    termGSCnFRAME = generate_termGSCnFrame(config_GO, includeChildTerms=F)
+    
+    GO_all_scenic_regs = lapply(names(SCENIC_regulons_core_genes_sel_), function(set_name) {
+        print(paste0('Analyzing set ',set_name))
+        current_genes_query = SCENIC_regulons_core_genes_sel_[[set_name]]
+        GO_out = analyzeGeneOntology_MW(config = config_GO, all_genes=all_genes, background_genes=background_genes, 
+                            genes_query=current_genes_query, pathwayPCutoff=0.05, GOKegg='GO', 
+                            includeChildTerms=F, termGSCnFRAME = termGSCnFRAME)
+        return(GO_out)        
+    })
+    names(GO_all_scenic_regs)=names(SCENIC_regulons_core_genes_sel)
+    
+    save(list = 'GO_all_scenic_regs', file = paste0(base_dir,'Rdata/',ANALYSIS_NAME,'__GO_all_scenic_regs.Rdata'))
+    
+    # Now create a summary parameter that we'll use for plotting
+    TOPX=5
+    GO_scenic_regs_summary_list = lapply(names(GO_all_scenic_regs), function(n) {x=GO_all_scenic_regs[[n]]; x$regulon=n; return(x[1:TOPX,])})
+    GO_scenic_regs_summary = Reduce(f = rbind, x= GO_scenic_regs_summary_list)
+    max_str_length = median(nchar(GO_scenic_regs_summary$Term)*2)
+    GO_scenic_regs_summary$Term_short =
+        sapply(GO_scenic_regs_summary$Term, function(x) {
+                if (nchar(x)>max_str_length) {
+                    paste0(substring(x, 1, max_str_length),' ...')
+                } else {x}
+            })
+    # put back to get abbreviated names
+    GO_scenic_regs_summary_list = split(x = GO_scenic_regs_summary, f = GO_scenic_regs_summary$regulon)
+    
+    # Export to xlsx
+    #GO_collected_top_terms_scenic_regs = lapply(GO_scenic_regs_summary_list, function(X) {data.frame(Term=X$Term, pval=paste0('10^-',round(-log10(X$Pvalue),1)))})
+    #GO_collected_top_terms_scenic_regs$overview = rbind(rep(c('TR', 'p-val'), length(GO_scenic_regs_summary_list)), GO_collected_top_terms_scenic_regs$overview)
+    #colnames(GO_collected_top_terms_scenic_regs$overview)=rep(gsub('\\(\\+\\)','',names(GO_scenic_regs_summary_list)),each=2)
+    GO_collected_top_terms_scenic_regs = lapply(GO_scenic_regs_summary_list, function(X) {data.frame(Line=paste0('(p=10^-',round(-log10(X$Pvalue),1),') ',X$Term))})
+    GO_collected_top_terms_scenic_regs$overview = Reduce(cbind, GO_collected_top_terms_scenic_regs)
+    colnames(GO_collected_top_terms_scenic_regs$overview)=gsub('\\(\\+\\)','',names(GO_scenic_regs_summary_list))
+    # save to xlsx
+    openxlsx::write.xlsx(x = GO_collected_top_terms_scenic_regs, file = paste0(base_dir,'Rplots/',ANALYSIS_NAME,'__GO_all_scenic_regs_summarized.xlsx'), overwrite = T)
+}    
+
+
+
+

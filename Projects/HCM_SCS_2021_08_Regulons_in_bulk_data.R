@@ -1,0 +1,131 @@
+
+
+# Load external data set
+
+louk_data_ = read.table(paste0(base_dir, 'External_data/Raw_read_counts.txt'), header = 1)
+
+load(file = paste0(base_dir,'Rdata/ens_to_sym_conv_table.Rdata'))
+
+louk_data = louk_data_[,-1]
+rownames(louk_data) = 
+    paste0(louk_data_$GeneID, ':', ens_to_sym_conv_table[louk_data_$GeneID])
+
+
+# Load it into Seurat
+
+Seurat_Object_BulkData = CreateSeuratObject(counts = louk_data, project = 'bulkData')
+
+rownames(Seurat_Object_BulkData)[grepl(':MT-', rownames(Seurat_Object_BulkData))]
+
+# Determine mitochondrial percentage
+Seurat_Object_BulkData[["percent.mt"]] <- PercentageFeatureSet(Seurat_Object_BulkData, pattern = ":MT-")
+
+# Remove mitochondrial reads
+mito_genes = rownames(Seurat_Object_BulkData)[grepl(':MT-',rownames(Seurat_Object_BulkData))]
+Seurat_Object_BulkData@misc$desired_genes_excl_mito = 
+            rownames(Seurat_Object_BulkData)[!(rownames(Seurat_Object_BulkData) %in% mito_genes)]
+Seurat_Object_BulkData_noMito =
+        subset(Seurat_Object_BulkData, features= Seurat_Object_BulkData@misc$desired_genes_excl_mito)
+    
+# Determine total counts and features 
+CalcN_out = Seurat:::CalcN(Seurat_Object_BulkData_noMito)
+Seurat_Object_BulkData_noMito[['nCount.nMT']]   = CalcN_out$nCount
+Seurat_Object_BulkData_noMito[['nFeature.nMT']] = CalcN_out$nFeature
+
+# Run Seurat analysis (I only need the scaling, actually)
+
+#Seurat_Object_BulkData_noMito = mySeuratAnalysis(Seurat_Object_BulkData_noMito,
+#            run_name='BulkData_noMito',
+#            normalization.method='RC', scale.factor=median(Seurat_Object_BulkData_noMito$nCount.nMT),
+#            do.scale=F,do.center=F,scale.max=Inf, features_to_use_choice = 'variable') # variable because otherwise too large calculation ..
+
+# Perform scaling
+Seurat_Object_BulkData_noMito <- NormalizeData(Seurat_Object_BulkData_noMito, normalization.method = 'RC', scale.factor = median(Seurat_Object_BulkData_noMito$nCount.nMT))
+
+# Annotate samples
+Seurat_Object_BulkData_noMito$annotation_str = NA
+Seurat_Object_BulkData_noMito$annotation_str[grepl('^HCM', colnames(Seurat_Object_BulkData_noMito))] = 'HCM'
+Seurat_Object_BulkData_noMito$annotation_str[grepl('^CONTROL', colnames(Seurat_Object_BulkData_noMito))] = 'Ctrl'
+Seurat_Object_BulkData_noMito$annotation_fct=factor(Seurat_Object_BulkData_noMito$annotation_str, levels=c('HCM', 'Ctrl'))
+
+
+
+################################################################################
+
+CURRENT_RUNNAME='BulkData_noMito'
+current_analysis[[CURRENT_RUNNAME]] = Seurat_Object_BulkData_noMito
+
+# Box plots
+shorthand_custom_boxplot(seuratObject_list=current_analysis, 
+                         gene_lists=core_regulons_sorted, 
+                         seuratObjectNameToTake=CURRENT_RUNNAME, 
+                         group.by='annotation_fct', 
+                         topX=10, mylimits=.01) 
+
+# Summary composite plots
+p_lists=shorthand_custom_compositeplot(seuratObject_list=current_analysis, 
+                         gene_lists=core_regulons_sorted, 
+                         seuratObjectNameToTake=CURRENT_RUNNAME, 
+                         group.by='annotation_fct', 
+                         #group.by2='annotation_patient_fct',
+                         zscore=F) 
+
+p=wrap_plots(p_lists$p_boxplot_list, nrow=1)
+p
+ggsave(filename = paste0(base_dir, 'Rplots/', CURRENT_RUNNAME, '_9_customCOMPOSITE_REG_customCOEXP_boxplot.pdf'), plot = p,
+       height=(172-4)/5, width=172-4, units='mm', device=cairo_pdf)
+
+# p=wrap_plots(p_lists$p_violin_list, nrow=1)
+# p
+# ggsave(filename = paste0(base_dir, 'Rplots/', CURRENT_RUNNAME, '_9_customCOMPOSITE_REG.pdf'), plot = p,
+#        height=26.5, width=min(184.6-4, 26.5*6), units='mm', device=cairo_pdf)
+# p=wrap_plots(p_lists$p_bar_list_g2, nrow=1)
+# ggsave(filename = paste0(base_dir, 'Rplots/', CURRENT_RUNNAME, '_9_customCOMPOSITE_REG_g2.pdf'), plot = p,
+#        height=26.5, width=min(184.6-4, 26.5*6), units='mm', device=cairo_pdf)
+
+# Also do SCENIC regulons
+# ===
+load(file=paste0(base_dir, 'Rdata/SCENIC_regulons_core_genes_sel.Rdata'))
+
+# Box plots
+shorthand_custom_boxplot(seuratObject_list=current_analysis, 
+                         gene_lists=SCENIC_regulons_core_genes_sel, 
+                         seuratObjectNameToTake=CURRENT_RUNNAME, 
+                         group.by='annotation_paper_oneletter_fct', 
+                         topX=10, mylimits=.01) 
+
+# Summary plots
+p_lists=shorthand_custom_compositeplot(seuratObject_list=current_analysis, 
+                         gene_lists=SCENIC_regulons_core_genes_sel, 
+                         seuratObjectNameToTake=CURRENT_RUNNAME, 
+                         group.by='annotation_fct', 
+                         #group.by2='annotation_patient_fct',
+                         zscore=T) 
+
+p=wrap_plots(p_lists$p_boxplot_list, nrow=4)
+p
+ggsave(filename = paste0(base_dir, 'Rplots/', CURRENT_RUNNAME, '_9_customCOMPOSITE_REG_SCENIC_boxplot.pdf'), plot = p,
+       height=(172-4), width=172-4, units='mm', device=cairo_pdf)
+# p=wrap_plots(p_lists$p_violin_list, nrow=4)
+# ggsave(filename = paste0(base_dir, 'Rplots/', CURRENT_RUNNAME, '_9_customCOMPOSITE_REG_SCENIC.pdf'), plot = p,
+#        height=26.5*4, width=min(184.6-4, 26.5*4), units='mm', device=cairo_pdf)
+# p=wrap_plots(p_lists$p_bar_list_g2, nrow=4)
+# ggsave(filename = paste0(base_dir, 'Rplots/', CURRENT_RUNNAME, '_9_customCOMPOSITE_REG_SCENIC_g2.pdf'), plot = p,
+#        height=26.5*4, width=min(184.6-4, 26.5*4), units='mm', device=cairo_pdf)
+
+# UMAP
+p_list = lapply(names(SCENIC_regulons_core_genes_sel), function(reg_name) {
+            shorthand_seurat_custom_expr(seuratObject = Seurat_Object_BulkData_noMito, 
+                             gene_of_interest = SCENIC_regulons_core_genes_sel[[reg_name]],
+                             textsize = 6, pointsize = .5, custom_title = reg_name, mymargin = .1, zscore = T) 
+    })
+p=wrap_plots(p_list, nrow=4)
+ggsave(filename = paste0(base_dir, 'Rplots/', CURRENT_RUNNAME, '_9_customUMAPs_REG_SCENIC.pdf'), plot = p,
+       height=4*30, width=min(184.6-4, 30*4), units='mm', device=cairo_pdf)      
+
+
+
+
+
+
+

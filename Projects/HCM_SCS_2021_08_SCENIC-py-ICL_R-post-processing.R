@@ -22,7 +22,7 @@ if (exists('LOCAL')) {
 }
 
 desired_command='dummy'
-source(paste0(script_dir, 'HCM-SCS_2021-06_SeuratRevisedAnalysis_v2_UmiTools.R'))
+source(paste0(script_dir, 'HCM_SCS_2021_06_SeuratRevisedAnalysis_v2_UmiTools.R'))
 
 # Also get some fns from my own regulons script to do post-processing
 desired_command_regulon='dummy'; source(paste0(script_dir, if (exists('LOCAL')) { 'Projects/' } else { '' }, 'HCM_SCS_2021_06_SeuratRevised_Regulon_v3.R'))
@@ -36,6 +36,8 @@ library(pheatmap)
 DATASET_NAME='ROOIJonly_RID2l'
 
 ################################################################################
+# << PRE PROCESSING >>
+
 # Export patients for analysis
 
 if (!dir.exists(paste0(base_dir, 'Ldata/'))) { dir.create(paste0(base_dir, 'Ldata/')) }
@@ -80,6 +82,7 @@ for (CURRENT_PATIENT in ALL_PATIENTS) {
 
 
 ################################################################################
+# << POST PROCESSING >>
 # Now collect all the result matrices per patient
 # Also construct regulon lists using this info
 
@@ -113,7 +116,7 @@ scenic_regulons_collected_all_patients_regnames =
 names(scenic_regulons_collected_all_patients_regnames) = names(scenic_regulons_collected_all_patients)
 
 ################################################################################
-# Now some analyis of this data
+# Now some analysis of this data
 
 length(scenic_regulons_collected_all_patients)
     
@@ -226,23 +229,25 @@ overlapping_scores_regulons_df = data.frame(overlap=overlapping_scores_regulons,
 overlapping_scores_regulons_df$gene = factor(overlapping_scores_regulons_df$gene, levels=overlapping_scores_regulons_df$gene[order(overlapping_scores_regulons_df$overlap)])
 # overlapping_scores_regulons_df$score = overlapping_scores_regulons_df$gene
 # Determine NES scores per TF
-overlapping_scores_regulons_df$NES = apply(upset_df_NES, 1, function(x) {median(x[x>0])})[overlapping_scores_regulons_df$gene]
+overlapping_scores_regulons_df$NES = apply(upset_df_NES, 1, function(x) {median(x[x>0&!is.na(x)])})[overlapping_scores_regulons_df$gene]
 
 # Now show gene overlap between those regulons that were identified in the separate patients 
 p=ggplot(overlapping_scores_regulons_df, aes(x=gene, y=overlap))+
     geom_bar(stat='identity')+coord_flip()+theme_bw()+give_better_textsize_plot(8)+ylim(c(0,1))+ylab('Fraction identical genes\nbetween patients')+xlab('Regulon')
 # p
 ggsave(filename = paste0(base_dir,'Rplots/',DATASET_NAME,'_7_RegulonsSCENIC_MemberGeneConsistencyPatients.pdf'), 
-        plot = p, width=50, height=8/.pt*nrow(overlapping_scores_regulons_df), units='mm') # 184.6/3*2-4
+        plot = p, width=50, height=8/.pt*nrow(overlapping_scores_regulons_df), units='mm', device=cairo_pdf) # 184.6/3*2-4
 
 # Now including NES color
 p=ggplot(overlapping_scores_regulons_df, aes(x=gene, y=overlap, fill=NES))+
-    geom_bar(stat='identity')+coord_flip()+theme_bw()+give_better_textsize_plot(8)+ylim(c(0,1))+ylab('Fraction identical genes\nbetween patients')+xlab('Regulon')+
+    geom_bar(stat='identity')+coord_flip()+theme_bw()+give_better_textsize_plot(7)+
+    ylab('Fraction identical\ngenes between\npatients')+xlab('Regulon')+
     # scale_fill_gradientn(colours = rainbow_colors)+
-    scale_fill_gradientn(colours = c('orange','red'))+theme(legend.position='none')
+    scale_fill_gradientn(colours = c('orange','red'))+theme(legend.position='none')+
+    scale_y_continuous(limits = c(0, 1), breaks = seq(0, 1, .5))
 # p
 ggsave(filename = paste0(base_dir,'Rplots/',DATASET_NAME,'_7_RegulonsSCENIC_MemberGeneConsistencyPatients_NES.pdf'), 
-        plot = p, width=50, height=8/.pt*nrow(overlapping_scores_regulons_df), units='mm') # 184.6/3*2-4
+        plot = p, width=39, height=8/.pt*nrow(overlapping_scores_regulons_df), units='mm', device = cairo_pdf) # 184.6/3*2-4
 
 
 ################################################################################
@@ -291,6 +296,7 @@ rm('adj.info')
 
 
 # Now first create a summary parameter for each of the lists 
+TOPX=15
 SCENIC_reg_top_genes = 
     lapply(names(SCENIC_regulons_core_genes_sel), function(tf) {
     
@@ -305,12 +311,12 @@ SCENIC_reg_top_genes =
         
         importance_df = data.frame(lapply(relevant_weight_values_per_pt, function(X) {rownames(X) = X$target; X[current_member_list,]$importance}), row.names=current_member_list)
         importance_df$median_nona = apply(importance_df, 1, function(x) {median(x[!is.na(x)])})
-        top_genes = rownames(importance_df[order(importance_df$median_nona, decreasing = T),])[1:10]
+        top_genes = rownames(importance_df[order(importance_df$median_nona, decreasing = T),])[1:TOPX]
     })
 names(SCENIC_reg_top_genes) = gsub('\\([+-]\\)', '', names(SCENIC_regulons_core_genes_sel))
 SCENIC_reg_top_genes_df = data.frame(SCENIC_reg_top_genes)
 
-openxlsx::write.xlsx(x= SCENIC_reg_top_genes_df[,sort(colnames(SCENIC_reg_top_genes_df))], file = paste0(base_dir,'Rplots/',DATASET_NAME,'_SCENIC_top10_regulons.xlsx'), overwrite = T)        
+openxlsx::write.xlsx(x= SCENIC_reg_top_genes_df[,sort(colnames(SCENIC_reg_top_genes_df))], file = paste0(base_dir,'Rplots/',DATASET_NAME,'_SCENIC_top',TOPX,'_regulons.xlsx'), overwrite = T)        
         
 # NOTE: ALSO GIVE LENGTHS!!
 SCENIC_regulon_lengths = 
@@ -379,7 +385,7 @@ lapply(SCENIC_reg_top_genes_sorted_full, function(X) {which(X %in% 'MYL2')})
 lapply(SCENIC_reg_top_genes_sorted_full, length)
 
 
-lapply(SCENIC_reg_top_genes_top100, function(X) {which(X %in% 'MYL2')})
+# lapply(SCENIC_reg_top_genes_top100, function(X) {which(X %in% 'MYL2')})
 
 # Sanity check:
 GENE='SRF'
@@ -446,16 +452,16 @@ if (F) {
     plotlist=lapply(1:length(SCENIC_regulons_core_genes),
         function(X) {shorthand_seurat_custom_expr(seuratObject = current_analysis[[DATASET_NAME]], 
                                                     gene_of_interest = SCENIC_regulons_core_genes[[X]], textsize=6, pointsize=.5, 
-                                                    custom_title = names(SCENIC_regulons_core_genes)[X], mymargin = .5, zscore = T)})
-    plots_per_row=round((184.6/2)/20)
+                                                    custom_title = gsub(pattern = '\\(\\+\\)',replacement = '',x = names(SCENIC_regulons_core_genes)[X]), mymargin = .5, zscore = T)})
+    plots_per_row=round((172/2-4)/20)
     n_rows=length(plotlist)/plots_per_row
     p=wrap_plots(plotlist, nrow = ceiling(n_rows))
     
     #p
     ggsave(filename = paste0(base_dir,'Rplots/',DATASET_NAME,'_7_RegulonsSCENIC_UMAP_compositeExpr.pdf'), 
-        plot = p, width=20*plots_per_row, height=20*n_rows, units='mm') # 184.6/3*2-4
+        plot = p, width=20*plots_per_row, height=20*n_rows, units='mm', device=cairo_pdf) # 184.6/3*2-4
     ggsave(filename = paste0(base_dir,'Rplots/',DATASET_NAME,'_7_RegulonsSCENIC_UMAP_compositeExpr-v2.pdf'), 
-        plot = p, width=100, height=75, units='mm') # 184.6/3*2-4
+        plot = p, width=172/2-4, height=20*n_rows, units='mm', device=cairo_pdf) # 184.6/3*2-4
     
 }
 
