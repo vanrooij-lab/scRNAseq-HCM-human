@@ -468,17 +468,18 @@ if (F) {
 ################################################################################
 # And also the underlying TFs
 
-
+# TO DO: update this list
 regulon_controllers = sort(c('CEBPB', 'ESRRA', 'ETV1', 'FOXN3', 'JUND', 'MAFK', 'MEF2A', 'MEF2D', 'MXI1', 'NR3C1', 'SREBF2', 'SRF', 'USF2', 'YY1', 'ZEB1', 'ZNF91'))
+regulon_controllers = sort(c('YY1', 'SRF', 'NR3C1', 'NFE2L1', 'MXI1', 'MITF', 'MEF2D', 'MEF2A', 'MAFK', 'JUND', 'JUN', 'FOXP1', 'FOXN3', 'ETV1', 'ATF6'))
 
 
 p_list=lapply(regulon_controllers, function(gene) {
     shorthand_seurat_custom_expr(seuratObject = current_analysis[[ANALYSIS_NAME]], 
                                                     gene_of_interest = gene, textsize=4, pointsize=.25, 
                                                     custom_title = paste0(gene), mymargin = .5, zscore = T)})
-p=wrap_plots(p_list, nrow=1)#ceiling(sqrt(length(p_list))))
+p=wrap_plots(p_list, ncol=4)#ceiling(sqrt(length(p_list))))
 ggsave(filename = paste0(base_dir,'Rplots/',ANALYSIS_NAME,'_9_custom_SCENIC_tfs.pdf'), 
-        plot = p, width=9.5*16, height=10, units='mm') # 184.6/3*2-4
+        plot = p, width=20*4, height=4*20, units='mm', device = cairo_pdf) # 184.6/3*2-4
 
 ################################################################################
 # Now also sort their regulons' genes, just using the same method as for my
