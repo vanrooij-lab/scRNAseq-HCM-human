@@ -18,6 +18,27 @@ if [[ 0 -eq 1 ]]; then
     # --parsable 
   done
   
+  # Now also start the analysis for Hu and Teichmann data
+  # First Hu data
+  script_dir=/hpc/hub_oudenaarden/mwehrens/scripts/SCS_HCM_analysis
+  processors=20
+  mem=50G
+  for patient in H.N1 H.N2 H.N3 H.N4 H.N5 H.N13 H.N14
+  do
+    sbatch --output=slurm-scenic-${patient}-%x.%j.out --job-name=SCN_${patient} -c ${processors} --time=1-00:00:00 --mem=${mem} --export=ALL,patient="${patient}" ${script_dir}/HCM_SCS_2021_08_SCENIC-py-ICL.sh
+    # --parsable 
+  done
+  
+  # Teichmann probably needs a bit more memory
+  script_dir=/hpc/hub_oudenaarden/mwehrens/scripts/SCS_HCM_analysis
+  processors=20
+  mem=120G
+  for patient in T.H5 T.H6 T.H3 T.H2 T.H7 T.H4 T.D1 T.D2 T.D3 T.D4 T.D5 T.D6 T.D7 T.D11
+  do
+    sbatch --output=slurm-scenic-${patient}-%x.%j.out --job-name=SCN_${patient} -c ${processors} --time=1-00:00:00 --mem=${mem} --export=ALL,patient="${patient}" ${script_dir}/HCM_SCS_2021_08_SCENIC-py-ICL.sh
+    # --parsable 
+  done
+  
 fi
 
 # ==============================================================================

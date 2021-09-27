@@ -222,6 +222,31 @@ TRIAGE_DATASET='ROOIJonly_TRIAGE_clExt'
 save(list='DE_cluster', file=paste0(base_dir, 'Rdata/DE_cluster__ROOIJonly_TRIAGE_clExt.Rdata'))
 SaveH5Seurat(object = current_analysis[[TRIAGE_DATASET]], filename = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_',TRIAGE_DATASET,'.h5seurat'), overwrite = T)
 
+# TRIAGE_DATASET='ROOIJonly_TRIAGE_clExt'
+# current_analysis[[TRIAGE_DATASET]] = LoadH5Seurat(file = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_',TRIAGE_DATASET,'.h5seurat'))
+
+################################################################################
+# First, do ±what is also done in the TRIAGE paper, i.e. look at mean levels
+# of expression at the whole-sample level
+
+triage_scores_overall =
+    as.matrix(rowMeans(current_analysis$ROOIJonly_TRIAGE_clExt@assays$RNA@scale.data))
+    # note: multiplying w/ RTS before or after mean is equal
+
+
+# Top 20 TRIAGE genes:
+top_triage_genes_fullname = names(triage_scores_overall[,1][order(triage_scores_overall[,1], decreasing = T)])[1:20] 
+top_triage_genes_shortname = shorthand_cutname(top_triage_genes_fullname)
+
+FeaturePlot(current_analysis$ROOIJonly_RID2l_clExtended, features = top_triage_genes_fullname)
+p_list =
+    lapply(1:length(top_triage_genes_shortname), function(idx) {
+        shorthand_seurat_custom_expr(current_analysis$ROOIJonly_RID2l_clExtended, top_triage_genes_shortname[idx], custom_title = paste0(top_triage_genes_shortname[idx], ' (#',idx,')')) } )
+
+p = wrap_plots(p_list, ncol=4)
+
+ggsave(plot=p, filename = paste0(base_dir,'Rplots/ROOIJonly_RID2l_clExtended_9_TRIAGE_genes_overall.pdf'), height=172/2, width=172/2, units='mm', device = cairo_pdf)
+
 ################################################################################
 # Now make the standard plots
 

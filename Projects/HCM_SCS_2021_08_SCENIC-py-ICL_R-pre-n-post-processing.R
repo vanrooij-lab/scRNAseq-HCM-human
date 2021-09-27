@@ -13,6 +13,9 @@
 #
 # Note: this also sets "base_dir", I will output to 
 # base_dir/SCENIC
+#
+# Or use following one-liner @HPC
+# script_dir = '/hpc/hub_oudenaarden/mwehrens/scripts/SCS_HCM_analysis/'; desired_command='dummy'; source(paste0(script_dir, 'HCM_SCS_2021_06_SeuratRevisedAnalysis_v2_UmiTools.R')); rm('desired_command')
 
 # set script dir (note: overwritten by loading SeuratRevisedAnalysis below)
 if (exists('LOCAL')) {
@@ -32,20 +35,35 @@ desired_command_regulon='dummy'; source(paste0(script_dir, if (exists('LOCAL')) 
 # Libs/more config
 
 library(pheatmap)
+library(loomR)
 
 DATASET_NAME='ROOIJonly_RID2l'
 
+# DATASET_NAME='TEICHMANNonly_RID2l'
+# DATASET_NAME='HUonly_RID2l'
+
 ################################################################################
 # << PRE PROCESSING >>
+
+# NOTE: @HPC, this needs to be run in the base_plusloom conda environment ..
+# (Probably It's save to install loom also in the base environment)
+print("NOTE: @HPC, this needs to be run in the base_plusloom conda environment ..")
 
 # Export patients for analysis
 
 if (!dir.exists(paste0(base_dir, 'Ldata/'))) { dir.create(paste0(base_dir, 'Ldata/')) }
 
+# Rooij patients
 ALL_PATIENTS = paste0("R.P", 1:5)
+# Teichmann healthy donors
+# ALL_PATIENTS = c('T.H5', 'T.H6', 'T.H3', 'T.H2', 'T.H7', 'T.H4', 'T.D1', 'T.D2', 'T.D3', 'T.D4', 'T.D5', 'T.D6', 'T.D7', 'T.D11')
+# Hu healthy donors
+# ALL_PATIENTS = c('H.N1', 'H.N2', 'H.N3', 'H.N4', 'H.N5', 'H.N13', 'H.N14')
 
 for (CURRENT_PATIENT in ALL_PATIENTS) {
 # for (CURRENT_PATIENT in ALL_PATIENTS[2:5]) {
+    
+    # CURRENT_PATIENT = 'T.H5'
     
     # Load respective dataset
     if (!exists('current_analysis')) {current_analysis = list()}

@@ -8,16 +8,20 @@
 
 # Load the data
 DATASET_NAME='ROOIJonly_RID2l'
+# DATASET_NAME='TEICHMANNonly_RID2l'
+# DATASET_NAME='HUonly_RID2l'
+
+
 if (!exists('current_analysis')) {current_analysis = list()}
 current_analysis[[DATASET_NAME]] =
         LoadH5Seurat(file = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_',DATASET_NAME,'.h5seurat'))
 
 # Split the data
-all_patients = unique(current_analysis$ROOIJonly_RID2l$annotation_patient_str)
+all_patients = unique(current_analysis[[DATASET_NAME]]$annotation_patient_str)
 temp_seurat_subsets = lapply(all_patients, function(current_patient) {
                             print(paste0('Generating sep data for patient ', current_patient))
                             return(
-                                subset(current_analysis$ROOIJonly_RID2l, annotation_patient_str==current_patient))
+                                subset(current_analysis[[DATASET_NAME]], annotation_patient_str==current_patient))
                             })
 names(temp_seurat_subsets) = all_patients
 # Copy 'm into usual parameter
@@ -31,6 +35,7 @@ rm('temp_seurat_subsets')
 
 # Run the analysis
 for (current_patient in all_patients) {
+    print(paste0('Running analysis for patient ',current_patient))
     current_analysis[[paste0(current_patient,'RID2l')]] =
         mySeuratAnalysis_verybasic_part2only(mySeuratObject = current_analysis[[current_patient]], do.scale = F, do.center = F)
 }
