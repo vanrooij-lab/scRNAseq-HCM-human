@@ -1,61 +1,77 @@
 
-
-# Regulons in bulk data
-
-# Load external data set
-
-louk_data_ = read.table(paste0(base_dir, 'External_data/Raw_read_counts.txt'), header = 1)
-
-load(file = paste0(base_dir,'Rdata/ens_to_sym_conv_table.Rdata'))
-
-louk_data = louk_data_[,-1]
-rownames(louk_data) = 
-    paste0(louk_data_$GeneID, ':', ens_to_sym_conv_table[louk_data_$GeneID])
-
-
-# Load it into Seurat
-
-Seurat_Object_BulkData = CreateSeuratObject(counts = louk_data, project = 'bulkData')
-
-rownames(Seurat_Object_BulkData)[grepl(':MT-', rownames(Seurat_Object_BulkData))]
-
-# Determine mitochondrial percentage
-Seurat_Object_BulkData[["percent.mt"]] <- PercentageFeatureSet(Seurat_Object_BulkData, pattern = ":MT-")
-
-# Remove mitochondrial reads
-mito_genes = rownames(Seurat_Object_BulkData)[grepl(':MT-',rownames(Seurat_Object_BulkData))]
-Seurat_Object_BulkData@misc$desired_genes_excl_mito = 
-            rownames(Seurat_Object_BulkData)[!(rownames(Seurat_Object_BulkData) %in% mito_genes)]
-Seurat_Object_BulkData_noMito =
-        subset(Seurat_Object_BulkData, features= Seurat_Object_BulkData@misc$desired_genes_excl_mito)
-    
-# Determine total counts and features 
-CalcN_out = Seurat:::CalcN(Seurat_Object_BulkData_noMito)
-Seurat_Object_BulkData_noMito[['nCount.nMT']]   = CalcN_out$nCount
-Seurat_Object_BulkData_noMito[['nFeature.nMT']] = CalcN_out$nFeature
-
-# Run Seurat analysis (I only need the scaling, actually)
-
-#Seurat_Object_BulkData_noMito = mySeuratAnalysis(Seurat_Object_BulkData_noMito,
-#            run_name='BulkData_noMito',
-#            normalization.method='RC', scale.factor=median(Seurat_Object_BulkData_noMito$nCount.nMT),
-#            do.scale=F,do.center=F,scale.max=Inf, features_to_use_choice = 'variable') # variable because otherwise too large calculation ..
-
-# Perform scaling
-Seurat_Object_BulkData_noMito <- NormalizeData(Seurat_Object_BulkData_noMito, normalization.method = 'RC', scale.factor = median(Seurat_Object_BulkData_noMito$nCount.nMT))
-
-# Annotate samples
-Seurat_Object_BulkData_noMito$annotation_str = NA
-Seurat_Object_BulkData_noMito$annotation_str[grepl('^HCM', colnames(Seurat_Object_BulkData_noMito))] = 'HCM'
-Seurat_Object_BulkData_noMito$annotation_str[grepl('^CONTROL', colnames(Seurat_Object_BulkData_noMito))] = 'Ctrl'
-Seurat_Object_BulkData_noMito$annotation_fct=factor(Seurat_Object_BulkData_noMito$annotation_str, levels=c('HCM', 'Ctrl'))
-
-
-
 ################################################################################
 
-CURRENT_RUNNAME='BulkData_noMito'
+# Data from:
+# 
+# - Hemerich, D., Pei, J., Harakalova, M., Van Setten, J., Boymans, S., Boukens, B. J., … Asselbergs, F. W. (2019). Integrative Functional Annotation of 52 Genetic Loci Influencing Myocardial Mass Identifies Candidate Regulatory Variants and Target Genes. Circulation: Genomic and Precision Medicine, 12(2), 76–83. https://doi.org/10.1161/CIRCGEN.118.002328
+# - Pei, J., Schuldt, M., Nagyova, E., Gu, Z., el Bouhaddani, S., Yiangou, L., … Harakalova, M. (2021). Multi-omics integration identifies key upstream regulators of pathomechanisms in hypertrophic cardiomyopathy due to truncating MYBPC3 mutations. Clinical Epigenetics, 13(1), 1–20. https://doi.org/10.1186/s13148-021-01043-3
+
+################################################################################
+# Pre-processing the bulk data and conversion to Seurat dataframe
+
+if (F) {
+    
+    # Load external data set
+    
+    louk_data_ = read.table(paste0(base_dir, 'External_data/Raw_read_counts.txt'), header = 1)
+    
+    load(file = paste0(base_dir,'Rdata/ens_to_sym_conv_table.Rdata'))
+    
+    louk_data = louk_data_[,-1]
+    rownames(louk_data) = 
+        paste0(louk_data_$GeneID, ':', ens_to_sym_conv_table[louk_data_$GeneID])
+    
+    
+    # Load it into Seurat
+    
+    Seurat_Object_BulkData = CreateSeuratObject(counts = louk_data, project = 'bulkData')
+    
+    rownames(Seurat_Object_BulkData)[grepl(':MT-', rownames(Seurat_Object_BulkData))]
+    
+    # Determine mitochondrial percentage
+    Seurat_Object_BulkData[["percent.mt"]] <- PercentageFeatureSet(Seurat_Object_BulkData, pattern = ":MT-")
+    
+    # Remove mitochondrial reads
+    mito_genes = rownames(Seurat_Object_BulkData)[grepl(':MT-',rownames(Seurat_Object_BulkData))]
+    Seurat_Object_BulkData@misc$desired_genes_excl_mito = 
+                rownames(Seurat_Object_BulkData)[!(rownames(Seurat_Object_BulkData) %in% mito_genes)]
+    Seurat_Object_BulkData_noMito =
+            subset(Seurat_Object_BulkData, features= Seurat_Object_BulkData@misc$desired_genes_excl_mito)
+        
+    # Determine total counts and features 
+    CalcN_out = Seurat:::CalcN(Seurat_Object_BulkData_noMito)
+    Seurat_Object_BulkData_noMito[['nCount.nMT']]   = CalcN_out$nCount
+    Seurat_Object_BulkData_noMito[['nFeature.nMT']] = CalcN_out$nFeature
+    
+    # Run Seurat analysis (I only need the scaling, actually)
+    
+    #Seurat_Object_BulkData_noMito = mySeuratAnalysis(Seurat_Object_BulkData_noMito,
+    #            run_name='BulkData_noMito',
+    #            normalization.method='RC', scale.factor=median(Seurat_Object_BulkData_noMito$nCount.nMT),
+    #            do.scale=F,do.center=F,scale.max=Inf, features_to_use_choice = 'variable') # variable because otherwise too large calculation ..
+    
+    # Perform scaling
+    Seurat_Object_BulkData_noMito <- NormalizeData(Seurat_Object_BulkData_noMito, normalization.method = 'RC', scale.factor = median(Seurat_Object_BulkData_noMito$nCount.nMT))
+    
+    # Annotate samples
+    Seurat_Object_BulkData_noMito$annotation_str = NA
+    Seurat_Object_BulkData_noMito$annotation_str[grepl('^HCM', colnames(Seurat_Object_BulkData_noMito))] = 'HCM'
+    Seurat_Object_BulkData_noMito$annotation_str[grepl('^CONTROL', colnames(Seurat_Object_BulkData_noMito))] = 'Ctrl'
+    Seurat_Object_BulkData_noMito$annotation_fct=factor(Seurat_Object_BulkData_noMito$annotation_str, levels=c('HCM', 'Ctrl'))
+
+    SaveH5Seurat(object = RHL_SeuratObject_Rooij_raw, overwrite = T,
+            filename = paste0(base_dir,'Rdata/H5_bulkdata.h5seurat'))
+    
+
+    
+}
+
+################################################################################
+# Loading 
+
+    CURRENT_RUNNAME='BulkData_noMito'
 current_analysis[[CURRENT_RUNNAME]] = Seurat_Object_BulkData_noMito
+
 
 # Box plots
 shorthand_custom_boxplot(seuratObject_list=current_analysis, 
