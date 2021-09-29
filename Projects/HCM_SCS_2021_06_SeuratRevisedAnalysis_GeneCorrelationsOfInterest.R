@@ -345,6 +345,8 @@ REFERENCE_DATASET = 'ROOIJonly_RID2l'
 
 if (F) {
         
+    gene_lists_customcorrelated = list()
+    
     for (CURRENT_GENE in c('ENSG00000155657:TTN', 'ENSG00000175206:NPPA', "ENSG00000163092:XIRP2", "ENSG00000164309:CMYA5")) {
         
         # CURRENT_GENE = 'ENSG00000175206:NPPA'
@@ -383,6 +385,19 @@ if (F) {
         df_correlations_SE = 
             aggregate(df_melted[,c('corr','pval.adj')], by=list(gene_name=df_melted$gene_name), function(x) {SE = sqrt(var(x)/length(x))})
         
+        # Calculate Rooij-specific significance counts and mean corr values
+        # pval counts
+        pval.adj.sign_temp = df_melted$pval.adj.sign
+        pval.adj.sign_temp[!(df_melted$donor %in% paste0('R.P',1:5))]=0
+        df_correlations_mean$sign.donors_rooij = 
+            aggregate(pval.adj.sign_temp, by=list(gene_name=df_melted$gene_name), sum)$x
+        # mean corrs
+        corr_temp = df_melted$corr
+        corr_temp[!(df_melted$donor %in% paste0('R.P',1:5))]=NA
+        df_correlations_mean$corr_rooij = 
+            aggregate(corr_temp, by=list(gene_name=df_melted$gene_name), mean, na.rm=T)$x
+        
+        
         df_correlations_SE$corr_min = df_correlations_mean$corr-df_correlations_SE$corr
         df_correlations_SE$corr_max = df_correlations_mean$corr+df_correlations_SE$corr
         
@@ -395,6 +410,30 @@ if (F) {
         df_correlations_SE_subset = df_correlations_SE[df_correlations_SE$pval_mean<.05, ]
         
         df_correlations_SE_subset$gene=shorthand_cutname(df_correlations_SE_subset$gene_name)
+        
+        # Create gene of interest lists
+        TOPX=25
+        # Split for pos and neg corr, selection at least 2 sign rooij donors
+        df_correlations_mean_Rpos = df_correlations_mean[df_correlations_mean$corr_rooij>0&df_correlations_mean$gene_name!=CURRENT_GENE&
+                                                         df_correlations_mean$sign.donors_rooij>2,]
+        df_correlations_mean_Rneg = df_correlations_mean[df_correlations_mean$corr_rooij<0&
+                                                         df_correlations_mean$sign.donors_rooij>2,]
+        # Sort appropriately
+        df_correlations_mean_Rpos_sorted = 
+            Reduce(rbind, lapply(5:0,
+                   function(x) {df_=df_correlations_mean_Rpos[df_correlations_mean_Rpos$sign.donors_rooij==x,]
+                                df_[order(df_$corr_rooij, decreasing = T),]}))
+        df_correlations_mean_Rneg_sorted = 
+            Reduce(rbind, lapply(5:0,
+                   function(x) {df_=df_correlations_mean_Rneg[df_correlations_mean_Rneg$sign.donors_rooij==x,]
+                                df_[order(abs(df_$corr_rooij), decreasing = T),]}))
+        # 
+        selected_genes_correlated=list()
+        selected_genes_correlated$pos = df_correlations_mean_Rpos_sorted$gene_name[1:min(TOPX,nrow(df_correlations_mean_Rpos_sorted))]
+        selected_genes_correlated$neg = df_correlations_mean_Rneg_sorted$gene_name[1:min(TOPX,nrow(df_correlations_mean_Rneg_sorted))]
+    
+        # Now export to later look at bulk expression levels per patient
+        gene_lists_customcorrelated[[CURRENT_GENE]] = selected_genes_correlated
         
         # Mean correlations; note that all datasets are used here, so
         # this is not very representative (e.g. Teichmann is much more data, biases)
@@ -415,12 +454,16 @@ if (F) {
         selected_genes=df_corr_collection$mean[[CURRENT_GENE]][[REFERENCE_DATASET]][
             df_corr_collection$mean[[CURRENT_GENE]][[REFERENCE_DATASET]]$sign.donors>1,]$gene_name
         
+        # Create log10 pval
+        df_melted$log10_pval_=-log10(df_melted$pval.adj)
+        myymax=max(df_melted$log10_pval_[is.finite(df_melted$log10_pval_)])
+        if (any(is.infinite(df_melted$log10_pval_))) {inf_line=T} else {inf_line=F}
+        df_melted$log10_pval_[is.infinite(df_melted$log10_pval_)]=myymax*1.1
+        
+        
         # Correlations per patients, color coded for paper
         df_melted_sel = df_melted[df_melted$gene_name %in% selected_genes,]
-        df_melted_sel$log10_pval_=-log10(df_melted_sel$pval.adj)
-        myymax=max(df_melted_sel$log10_pval_[is.finite(df_melted_sel$log10_pval_)])
-        if (any(is.infinite(df_melted_sel$log10_pval_))) {inf_line=T} else {inf_line=F}
-        df_melted_sel$log10_pval_[is.infinite(df_melted_sel$log10_pval_)]=myymax*1.1
+        
         # create the plot
         p=ggplot(df_melted_sel, aes(x=corr, y=log10_pval_, color=paper)) 
         if (inf_line) {p=p+geom_hline(yintercept = myymax*1.1, color='black', size=0.5, linetype='dotted')}
@@ -439,64 +482,77 @@ if (F) {
         # Heatmap displaying significant correlations, using selection made above, based on 
         # whether they are significant in reference dataset (Rooij) in >1 patient
         # determing ordering
-        gene_order = df_correlations_mean[df_correlations_mean$gene_name %in% selected_genes,][order(df_correlations_mean[df_correlations_mean$gene_name %in% selected_genes,]$corr, decreasing = T),]$gene
-        gene_order_short = shorthand_cutname(gene_order)
+        for (negpos in c('pos','neg')){
         
-        ncol_effective=length(unique(df_melted_sel$donor))
-        nrow_effective=length(unique(df_melted_sel$gene_name_short))
-        # extra selection if necessary (because some plots show MANY genes)
-        if (nrow_effective>100) {
-            df_melted_sel_sel=df_melted_sel[
-                df_melted_sel$gene_name %in% df_correlations_mean[order(df_correlations_mean$sign.donors, decreasing = T),][1:100,]$gene_name,]
-            nrow_effective=length(unique(df_melted_sel_sel$gene_name_short))
-        } else {df_melted_sel_sel=df_melted_sel}
-        p=ggplot(df_melted_sel_sel, aes(x=factor(donor, levels=CUSTOM_PATIENT_ORDER), y=factor(gene_name_short, levels=rev(gene_order_short)), fill=corr, color=pval.adj.sign)) +
-            geom_tile(size=.5, width=0.7, height=0.7)+
-            scale_color_manual(values=c('white','black'))+
-            scale_fill_gradientn(colours = rainbow_colors, breaks=seq(-1,1,.5), limits=c(-1,1))+
-            geom_text(aes(label=round(corr,2)), color='#666666', size=6/.pt)+
-            theme_bw()+ylab(element_blank())+give_better_textsize_plot(8)+
-            ggtitle(paste0('Correlations with ',shorthand_cutname(CURRENT_GENE)))+
-            theme(legend.position = 'none', axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
-            xlab('donor')
-        # p 
-        
-        ggsave(filename = paste0(base_dir,'Rplots/customALL',SP_SWITCH,'_6_TableSignCorrelations_',CURRENT_GENE,'_.pdf'), 
-                         plot = p, height=2.5*nrow_effective, width=172, units = 'mm', device=cairo_pdf) # 185/4 || 46*2 || ncol_effective*7.5
-        
-        # Slightly adjusted heatmap in case of more information
-        p=ggplot(df_melted_sel_sel, aes(x=factor(donor, levels=CUSTOM_PATIENT_ORDER), y=factor(gene_name_short, levels=rev(gene_order_short)), fill=corr)) +
-            geom_tile(size=.5, width=1, height=1)+
-            geom_point(data=df_melted_sel_sel[df_melted_sel_sel$pval.adj.sign, ])+
-            scale_color_manual(values=c('white','black'))+
-            scale_fill_gradientn(colours = rainbow_colors, breaks=seq(-1,1,.5), limits=c(-1,1))+
-            #geom_text(aes(label=round(corr,2)), color='#666666', size=6/.pt)+
-            theme_bw()+ylab(element_blank())+give_better_textsize_plot(8)+
-            ggtitle(paste0('Correlations with ',shorthand_cutname(CURRENT_GENE)))+
-            theme(legend.position = 'none', legend.key.height = unit(2,"mm"),
-                axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
-            xlab('donor')
-        # p
-        ggsave(filename = paste0(base_dir,'Rplots/customALL',SP_SWITCH,'_6_TableSignCorrelations-style2_',CURRENT_GENE,'_.pdf'), 
-                         plot = p, height=min(172,3*nrow_effective+20), width=2/3*172-4, units = 'mm', device=cairo_pdf) # 185/4 || 46*2 || ncol_effective*7.5
-        # Now with legend
-        p=p+theme(legend.position='bottom') # p
-        ggsave(filename = paste0(base_dir,'Rplots/customALL',SP_SWITCH,'_6_TableSignCorrelations-style2_LEGEND_',CURRENT_GENE,'_.pdf'), 
-                         plot = p, height=min(172,3.5*nrow_effective+5), width=2/3*172-4, units = 'mm', device=cairo_pdf) # 185/4 || 46*2 || ncol_effective*7.5
-        
-        # Less sophisticated heatmap
-        # Note: this isn't 100 rows, because not all top-100 mean genes are also sign. in >1 patient
-        current_genes = gene_order_short[gene_order_short %in% df_melted_sel_sel$gene_name_short]
-        mtx <- matrix(NA, nrow=length(current_genes), ncol=length(unique(df_melted_sel_sel$donor)) )
-        dimnames(mtx) <- list( current_genes,  CUSTOM_PATIENT_ORDER[CUSTOM_PATIENT_ORDER %in% df_melted_sel_sel$donor] )
-        mtx[cbind(df_melted_sel_sel$gene_name_short, df_melted_sel_sel$donor)] <- df_melted_sel_sel$corr
-        
-        mtx[is.na(mtx)]=0
-        
-        p=pheatmap(mtx, fontsize_row = 3, cluster_rows = F, cluster_cols = F)
-        p
+            if(is.na(selected_genes_correlated[[negpos]])) {print(paste0('No genes that are ',negpos,' correlated to ',CURRENT_GENE,' '));next}
+            
+            # negpos='pos'
+            
+            # gene_order = df_correlations_mean[df_correlations_mean$gene_name %in% selected_genes,][order(df_correlations_mean[df_correlations_mean$gene_name %in% selected_genes,]$corr, decreasing = T),]$gene
+            # gene_order_short = shorthand_cutname(gene_order)
+            gene_order_short = shorthand_cutname(selected_genes_correlated[[negpos]])
+            
+            df_melted_sel2=df_melted[df_melted$gene_name %in% selected_genes_correlated[[negpos]],]
+            
+            ncol_effective=length(unique(df_melted_sel2$donor))
+            nrow_effective=length(unique(df_melted_sel2$gene_name_short))
+            
+            # extra selection if necessary (because some plots show MANY genes)
+            #if (nrow_effective>100) {
+            #    df_melted_sel_sel=df_melted_sel[
+            #        df_melted_sel$gene_name %in% df_correlations_mean[order(df_correlations_mean$sign.donors_rooij, decreasing = T),][1:100,]$gene_name,]
+            #    nrow_effective=length(unique(df_melted_sel_sel$gene_name_short))
+            #} else {df_melted_sel_sel=df_melted_sel}
+            p=ggplot(df_melted_sel2, aes(x=factor(donor, levels=CUSTOM_PATIENT_ORDER), y=factor(gene_name_short, levels=rev(gene_order_short)), fill=corr, color=pval.adj.sign)) +
+                geom_tile(size=.5, width=0.7, height=0.7)+
+                scale_color_manual(values=c('white','black'))+
+                scale_fill_gradientn(colours = rainbow_colors, breaks=seq(-1,1,.5), limits=c(-1,1))+
+                geom_text(aes(label=round(corr,2)), color='#666666', size=6/.pt)+
+                theme_bw()+ylab(element_blank())+give_better_textsize_plot(8)+
+                ggtitle(paste0('Correlations with ',shorthand_cutname(CURRENT_GENE)))+
+                theme(legend.position = 'none', axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
+                xlab('donor')
+            # p 
+            
+            ggsave(filename = paste0(base_dir,'Rplots/customALL',SP_SWITCH,'_6_TableSignCorrelations_',CURRENT_GENE,'_Corr',negpos,'_.pdf'), 
+                             plot = p, height=2.5*nrow_effective, width=172, units = 'mm', device=cairo_pdf) # 185/4 || 46*2 || ncol_effective*7.5
+            
+            # Slightly adjusted heatmap in case of more information
+            p=ggplot(df_melted_sel2, aes(x=factor(donor, levels=CUSTOM_PATIENT_ORDER), y=factor(gene_name_short, levels=rev(gene_order_short)), fill=corr)) +
+                geom_tile(size=.5, width=1, height=1)+
+                geom_point(data=df_melted_sel2[df_melted_sel2$pval.adj.sign, ])+
+                scale_color_manual(values=c('white','black'))+
+                scale_fill_gradientn(colours = rainbow_colors, breaks=seq(-1,1,.5), limits=c(-1,1))+
+                #geom_text(aes(label=round(corr,2)), color='#666666', size=6/.pt)+
+                theme_bw()+ylab(element_blank())+give_better_textsize_plot(8)+
+                ggtitle(paste0('Correlations with ',shorthand_cutname(CURRENT_GENE)))+
+                theme(legend.position = 'none', legend.key.height = unit(2,"mm"),
+                    axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
+                xlab('donor')
+            # p
+            ggsave(filename = paste0(base_dir,'Rplots/customALL',SP_SWITCH,'_6_TableSignCorrelations-style2_',CURRENT_GENE,'_Corr',negpos,'_.pdf'), 
+                             plot = p, height=min(172,3*nrow_effective+20), width=2/3*172-4, units = 'mm', device=cairo_pdf) # 185/4 || 46*2 || ncol_effective*7.5
+            # Now with legend
+            p=p+theme(legend.position='bottom') # p
+            ggsave(filename = paste0(base_dir,'Rplots/customALL',SP_SWITCH,'_6_TableSignCorrelations-style2_LEGEND_',CURRENT_GENE,'_.pdf'), 
+                             plot = p, height=min(172,3.5*nrow_effective+5), width=2/3*172-4, units = 'mm', device=cairo_pdf) # 185/4 || 46*2 || ncol_effective*7.5
+            
+            # # Less sophisticated heatmap
+            # # Note: this isn't 100 rows, because not all top-100 mean genes are also sign. in >1 patient
+            # current_genes = gene_order_short[gene_order_short %in% df_melted_sel_sel$gene_name_short]
+            # mtx <- matrix(NA, nrow=length(current_genes), ncol=length(unique(df_melted_sel_sel$donor)) )
+            # dimnames(mtx) <- list( current_genes,  CUSTOM_PATIENT_ORDER[CUSTOM_PATIENT_ORDER %in% df_melted_sel_sel$donor] )
+            # mtx[cbind(df_melted_sel_sel$gene_name_short, df_melted_sel_sel$donor)] <- df_melted_sel_sel$corr
+            # 
+            # mtx[is.na(mtx)]=0
+            # 
+            # p=pheatmap(mtx, fontsize_row = 3, cluster_rows = F, cluster_cols = F)
+            # p
+        }
 
     }
+    
+    save(list = 'gene_lists_customcorrelated', file = paste0(base_dir,'Rdata/gene_lists_customcorrelated__Rooijbased.Rdata'))
 }
 
 ################################################################################

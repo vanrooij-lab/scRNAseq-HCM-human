@@ -250,17 +250,6 @@ shorthand_custom_boxplot = function(seuratObject_list, gene_lists, seuratObjectN
             labs(fill = element_blank())
         p 
         
-        # p=ggplot(df_agr, mapping=aes_string(x='gene', ymin='ymin', ymax='ymax', y='expression', fill=group.by))+
-        #     geom_bar(stat='identity',position='dodge')+
-        #     geom_errorbar(stat='identity',position='dodge')+
-        #     #geom_violin(position='dodge', draw_quantiles = T)+ # alpha=0.2, 
-        #     xlab('Gene')+ylab('Expression')+
-        #     theme_bw()+give_better_textsize_plot(6)+
-        #     theme(legend.position = 'none', legend.key.size = unit(3, "mm"), axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
-        #     #ylim(c(min(df$expression),mylims[2]))
-        #     ylim(c(-1,min(3,mylims[2])))
-        # p 
-        
         # Save
         ggsave(filename = paste0(base_dir, 'Rplots/', seuratObjectNameToTake, '_9_customBoxplotGenes_', current_list_name,'.pdf'), plot = p,
                height=42, width=42, units='mm', device=cairo_pdf)
@@ -276,8 +265,100 @@ shorthand_custom_boxplot = function(seuratObject_list, gene_lists, seuratObjectN
         ggsave(filename = paste0(base_dir, 'Rplots/', seuratObjectNameToTake, '_9_customBoxplotGenes_',current_list_name,'_LEGEND.pdf'), plot = p,
                height=42, width=4.2*min(length(current_genes), topX)+18, units='mm', device=cairo_pdf)      
         }
+        
+        p=ggplot(df_agr, mapping=aes_string(x='gene', y='expression', fill=group.by))+ # , ymin='ymin', ymax='ymax'
+            geom_violin(data=df, position='dodge', alpha=0, lwd=.1, scale='width')+ # alpha=0.2,
+            geom_bar(stat='identity',position='dodge', alpha=.9)+
+            #geom_errorbar(stat='identity',position='dodge')+
+            xlab('Gene')+ylab('Expression')+
+            theme_bw()+give_better_textsize_plot(6)+
+            theme(legend.position = 'none', legend.key.size = unit(3, "mm"), axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
+            #ylim(c(min(df$expression),mylims[2]))
+            ylim(c(min(df_agr$expression)-.1,max(df_agr$expression)+.5))
+        # p
+        # Save
+        ggsave(filename = paste0(base_dir, 'Rplots/', seuratObjectNameToTake, '_9_customBarplotGenes_', current_list_name,'.pdf'), plot = p,
+               height=42, width=42, units='mm', device=cairo_pdf)
+        
     }
 }
+
+##########
+
+shorthand_custom_boxplot_perpatient = function(seuratObject_list, gene_lists, seuratObjectNameToTake, group.by='annotation_paper_fct', topX=10, mylimits=.01, aggr.by='annotation_patient_fct') {
+    
+    for (current_list_name in names(gene_lists)) {
+        
+        current_genes = gene_lists[[current_list_name]]
+        current_genes = current_genes[1:(min(length(current_genes), topX))]
+        
+        # Retrieving full ensembl names if necessary
+        print(paste0('Retrieving ',current_genes))
+        if ((substr(x = current_genes[1], 1, 3)=='ENS')) {
+          gene_of_interest_fullname = current_genes
+        } else {
+          gene_of_interest_fullname = shorthand_seurat_fullgenename_faster(seuratObject_list[[seuratObjectNameToTake]], current_genes, return_NA = T)
+          if (any(is.na(gene_of_interest_fullname))) {warning('Not all genes found uniquely, filtering those out ..')}
+          gene_of_interest_fullname = gene_of_interest_fullname[!is.na(gene_of_interest_fullname)]
+        }
+        
+        current_exprs = as.matrix(seuratObject_list[[seuratObjectNameToTake]]@assays$RNA@data[gene_of_interest_fullname,]) # removes dgMatrix class if there
+        current_exprs = t(scale(t(current_exprs), center=T))
+        rownames(current_exprs) = shorthand_cutname(rownames(current_exprs))
+         
+        df_ = data.frame(t(current_exprs))
+        df_[[group.by]]   = as.factor(current_analysis[[seuratObjectNameToTake]][[group.by, drop=T]])
+        df_[[aggr.by]]  = as.factor(current_analysis[[seuratObjectNameToTake]][[aggr.by, drop=T]])
+        
+        df = reshape2::melt(data = df_, id.vars = list(group.by,aggr.by), value.name = 'expression', variable.name='gene')
+        
+        agr_list=list(df[[group.by]], df$gene, df[[aggr.by]]); names(agr_list) = c(group.by, 'gene', aggr.by)
+        df_agr = aggregate(x = list(expression=df$expression), by = agr_list, FUN = mean)
+        #df_agr$sd = aggregate(x = list(sd=df$expression), by = agr_list, FUN = sd)$sd
+        #df_agr$ymin=df_agr$expression-df_agr$sd
+        #df_agr$ymax=df_agr$expression+df_agr$sd
+        
+        # mylims=calc_limits(values = df$expression, percentile = mylimits)
+        
+        p=ggplot(df_agr, mapping=aes_string(x='gene', y='expression', fill=group.by))+
+            #geom_bar(data=df_agr, stat='identity',position='dodge')+
+            geom_jitter(size=.1, aes_string(color=group.by),position=position_dodge(width=1))+
+            geom_boxplot(position=position_dodge(width=1), outlier.size = .1, lwd=.25, alpha=.5)+
+            # geom_point(data=df_agr, stat='identity', position=position_dodge(width=1), shape=23, size=.5)+
+            xlab('Gene')+ylab('Expression')+
+            theme_bw()+give_better_textsize_plot(6)+
+            theme(legend.position = 'none', legend.key.size = unit(3, "mm"), axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
+                  panel.spacing = unit(c(0),'mm'))+
+            #ylim(c(min(df$expression),mylims[2]))
+            labs(fill = element_blank())
+        #p 
+        
+        # Save
+        ggsave(filename = paste0(base_dir, 'Rplots/', seuratObjectNameToTake, '_9_customBoxplotGenes-PerPat_', current_list_name,'.pdf'), plot = p,
+               height=172/6, width=172/3*2/10*length(current_genes), units='mm', device=cairo_pdf)
+        
+        p=ggplot(df_agr, mapping=aes_string(x=group.by, y='expression', fill=group.by))+
+            #geom_bar(stat='identity',position='dodge')+
+            geom_boxplot(outlier.size = .1, lwd=.25, alpha=.1)+
+            geom_jitter(size=.25, aes_string(color=group.by),position=position_dodge(width=1))+
+            xlab(element_blank())+ylab('Expression (z-score)')+
+            theme_bw()+give_better_textsize_plot(6)+
+            theme(legend.position = 'none', legend.key.size = unit(3, "mm"), axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
+                  panel.spacing = unit(c(0),'mm'))+
+            labs(fill = element_blank())+
+            facet_grid(cols=vars(gene))
+        
+        ggsave(filename = paste0(base_dir, 'Rplots/', seuratObjectNameToTake, '_9_customBoxplotGenes-PerPat-v2_', current_list_name,'.pdf'), plot = p,
+               height=172/6, width=172/3*2/10*length(current_genes), units='mm', device=cairo_pdf)
+        
+        # Now also save the data for stat. analysis
+        # save(list = 'df_agr', file=paste0(base_dir, 'Rplots/', seuratObjectNameToTake, '_9_customBoxplotGenes-PerPat-data_', current_list_name,'.Rdata'))
+        openxlsx::write.xlsx(x = df_agr, file=paste0(base_dir, 'Rplots/', seuratObjectNameToTake, '_9_customBoxplotGenes-PerPat-data_', current_list_name,'.xlsx'), overwrite = T)
+    }
+}
+
+##########
+
 
 shorthand_custom_compositeplot = function(seuratObject_list, gene_lists, seuratObjectNameToTake, group.by='annotation_paper_fct', group.by2=NULL, zscore=T, myfontsize=6, custom_legend=NULL, mymargin=2, mypointsize=.25) {
     

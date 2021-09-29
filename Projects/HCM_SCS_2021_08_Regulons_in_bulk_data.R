@@ -1,5 +1,7 @@
 
 
+# Regulons in bulk data
+
 # Load external data set
 
 louk_data_ = read.table(paste0(base_dir, 'External_data/Raw_read_counts.txt'), header = 1)

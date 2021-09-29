@@ -1258,6 +1258,33 @@ if ('more_custom_plots' %in% desired_command) {
         
     }
     
+    if (!(  file.exists(paste0(base_dir,'Rplots/gene_lists_customcorrelated.Rdata'))  )) {
+        print('Gene lists custom correlations file doesnt exist yet..') 
+    } else { 
+        load(paste0(base_dir,'Rdata/gene_lists_customcorrelated__Rooijbased.Rdata'))
+        
+        # Re-organize lists
+        gene_lists_customcorrelated_reorganized=list()
+        for (gene in names(gene_lists_customcorrelated)) {
+            if (!is.na(gene_lists_customcorrelated[[gene]]$pos)) {
+                gene_lists_customcorrelated_reorganized[[paste0('posCorrWith_',gene)]] = gene_lists_customcorrelated[[gene]]$pos
+            }
+            if (!is.na(gene_lists_customcorrelated[[gene]]$neg)) {
+                gene_lists_customcorrelated_reorganized[[paste0('negCorrWith_',gene)]] = gene_lists_customcorrelated[[gene]]$neg
+            }
+        }
+    
+        # Box plots
+        shorthand_custom_boxplot_perpatient(
+                                 seuratObject_list=current_analysis, 
+                                 gene_lists=gene_lists_customcorrelated_reorganized, 
+                                 seuratObjectNameToTake=CURRENT_RUNNAME, 
+                                 group.by='annotation_paper_beatified', 
+                                 aggr.by='annotation_patient_fct',
+                                 topX=10, mylimits=.01) 
+        
+    }
+    
     
 }
 
