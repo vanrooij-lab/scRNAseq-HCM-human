@@ -4,7 +4,7 @@ library(patchwork)
 
 ################################################################################
 
-# This loads (an older version) of the new wang data, don't use this.
+# This section loads (an older version) of the new wang data, don't use this.
 
 if (F) {
     # Let's just do some checks on the Wang data beforehand
