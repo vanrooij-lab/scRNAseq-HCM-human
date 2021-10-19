@@ -106,6 +106,13 @@ for (CURRENT_PATIENT in ALL_PATIENTS) {
 
 ALL_PATIENTS = paste0("R.P", 1:5)
 
+ROOIJ_PATIENTS = paste0("R.P", 1:5)
+HU_PATIENTS    = c('H.N1', 'H.N2', 'H.N3', 'H.N4', 'H.N5', 'H.N13')
+TEICHMANN_PATIENTS = c('T.D1', 'T.D2', 'T.D3', 'T.D4', 'T.D5', 'T.D6', 'T.D7', 'T.D11', 'T.H2', 'T.H3', 'T.H4', 'T.H5', 'T.H6', 'T.H7')
+
+ALL_PATIENTS = c(ROOIJ_PATIENTS, HU_PATIENTS, TEICHMANN_PATIENTS)
+# 'H.N14' removed because the analysis failed
+
 loom_file_list = list()
 scenic_regulons_collected_all_patients_list=list()
 scenic_regulons_collected_all_patients_list_regnames=list()
@@ -142,7 +149,9 @@ regulon_overlap_heatmap(pooled_regulons = scenic_regulons_collected_all_patients
 
 regulon_overlap_heatmap(pooled_regulons = scenic_regulons_collected_all_patients_list_regnames, base_dir = base_dir, run_name = 'SCENIC_regulons_overlap_regnames', MYTREECUTTINGHEIGHT = .1, myfontsize = 2)
 
-all_regulons = Reduce(x = scenic_regulons_collected_all_patients_list_regnames, f = unique)
+# all_regulons = Reduce(x = scenic_regulons_collected_all_patients_list_regnames, f = unique)
+
+all_regulons = unique(unlist(scenic_regulons_collected_all_patients_list_regnames))
 
 ################################################################################
 # Upset like heatmap
@@ -156,13 +165,25 @@ upset_df = data.frame(lapply(scenic_regulons_collected_all_patients_list_regname
 # UpSetR::upset(upsetR_list)
 
 # Heatmap of upset df
+
+# Make the plot for all patients
 cellsize=200/nrow(upset_df)
 p=pheatmap(1*upset_df, fontsize = cellsize*.pt, cluster_cols = F, cluster_rows = T, color = c('white','black'), legend = F, 
            treeheight_row = 0, cellwidth = cellsize*.pt, cellheight = cellsize*.pt, border_color = NA) # .pt = points/mm
 p
-ggsave(filename = paste0(base_dir,'Rplots/',DATASET_NAME,'_7_RegulonsSCENIC_overlapHeatmap.pdf'), 
+ggsave(filename = paste0(base_dir,'Rplots/ALL.SPcustom_7_RegulonsSCENIC_overlapHeatmap.pdf'), 
         plot = p, width=15+ncol(upset_df)*cellsize, height=15+nrow(upset_df)*cellsize, units='mm') # 184.6/3*2-4
     
+# Now Rooij-specific 
+upset_df_Rooij = upset_df[,c(paste0('R.P',1:5))]
+upset_df_Rooij = upset_df_Rooij[apply(upset_df_Rooij, 1, any),]
+cellsize=200/nrow(upset_df_Rooij)
+p=pheatmap(1*upset_df_Rooij, fontsize = cellsize*.pt, cluster_cols = F, cluster_rows = T, color = c('white','black'), legend = F, 
+           treeheight_row = 0, cellwidth = cellsize*.pt, cellheight = cellsize*.pt, border_color = NA) # .pt = points/mm
+ggsave(filename = paste0(base_dir,'Rplots/',DATASET_NAME,'_7_RegulonsSCENIC_overlapHeatmap.pdf'), 
+        plot = p, width=15+ncol(upset_df_Rooij)*cellsize, height=15+nrow(upset_df_Rooij)*cellsize, units='mm') # 184.6/3*2-4
+
+
 ################################################################################
 # Now retreive the NES scores
 
@@ -179,6 +200,8 @@ for (CURRENT_PATIENT in ALL_PATIENTS) {
     myRegScores[[CURRENT_PATIENT]] = aggregate(list(NES=add.info$NES), by = list(TF=add.info$TF), FUN=median)
     rownames(myRegScores[[CURRENT_PATIENT]]) = myRegScores[[CURRENT_PATIENT]]$TF
        
+    print(paste0(CURRENT_PATIENT,' done ..'))
+    
 }
 
 # Slightly more sophisticated "upset_df"
@@ -204,33 +227,109 @@ upset_df_NES_ = Reduce(rbind, rev(lapply(split(upset_df_NES_, apply(upset_df[row
     })))
 p=pheatmap(upset_df_NES_, fontsize = cellsize*.pt, cluster_cols = F, cluster_rows = F, legend = F, 
            treeheight_row = 0, cellwidth = cellsize*.pt, cellheight = cellsize*.pt, border_color = NA) # .pt = points/mm
-p
-ggsave(filename = paste0(base_dir,'Rplots/',DATASET_NAME,'_7_RegulonsSCENIC_overlapHeatmap_NES.pdf'), 
+ggsave(filename = paste0(base_dir,'Rplots/','ALL.SPcustom','_7_RegulonsSCENIC_overlapHeatmap_NES.pdf'), 
         plot = p, width=15+ncol(upset_df)*cellsize, height=15+nrow(upset_df)*cellsize, units='mm') # 184.6/3*2-4
+
+# Now also Rooij-specific again
+upset_df_NES_Rooij_ = upset_df_NES_[,c(paste0('R.P',1:5))]
+upset_df_NES_Rooij_ = upset_df_NES_Rooij_[apply(upset_df_NES_Rooij_, 1, any),]
+p=pheatmap(upset_df_NES_Rooij_, fontsize = cellsize*.pt, cluster_cols = F, cluster_rows = F, legend = F, 
+           treeheight_row = 0, cellwidth = cellsize*.pt, cellheight = cellsize*.pt, border_color = NA) # .pt = points/mm
+ggsave(filename = paste0(base_dir,'Rplots/',DATASET_NAME,'_7_RegulonsSCENIC_overlapHeatmap_NES.pdf'), 
+        plot = p, width=15+ncol(upset_df_NES_Rooij_)*cellsize, height=15+nrow(upset_df_NES_Rooij_)*cellsize, units='mm') # 184.6/3*2-4
 
 
 ################################################################################
-# Delve further in selected regulons, select first by requiring minimally present in 4 patients
-NR_PATIENTS_SCEN_FILTER = 4
+# Let's quickly check presence of regulons in how # patients per dataset
 
-current_selection_regulons_SCENIC = rownames(upset_df[apply(upset_df, 1, sum)>=NR_PATIENTS_SCEN_FILTER,])
+upset_df_sel = upset_df[apply(upset_df,1,sum)>3,]
+
+patient_sum_df = 
+    as.data.frame(
+    cbind(apply(upset_df[,ROOIJ_PATIENTS], 1, sum), 
+          apply(upset_df[,HU_PATIENTS], 1, sum), 
+          apply(upset_df[,TEICHMANN_PATIENTS], 1, sum)))
+colnames(patient_sum_df) = c('R','H','T')
+patient_sum_df$TF=gsub(pattern = '\\(\\+\\)',replacement = '',x = rownames(patient_sum_df))
+patient_sum_df_melted = melt(patient_sum_df, id.vars = 'TF', variable.name = 'dataset')
+# patient_sum_df_melted = melt(patient_sum_df, varnames = c('TF','dataset'))
+
+# ggplot(patient_sum_df_melted, aes(x=TF, fill=dataset, y=value))+
+#     geom_bar(stat='identity', position='dodge')+
+#     facet_wrap(facets = vars(TF))
+
+patient_sum_df_extended=patient_sum_df
+patient_sum_df_extended$TF=gsub(pattern = '\\(\\+\\)',replacement = '',x = rownames(patient_sum_df))
+p=ggplot(patient_sum_df_extended,aes(x=R, y=T))+
+    geom_density_2d()+
+    geom_density_2d(data=patient_sum_df_extended[patient_sum_df_extended$R>=1,], color='green')+
+    geom_point(size=.5)+
+    geom_text_repel(data=patient_sum_df_extended[patient_sum_df_extended$R>=3&patient_sum_df_extended$T<=3, ], 
+                    aes(label=TF), max.overlaps = Inf, size=6/.pt, segment.size=.25, color='red')+
+    theme_bw()+give_better_textsize_plot(8)
+# p
+ggsave(filename = paste0(base_dir,'Rplots/','ALL.SPcustom','_7_RegulonsSCENIC_scatterPatCount.pdf'), 
+        plot = p, width=172/3-4, height=172/3-4, units='mm', device = cairo_pdf) # 184.6/3*2-4
+
+
+p=ggplot(patient_sum_df_extended,aes(x=R, y=T))+
+    geom_density_2d_filled(data=patient_sum_df_extended[patient_sum_df_extended$R>1,])+theme_minimal()+
+    geom_density_2d(color='white')+
+    geom_point(data=patient_sum_df_extended[patient_sum_df_extended$R>=3&patient_sum_df_extended$T<=3, ],
+               size=.5,color='red')+
+    geom_text_repel(data=patient_sum_df_extended[patient_sum_df_extended$R>=3&patient_sum_df_extended$T<=3, ], 
+                    aes(label=TF), max.overlaps = Inf, size=6/.pt, segment.size=.25, color='red')+
+    theme_bw()+give_better_textsize_plot(8)+theme(legend.position = 'none')
+p
+ggsave(filename = paste0(base_dir,'Rplots/','ALL.SPcustom','_7_RegulonsSCENIC_scatterPatCount_v2.pdf'), 
+        plot = p, width=172/3-4, height=172/3-4, units='mm', device = cairo_pdf) # 184.6/3*2-4
+
+
+patient_sum_df_extended[patient_sum_df_extended$R>=3&patient_sum_df_extended$T<=2, ]
+patient_sum_df_extended[patient_sum_df_extended$R>=3&patient_sum_df_extended$H<=2, ]
+patient_sum_df_extended[patient_sum_df_extended$R>=3&(patient_sum_df_extended$T<=2|patient_sum_df_extended$H<=2), ]
+patient_sum_df_extended[patient_sum_df_extended$R>=3&(patient_sum_df_extended$T<=2&patient_sum_df_extended$H<=2), ]
+
+SCENIC_patient_counts_overview = list(patient_totals=patient_sum_df_extended, selected_regulons=
+                                          patient_sum_df_extended[patient_sum_df_extended$R>=3&(patient_sum_df_extended$T<=2|patient_sum_df_extended$H<=2), ])
+
+openxlsx::write.xlsx(x= SCENIC_patient_counts_overview, file = paste0(base_dir,'Rplots/','ALL.SPcustom','_SCENIC_patientsStats_regulons.xlsx'), overwrite = T)
+
+################################################################################
+# Now further delve into v. Rooij Regulons, select first by requiring minimally present in 4 patients
+NR_PATIENTS_SCEN_FILTER = 3
+
+# Create some Rooij specific info
+upset_df_NES_ROOIJonly = upset_df_NES[,paste0('R.P',1:5)]
+
+current_selection_regulons_SCENIC_Rooij = rownames(upset_df_Rooij[apply(upset_df_Rooij, 1, sum)>=NR_PATIENTS_SCEN_FILTER,])
 # potential other selections:
 rownames(upset_df[apply(upset_df, 1, sum)>=5,])
 rownames(upset_df[apply(upset_df, 1, sum)>=3,])
 
+# Export this selection, with patient count overview
+SCENIC_regulons_Rooij_selection_overview = cbind(upset_df_Rooij, patient_sum_df[rownames(upset_df_Rooij),])
+openxlsx::write.xlsx(x= SCENIC_regulons_Rooij_selection_overview, file = paste0(base_dir,'Rplots/','ALL.SPcustom','_SCENIC_overview_Rooij_regulons.xlsx'), overwrite = T)
+
 # Find out gene overlap between those ones
-scenic_regulons_collected_all_patients_overlapping_ones = 
-    scenic_regulons_collected_all_patients[scenic_regulons_collected_all_patients_regnames %in% current_selection_regulons_SCENIC]
+scenic_regulons_collected_all_patients_overlapping_ones_Rooij = 
+    scenic_regulons_collected_all_patients[scenic_regulons_collected_all_patients_regnames %in% current_selection_regulons_SCENIC_Rooij]
 
 # regulon_overlap_heatmap(pooled_regulons = scenic_regulons_collected_all_patients_overlapping_ones, base_dir = base_dir, run_name = 'SCENIC_regulons_collected_all_patients_overlapping', MYTREECUTTINGHEIGHT = .1, myfontsize = 2)
 
-# Better calculate the overlap for each respective regulon between the patietns
-overlapping_scores_regulons = 
-    sapply(current_selection_regulons_SCENIC, function(tf) {
+# Better calculate the overlap for each respective regulon between the patients
+# First create Rooij-specific selection table
+scenic_regulons_collected_all_patients_regnames_ROOIJonly = scenic_regulons_collected_all_patients_regnames[
+    grepl('R\\.P',names(scenic_regulons_collected_all_patients_regnames))]
+scenic_regulons_collected_all_patients_ROOIJonly = scenic_regulons_collected_all_patients[
+    grepl('R\\.P',names(scenic_regulons_collected_all_patients))]
+overlapping_scores_regulons_Rooij = 
+    sapply(current_selection_regulons_SCENIC_Rooij, function(tf) {
         # tf = 'STAT6(+)' 
-        # tf = 'MEF2A(+)' # current_selection_regulons_SCENIC[1]
+        # tf = 'MEF2A(+)' # current_selection_regulons_SCENIC_Rooij[1]
         # tf = 'MLX(+)'
-        current_reg_multi_pt = scenic_regulons_collected_all_patients[scenic_regulons_collected_all_patients_regnames == tf]
+        # tf = 'ZNF540(+)'
+        current_reg_multi_pt = scenic_regulons_collected_all_patients_ROOIJonly[scenic_regulons_collected_all_patients_regnames_ROOIJonly == tf]
         all_targets = unique(Reduce(x = current_reg_multi_pt, f = c)) # sort(Reduce(x = current_reg_multi_pt, f = unique))
         upset_df_tf = data.frame(lapply(current_reg_multi_pt, function(target_list) {all_targets %in% target_list}), row.names=all_targets)
         # current_overlap = mean(apply(upset_df_tf, 1, sum)>=3)
@@ -243,21 +342,21 @@ overlapping_scores_regulons =
         
     })
 # rownames(upset_df_tf[apply(upset_df_tf, 1, sum)>=2,])
-overlapping_scores_regulons_df = data.frame(overlap=overlapping_scores_regulons, gene=names(overlapping_scores_regulons))
-overlapping_scores_regulons_df$gene = factor(overlapping_scores_regulons_df$gene, levels=overlapping_scores_regulons_df$gene[order(overlapping_scores_regulons_df$overlap)])
-# overlapping_scores_regulons_df$score = overlapping_scores_regulons_df$gene
+overlapping_scores_regulons_df_Rooij = data.frame(overlap=overlapping_scores_regulons_Rooij, gene=names(overlapping_scores_regulons_Rooij))
+overlapping_scores_regulons_df_Rooij$gene = factor(overlapping_scores_regulons_df_Rooij$gene, levels=overlapping_scores_regulons_df_Rooij$gene[order(overlapping_scores_regulons_df_Rooij$overlap)])
+# overlapping_scores_regulons_df_Rooij$score = overlapping_scores_regulons_df_Rooij$gene
 # Determine NES scores per TF
-overlapping_scores_regulons_df$NES = apply(upset_df_NES, 1, function(x) {median(x[x>0&!is.na(x)])})[overlapping_scores_regulons_df$gene]
+overlapping_scores_regulons_df_Rooij$NES = apply(upset_df_NES_ROOIJonly, 1, function(x) {median(x[x>0&!is.na(x)])})[overlapping_scores_regulons_df_Rooij$gene]
 
 # Now show gene overlap between those regulons that were identified in the separate patients 
-p=ggplot(overlapping_scores_regulons_df, aes(x=gene, y=overlap))+
+p=ggplot(overlapping_scores_regulons_df_Rooij, aes(x=gene, y=overlap))+
     geom_bar(stat='identity')+coord_flip()+theme_bw()+give_better_textsize_plot(8)+ylim(c(0,1))+ylab('Fraction identical genes\nbetween patients')+xlab('Regulon')
 # p
 ggsave(filename = paste0(base_dir,'Rplots/',DATASET_NAME,'_7_RegulonsSCENIC_MemberGeneConsistencyPatients.pdf'), 
-        plot = p, width=50, height=8/.pt*nrow(overlapping_scores_regulons_df), units='mm', device=cairo_pdf) # 184.6/3*2-4
+        plot = p, width=50, height=8/.pt*nrow(overlapping_scores_regulons_df_Rooij), units='mm', device=cairo_pdf) # 184.6/3*2-4
 
 # Now including NES color
-p=ggplot(overlapping_scores_regulons_df, aes(x=gene, y=overlap, fill=NES))+
+p=ggplot(overlapping_scores_regulons_df_Rooij, aes(x=gene, y=overlap, fill=NES))+
     geom_bar(stat='identity')+coord_flip()+theme_bw()+give_better_textsize_plot(7)+
     ylab('Fraction identical\ngenes between\npatients')+xlab('Regulon')+
     # scale_fill_gradientn(colours = rainbow_colors)+
@@ -265,27 +364,32 @@ p=ggplot(overlapping_scores_regulons_df, aes(x=gene, y=overlap, fill=NES))+
     scale_y_continuous(limits = c(0, 1), breaks = seq(0, 1, .5))
 # p
 ggsave(filename = paste0(base_dir,'Rplots/',DATASET_NAME,'_7_RegulonsSCENIC_MemberGeneConsistencyPatients_NES.pdf'), 
-        plot = p, width=39, height=8/.pt*nrow(overlapping_scores_regulons_df), units='mm', device = cairo_pdf) # 184.6/3*2-4
+        plot = p, width=39, height=8/.pt*nrow(overlapping_scores_regulons_df_Rooij), units='mm', device = cairo_pdf) # 184.6/3*2-4
 
 
 ################################################################################
 # Now a secondary thing, let's calculate potential overlap with each other
-# First determine core regulons, genes present in three regulons, only consider regulons that show >50% gene overlap, finally only take regulons >10 genes
+# First determine core regulons, genes present in three regulons, 
+# finally only take regulons >10 genes
+# Earlier I required also 50% overlap minimum, but I set that to 0 since it has
+# no effect on final selection
 
-PERCENTAGE_TRESHOLD=.5
+PERCENTAGE_TRESHOLD=0
 SCENIC_regulons_core_genes = 
-    sapply(current_selection_regulons_SCENIC[overlapping_scores_regulons>PERCENTAGE_TRESHOLD], function(tf) { # [overlapping_scores_regulons>.1]
-        # tf = current_selection_regulons_SCENIC[1]
-        current_reg_multi_pt = scenic_regulons_collected_all_patients[scenic_regulons_collected_all_patients_regnames == tf]
+    sapply(current_selection_regulons_SCENIC_Rooij[overlapping_scores_regulons_Rooij>PERCENTAGE_TRESHOLD], function(tf) { # [overlapping_scores_regulons>.1]
+        # tf = current_selection_regulons_SCENIC_Rooij[1]
+        current_reg_multi_pt = scenic_regulons_collected_all_patients_ROOIJonly[scenic_regulons_collected_all_patients_regnames_ROOIJonly == tf]
         all_targets = unique(Reduce(x = current_reg_multi_pt, f = c))
         upset_df_tf = data.frame(lapply(current_reg_multi_pt, function(target_list) {all_targets %in% target_list}), row.names=all_targets)
         current_overlap = rownames(upset_df_tf)[apply(upset_df_tf, 1, sum)>=3]
     })
 # Take any with >=10 genes from these
 SCENIC_regulons_core_genes_sel = SCENIC_regulons_core_genes[sapply(SCENIC_regulons_core_genes, length)>=10]
+    # TFOI_list = c('CREB3L1', 'HLF', 'IRF6', 'KLF15', 'NFYB', 'NPAS2', 'NR1H2', 'SMAD4', 'SRF', 'STAT1', 'USF2', 'ZBED1', 'ZBTB7A', 'GATA4')
+    # TFOI_list[paste0(TFOI_list,'(+)') %in% names(SCENIC_regulons_core_genes_sel)]
 
 regulon_overlap_heatmap(pooled_regulons = SCENIC_regulons_core_genes_sel, base_dir = base_dir, run_name = 'SCENIC_regulons_overlap_core_sel', MYTREECUTTINGHEIGHT = 1.8, myfontsize = 8, makeallheatmaps=T)
-
+    
 length(SCENIC_regulons_core_genes_sel)
 
 save(list='SCENIC_regulons_core_genes_sel', file=paste0(base_dir, 'Rdata/SCENIC_regulons_core_genes_sel.Rdata'))
@@ -298,7 +402,7 @@ save(list='SCENIC_regulons_core_genes_sel', file=paste0(base_dir, 'Rdata/SCENIC_
 # Now also get gene weights
 RELEVANT_REGULONS = gsub(pattern = '\\([+-]\\)', replacement = '', x = names(SCENIC_regulons_core_genes_sel))
 regulon_gene_importance = list()
-for (CURRENT_PATIENT in ALL_PATIENTS) {
+for (CURRENT_PATIENT in ROOIJ_PATIENTS) {
     print(paste0('Looking up selected genes for ',CURRENT_PATIENT))
     
     adj.info = read.csv(paste0(base_dir, '/SCENIC/',CURRENT_PATIENT,'/adj.csv'), head=1)
@@ -327,14 +431,15 @@ SCENIC_reg_top_genes =
         
         relevant_weight_values_per_pt = lapply(regulon_gene_importance, function(X) {X[[tf_]]})
         
-        importance_df = data.frame(lapply(relevant_weight_values_per_pt, function(X) {rownames(X) = X$target; X[current_member_list,]$importance}), row.names=current_member_list)
+        importance_df = data.frame(lapply(relevant_weight_values_per_pt, function(X) {if(is.null(X)) {rep(NA, length(current_member_list))} else {rownames(X) = X$target; X[current_member_list,]$importance}}), row.names=current_member_list)
+        #importance_df = data.frame(lapply(relevant_weight_values_per_pt, function(X) {rownames(X) = X$target; X[current_member_list,]$importance}), row.names=current_member_list)
         importance_df$median_nona = apply(importance_df, 1, function(x) {median(x[!is.na(x)])})
         top_genes = rownames(importance_df[order(importance_df$median_nona, decreasing = T),])[1:TOPX]
     })
 names(SCENIC_reg_top_genes) = gsub('\\([+-]\\)', '', names(SCENIC_regulons_core_genes_sel))
 SCENIC_reg_top_genes_df = data.frame(SCENIC_reg_top_genes)
 
-openxlsx::write.xlsx(x= SCENIC_reg_top_genes_df[,sort(colnames(SCENIC_reg_top_genes_df))], file = paste0(base_dir,'Rplots/',DATASET_NAME,'_SCENIC_top',TOPX,'_regulons.xlsx'), overwrite = T)        
+openxlsx::write.xlsx(x= SCENIC_reg_top_genes_df[,sort(colnames(SCENIC_reg_top_genes_df))], file = paste0(base_dir,'Rplots/',DATASET_NAME,'_SCENIC_top',TOPX,'_regulons.xlsx'), overwrite = T)
         
 # NOTE: ALSO GIVE LENGTHS!!
 SCENIC_regulon_lengths = 
@@ -350,7 +455,7 @@ SCENIC_regulons_core_genes_sel
 
 # Better calculate the overlap for each respective regulon between the patietns
 lists_of_regulon_genes = 
-    sapply(current_selection_regulons_SCENIC, function(tf) {
+    sapply(current_selection_regulons_SCENIC_Rooij, function(tf) {
         
         # tf="MEF2A(+)"
         
@@ -377,7 +482,9 @@ SCENIC_reg_top_genes_sorted_full_dfs =
         
         relevant_weight_values_per_pt = lapply(regulon_gene_importance, function(X) {X[[tf_]]})
         
-        importance_df = data.frame(lapply(relevant_weight_values_per_pt, function(X) {rownames(X) = X$target; X[current_member_list,]$importance}), row.names=current_member_list)
+        importance_df = data.frame(lapply(relevant_weight_values_per_pt, 
+                            function(X) {if(is.null(X)) {rep(NA, length(current_member_list))} else {rownames(X) = X$target; X[current_member_list,]$importance}}), row.names=current_member_list)
+        #importance_df = data.frame(lapply(relevant_weight_values_per_pt, function(X) {rownames(X) = X$target; X[current_member_list,]$importance}), row.names=current_member_list)
         importance_df$median_nona = apply(importance_df, 1, function(x) {median(x[!is.na(x)])})
         
         # top_genes = rownames(importance_df[order(importance_df$median_nona, decreasing = T),])[1:100]
@@ -425,7 +532,7 @@ ggplot(df_toplot,aes(x=corr, y=importance))+
     geom_smooth(method='lm')+theme_bw()+ggtitle(GENE)
 
 ################################################################################
-# Now determine the relateness of their regulons to my regulons
+# Now determine the relatedness of their regulons to my regulons
 
 # Load my regulons
 load('/Users/m.wehrens/Data/_2019_02_HCM_SCS/2021_HPC_analysis.3/Rplots/ROOIJonly_RID2l_core_regulons_sorted_shortname.Rdata')
@@ -447,7 +554,7 @@ p=pheatmap(SCENIC_MW_regulon_comparison, cluster_rows = T,cluster_cols = F,
             fontsize = myfontsize, fontsize_col = myfontsize, fontsize_row = myfontsize, treeheight_row = 0, treeheight_col = 0, legend = F, limits=c(0,1), border_color = NA)
             #annotation_colors = list(colors=col_Dark2[1:max(cutree_out)])))
 print(p)
-ggsave(filename = paste0(base_dir,'Rplots/',run_name,'_7_regulon_SCENIC_MW_gene_overlap-v1b-L.pdf'), 
+ggsave(filename = paste0(base_dir,'Rplots/',DATASET_NAME,'_7_regulon_SCENIC_MW_gene_overlap-v1b-L.pdf'), 
     plot = p, width=ncol(SCENIC_MW_regulon_comparison)*myfontsize/.pt*1.1+20, height=nrow(SCENIC_MW_regulon_comparison)*myfontsize/.pt*1.1+15, units='mm', limitsize = F)
 
 ################################################################################
@@ -471,7 +578,7 @@ if (F) {
         function(X) {shorthand_seurat_custom_expr(seuratObject = current_analysis[[DATASET_NAME]], 
                                                     gene_of_interest = SCENIC_regulons_core_genes[[X]], textsize=6, pointsize=.5, 
                                                     custom_title = gsub(pattern = '\\(\\+\\)',replacement = '',x = names(SCENIC_regulons_core_genes)[X]), mymargin = .5, zscore = T)})
-    plots_per_row=round((172/2-4)/20)
+    plots_per_row=round((172/2-4)/25)
     n_rows=length(plotlist)/plots_per_row
     p=wrap_plots(plotlist, nrow = ceiling(n_rows))
     
@@ -489,15 +596,15 @@ if (F) {
 # TO DO: update this list
 regulon_controllers = sort(c('CEBPB', 'ESRRA', 'ETV1', 'FOXN3', 'JUND', 'MAFK', 'MEF2A', 'MEF2D', 'MXI1', 'NR3C1', 'SREBF2', 'SRF', 'USF2', 'YY1', 'ZEB1', 'ZNF91'))
 regulon_controllers = sort(c('YY1', 'SRF', 'NR3C1', 'NFE2L1', 'MXI1', 'MITF', 'MEF2D', 'MEF2A', 'MAFK', 'JUND', 'JUN', 'FOXP1', 'FOXN3', 'ETV1', 'ATF6'))
-
+regulon_controllers = sort(gsub('\\(\\+\\)','',names(SCENIC_regulons_core_genes)))
 
 p_list=lapply(regulon_controllers, function(gene) {
     shorthand_seurat_custom_expr(seuratObject = current_analysis[[ANALYSIS_NAME]], 
                                                     gene_of_interest = gene, textsize=4, pointsize=.25, 
                                                     custom_title = paste0(gene), mymargin = .5, zscore = T)})
-p=wrap_plots(p_list, ncol=4)#ceiling(sqrt(length(p_list))))
+p=wrap_plots(p_list, ncol=5)#ceiling(sqrt(length(p_list))))
 ggsave(filename = paste0(base_dir,'Rplots/',ANALYSIS_NAME,'_9_custom_SCENIC_tfs.pdf'), 
-        plot = p, width=20*4, height=4*20, units='mm', device = cairo_pdf) # 184.6/3*2-4
+        plot = p, width=20*5, height=5*20, units='mm', device = cairo_pdf) # 184.6/3*2-4
 
 ################################################################################
 # Now also sort their regulons' genes, just using the same method as for my

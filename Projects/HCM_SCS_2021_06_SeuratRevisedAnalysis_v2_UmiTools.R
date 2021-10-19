@@ -1127,6 +1127,76 @@ if ('run_batch_corr_sep_nowplot_and_DE' %in% desired_command) {
 }
 
 ################################################################################
+# Refine the cluster analysis on the pooled datasets to get a resolution that 
+# has a desired level of coarse graining
+
+
+if ('ALL.SP_RID2l_ext_cluster_analysis' %in% desired_command) {
+    
+    CURRENT_RUNNAME='ALL.SP_RID2l'
+    
+    current_analysis = list()
+    current_analysis[[CURRENT_RUNNAME]] = 
+        # LoadH5Seurat(file = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_merged_noMito_sel.',CURRENT_RUNNAME,'.h5seurat'))
+        LoadH5Seurat(file = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_',CURRENT_RUNNAME,'.h5seurat'))
+    
+    # Create the dataset
+    current_analysis$ALL.SP_RID2l_clExtended=FindClusters(current_analysis$ALL.SP_RID2l, resolution = seq(.1,1,.1))
+
+    
+    # Export plots
+    for (resolution in seq(.1,1,.1)) {
+        p=DimPlot(current_analysis$ALL.SP_RID2l_clExtended, group.by = paste0('RNA_snn_res.',resolution), label = T, repel = T, label.size = 7/.pt, pt.size=.5)+
+            theme_void()+ggtitle(element_blank())+theme(legend.position = 'none')
+        ggsave(plot=p, filename = paste0(base_dir,'Rplots/','ALL.SP_RID2l_clExtended','_7_Clustering_multiLevels_','RNA_snn_res.',resolution,'.pdf'), 
+                height=172/3-4, width=172/3-4, units='mm')
+    }
+      
+    # Continue with resolution .1, which suits our purposes
+    # Now run diff. expr.
+    
+    # First set identities to the custom ones
+    # Note that this executes +1 action
+    new_cls=as.numeric(current_analysis$ALL.SP_RID2l_clExtended$RNA_snn_res.0.1)
+    current_analysis$ALL.SP_RID2l_clExtended[['clusters_custom']]=factor(new_cls, levels=min(new_cls):max(new_cls))
+
+    Idents(current_analysis$ALL.SP_RID2l_clExtended) <- current_analysis$ALL.SP_RID2l_clExtended$clusters_custom
+    
+    p=DimPlot(current_analysis$ALL.SP_RID2l_clExtended, label = T, repel = T, label.size = 7/.pt, pt.size=.5)+
+            theme_void()+ggtitle(element_blank())+theme(legend.position = 'none')
+    ggsave(plot=p, filename = paste0(base_dir,'Rplots/','ALL.SP_RID2l_clExtended','_7_Clustering_multiLevels_','RNA_snn_res.',resolution,'_CHOSEN.pdf'), 
+                height=172/3-4, width=172/3-4, units='mm')
+    
+    # Now perform clustering
+    DE_cluster=list()
+    DE_cluster$ALL.SP_RID2l_clExtended =
+        diff_express_clusters(mySeuratObject = current_analysis$ALL.SP_RID2l_clExtended, mc.cores = MYMCCORES)
+    
+    # Export results
+    DE_out_ALL.SP_RID2l_clExtended = diff_express_clusters_save_results(
+      all_markers = DE_cluster$ALL.SP_RID2l_clExtended, run_name = 'ALL.SP_RID2l_clExtended', base_dir = base_dir, topX = 30, extendedOutput = T, FC_cutoff = 1.1, pval_cutoff = .05)
+    
+    # Create convenient parameters for later use/export below
+    table_topDE = DE_out_ALL.SP_RID2l_clExtended$topHitsPerCluster
+    enriched_genes_lists_clusters_ALL.SP = DE_out_ALL.SP_RID2l_clExtended$enriched_genes_lists
+    
+    
+    
+    # Now save important data for later use
+    
+    # Save it
+    SaveH5Seurat(object = current_analysis$ALL.SP_RID2l_clExtended, overwrite = T, 
+                 file = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_','ALL.SP_RID2l_clExtended','.h5seurat'))
+        # current_analysis$ALL.SP_RID2l_clExtended = LoadH5Seurat(filename = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_','ALL.SP_RID2l_clExtended','.h5seurat'))
+
+    
+    # Save differential expression results
+    save(list='DE_cluster', file = paste0(base_dir,'Rdata/DE_cluster__','ALL.SP_RID2l_clExtended','.Rdata'))
+    save(list='enriched_genes_lists_clusters_ALL.SP', file = paste0(base_dir,'Rdata/enriched_genes_lists_clusters_ALL.SP__','ALL.SP_RID2l_clExtended','.Rdata'))
+    
+}    
+    
+################################################################################
 # More plots
 # (Many plots used in paper are generated here)
 
@@ -1136,7 +1206,7 @@ if ('run_batch_corr_sep_nowplot_and_DE' %in% desired_command) {
 if ('more_custom_plots' %in% desired_command) {
     
     # CURRENT_RUNNAME='all_RID2l_VAR'
-    CURRENT_RUNNAME='ALL.SP_RID2l'
+    CURRENT_RUNNAME='ALL.SP_RID2l_clExtended'
     
     current_analysis = list()
     current_analysis[[CURRENT_RUNNAME]] = 
@@ -1155,6 +1225,9 @@ if ('more_custom_plots' %in% desired_command) {
     current_analysis[[CURRENT_RUNNAME]]$annotation_paper_fct = 
         factor(current_analysis[[CURRENT_RUNNAME]]$annotation_paper_str, levels=c("vRooij", "Hu", "Teichmann"))
     
+    # Original plots, with a few extra tweaks
+    mySeuratCommonPlots(current_analysis[[CURRENT_RUNNAME]], CURRENT_RUNNAME, add_custom_fields = 'annotation_paper_beatified')
+    
     # Stress gene plots
     LIST_NAME='stress'; CAT = 'annotation_paper_beatified'; CATNAME = 'Dataset'; PLOTTYPE='boxplot'
     genes_of_interest = c('NPPA', 'NPPB', 'ACTA1', 'MYH7')#, 'MYH6')
@@ -1162,10 +1235,20 @@ if ('more_custom_plots' %in% desired_command) {
         function(x) {shorthand_plotViolinBox_custom(current_analysis,analysis_name=CURRENT_RUNNAME,cat_by = CAT, 
                                                     gene_of_interest=x,base_dir=base_dir, cat_name = CATNAME,
                                                     type = 'violin')})
-    p=wrap_plots(plot_list, nrow = 2)& theme(plot.margin = margin(t = 0, r = 1, b = 0, l = 1, unit = "mm"))
+    p=wrap_plots(plot_list, nrow = 2)& theme(plot.margin = margin(t = .5, r = .5, b = .5, l = 2, unit = "mm"))
     #p
     ggsave(plot = p,filename = paste0(base_dir, 'Rplots/',CURRENT_RUNNAME,'_6_',PLOTTYPE,'_by-', CAT, '_',LIST_NAME,'.pdf'), width = 172/3-4, height= 172/3-4, units='mm', device=cairo_pdf)
 
+    # Distribution of source paper over clusters (bar plot)
+    p=ggplot(data.frame( cluster = Idents(current_analysis$ALL.SP_RID2l_clExtended),
+                         Donor   = current_analysis$ALL.SP_RID2l_clExtended$annotation_paper_beatified))+
+        geom_bar(aes(x=cluster, fill=Donor))+theme_bw()+
+        xlab('Cluster')+ylab('Number of cells')+
+        give_better_textsize_plot(8)+
+        theme(legend.position = 'right', legend.key.size = unit(3, "mm"))
+    ggsave(filename = paste0(base_dir,'Rplots/','ALL.SP_RID2l_clExtended','_5_Barplot_PatientCluster_distr_Datasets.pdf'), 
+        plot = p, height=172/3-4, width=172/3-4, units='mm', device = cairo_pdf)
+    
     # Now create MYH6 separately, also use to add legend
     TYPE='violin'
     p_=shorthand_plotViolinBox_custom(current_analysis,analysis_name=CURRENT_RUNNAME,cat_by = 'annotation_paper_fct', 
@@ -1173,6 +1256,15 @@ if ('more_custom_plots' %in% desired_command) {
                                                     type = TYPE)+theme(legend.position='right')
     ggsave(plot = p_,filename = paste0(base_dir, 'Rplots/',CURRENT_RUNNAME,'_6_',TYPE,'_FORLEGEND.pdf'), width = 7, height= 6, units='cm', device=cairo_pdf)
 
+    
+    # NPPA custom plot
+    GENE='NPPA'
+    p=shorthand_seurat_custom_expr(seuratObject = current_analysis[[CURRENT_RUNNAME]], 
+                                         gene_of_interest = GENE,
+                                         textsize = 8, pointsize = .1, custom_title = GENE, mymargin = .1) 
+    # p
+    ggsave(filename = paste0(base_dir, 'Rplots/', CURRENT_RUNNAME, '_9_customUMAPs_',GENE,'_small.pdf'), plot = p,
+           height=(172/3-4), width=(172/3-4), units='mm', device = cairo_pdf)
     
     # Then look at how genes that came up during analysis are expressed
     # Load regulon file
@@ -1210,7 +1302,7 @@ if ('more_custom_plots' %in% desired_command) {
         ggsave(filename = paste0(base_dir, 'Rplots/', CURRENT_RUNNAME, '_9_customCOMPOSITE_REG_g2.pdf'), plot = p,
                height=26.5, width=min(184.6-4, 26.5*6), units='mm', device=cairo_pdf)
         
-        # UMAPs
+        # core regulon expr on UMAPs
         p_list = lapply(names(core_regulons_sorted), function(reg_name) {
                     shorthand_seurat_custom_expr(seuratObject = current_analysis[[CURRENT_RUNNAME]], 
                                      gene_of_interest = core_regulons_sorted[[reg_name]],
@@ -1255,6 +1347,13 @@ if ('more_custom_plots' %in% desired_command) {
         ggsave(filename = paste0(base_dir, 'Rplots/', CURRENT_RUNNAME, '_9_customUMAPs_REG_SCENIC.pdf'), plot = p,
                height=4*30, width=min(184.6-4, 30*4), units='mm', device=cairo_pdf)      
 
+        # Now do the SCENIC TFs
+        shorthand_custom_boxplot_perpatient(seuratObject_list=current_analysis, 
+                         gene_lists=list(SCENIC_TFs=gsub('\\(\\+\\)','',names(SCENIC_regulons_core_genes_sel))), 
+                         seuratObjectNameToTake=CURRENT_RUNNAME, 
+                         group.by='annotation_paper_beatified', 
+                         aggr.by='annotation_patient_fct',
+                         topX=10, mylimits=.01) 
         
     }
     
@@ -1321,6 +1420,15 @@ if ('more_custom_plots' %in% desired_command) {
         # p
         ggsave(filename = paste0(base_dir, 'Rplots/', DATASET_NAME, '_9_customUMAPs_',GENE,'.pdf'), plot = p,
                height=172/3-4, width=172/3-4, units='mm', device = cairo_pdf)     
+    }
+    # And some more
+    for (GENE in c('NPPA', 'NPPB', 'IGFBP2', 'RTN4', 'GAPDH', 'ACTC1', 'MYL4', 'TTN', 'RYR2', 'NRAP')) {
+        p=shorthand_seurat_custom_expr(seuratObject = current_analysis[[DATASET_NAME]], 
+                                         gene_of_interest = GENE,
+                                         textsize = 8, pointsize = 1, custom_title = GENE, mymargin = .1) 
+        # p
+        ggsave(filename = paste0(base_dir, 'Rplots/', DATASET_NAME, '_9_customUMAPs_',GENE,'_small.pdf'), plot = p,
+               height=(172/3*2-4)/3, width=(172/3*2-4)/3, units='mm', device = cairo_pdf)     
     }
     
     # Generate QC plots for this dataset that look pretty

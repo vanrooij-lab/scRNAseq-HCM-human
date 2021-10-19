@@ -17,8 +17,15 @@ clustering_rooij_projected = clustering_rooij[colnames(current_analysis$ALL.SP_R
 
 current_analysis$ALL.SP_RID2l$clustering_rooij_only_projected = clustering_rooij_projected
 
-p = DimPlot(current_analysis$ALL.SP_RID2l, group.by = 'clustering_rooij_only_projected')+give_better_textsize_plot(18)+theme_void()
+# p = DimPlot(current_analysis$ALL.SP_RID2l, group.by = 'clustering_rooij_only_projected')+give_better_textsize_plot(18)+theme_void()
 
+p=DimPlot(current_analysis$ALL.SP_RID2l, group.by = 'clustering_rooij_only_projected', cols = rep(col_vector_60,2), 
+          label = F, repel = T, label.size = 7/.pt, pt.size = .1)+
+            theme_void()+ggtitle(element_blank())+theme(legend.position = 'bottom', legend.text = element_text(family="Arial", size=7), legend.key.size = unit(8,"pt"))
+        
 ggsave(plot = p,filename = paste0(base_dir, 'Rplots/','ALL.SP_RID2l','_9_custom_RooijCl_on_ALL.SP.pdf'), 
     #   width = 172/3-4, height= 172/3-4, units='mm', device=cairo_pdf)
-    width = 172-4, height= 172-4, units='mm', device=cairo_pdf)
+    width = 172/3-4, height= 172/3+8/.pt, units='mm', device=cairo_pdf)
+
+
+

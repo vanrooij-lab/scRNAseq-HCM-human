@@ -59,19 +59,21 @@ if (F) {
     Seurat_Object_BulkData_noMito$annotation_str[grepl('^CONTROL', colnames(Seurat_Object_BulkData_noMito))] = 'Ctrl'
     Seurat_Object_BulkData_noMito$annotation_fct=factor(Seurat_Object_BulkData_noMito$annotation_str, levels=c('HCM', 'Ctrl'))
 
-    SaveH5Seurat(object = RHL_SeuratObject_Rooij_raw, overwrite = T,
-            filename = paste0(base_dir,'Rdata/H5_bulkdata.h5seurat'))
+    SaveH5Seurat(object = Seurat_Object_BulkData_noMito, overwrite = T,
+            filename = paste0(base_dir,'Rdata/H5_Seurat_Object_BulkData_noMito.h5seurat'))
     
 
     
 }
 
 ################################################################################
-# Loading 
+# Loading data
 
-    CURRENT_RUNNAME='BulkData_noMito'
-current_analysis[[CURRENT_RUNNAME]] = Seurat_Object_BulkData_noMito
+CURRENT_RUNNAME='BulkData_noMito'
+current_analysis[[CURRENT_RUNNAME]] = LoadH5Seurat(file = paste0(base_dir,'Rdata/H5_Seurat_Object_BulkData_noMito.h5seurat'))
 
+################################################################################
+# Running analysis for regulon genes
 
 # Box plots
 shorthand_custom_boxplot(seuratObject_list=current_analysis, 
@@ -141,9 +143,54 @@ p=wrap_plots(p_list, nrow=4)
 ggsave(filename = paste0(base_dir, 'Rplots/', CURRENT_RUNNAME, '_9_customUMAPs_REG_SCENIC.pdf'), plot = p,
        height=4*30, width=min(184.6-4, 30*4), units='mm', device=cairo_pdf)      
 
+################################################################################
+# Analysis for the custom-correlation genes (correlated to NPPA, XIRP2, etc)
 
 
+# Load and re-organize the gene lists from the correlation-analysis
+load(paste0(base_dir,'Rdata/gene_lists_customcorrelated__Rooijbased.Rdata'))
+# Re-organize lists
+gene_lists_customcorrelated_reorganized=list()
+for (gene in names(gene_lists_customcorrelated)) {
+    if (!is.na(gene_lists_customcorrelated[[gene]]$pos)) {
+        gene_lists_customcorrelated_reorganized[[paste0('posCorrWith_',gene)]] = gene_lists_customcorrelated[[gene]]$pos
+    }
+    if (!is.na(gene_lists_customcorrelated[[gene]]$neg)) {
+        gene_lists_customcorrelated_reorganized[[paste0('negCorrWith_',gene)]] = gene_lists_customcorrelated[[gene]]$neg
+    }
+}
 
+# Box plots
+shorthand_custom_boxplot(seuratObject_list=current_analysis, 
+                         gene_lists=gene_lists_customcorrelated_reorganized, 
+                         seuratObjectNameToTake=CURRENT_RUNNAME, 
+                         group.by='annotation_fct', 
+                         topX=10, mylimits=.01)
+
+################################################################################
+# Let's also quickly look at the genes that were lower expressed in cluster 5
+
+DE_genes_Cl5_ordered_rev = DE_cluster$ROOIJonly_RID2l_clExtended$`5`[order(DE_cluster$ROOIJonly_RID2l_clExtended$`5`$avg_log2FC),]
+    # View(DE_genes_Cl5_ordered_rev)
+
+Cl5_list = list(Cl5_down = rownames(DE_genes_Cl5_ordered_rev)[1:10])
+
+shorthand_custom_boxplot(seuratObject_list=current_analysis, 
+                         gene_lists=Cl5_list, 
+                         seuratObjectNameToTake=CURRENT_RUNNAME, 
+                         group.by='annotation_fct', 
+                         topX=10, mylimits=.01)
+
+################################################################################
+# SCENIC TFs
+
+shorthand_custom_boxplot(seuratObject_list=current_analysis, 
+                         gene_lists=list(SCENIC_TFs=gsub('\\(\\+\\)','',names(SCENIC_regulons_core_genes))), 
+                         seuratObjectNameToTake=CURRENT_RUNNAME, 
+                         group.by='annotation_fct', 
+                         topX=10, mylimits=.01)
+
+# See main script for same across all datasets (@ "# Now do the SCENIC TFs")
 
 
 

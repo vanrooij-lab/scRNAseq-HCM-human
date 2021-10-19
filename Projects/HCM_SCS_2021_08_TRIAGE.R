@@ -361,8 +361,8 @@ View(as.matrix(matrix_for_export_mini))
 
 
 ####################################################################################################
-
-# Perhaps interesting to check which enriched genes per cluster are top-RTS genes
+# Check which enriched genes per cluster are top-RTS genes
+# --> This was finally put in the paper
 
 # load(file = paste0(base_dir,'Rdata/DE_cluster__ROOIJonly_RID2l_clExtended.Rdata'))
 
@@ -384,7 +384,7 @@ TRIAGE_clusterTops =
         #X_sel = X[X$p_val_adj<0.01,]
         #X_sort = X_sel[order(X_sel$RTS, decreasing = T),][1:5,]
         #toString(shorthand_cutname(rownames(X_sort)))
-        X_sel = X[X$p_val_adj<0.01 & X$RTS>0.03 & !is.na(X$RTS),] # note that 0.03 is from Shim2020
+        X_sel = X[X$avg_log2FC>0 & X$p_val_adj<0.01 & X$RTS>0.03 & !is.na(X$RTS),] # note that 0.03 is from Shim2020
         X_sort = X_sel[order(X_sel$RTS, decreasing = T),][1:min(5, dim(X_sel)[1]),]
         toString(shorthand_cutname(rownames(X_sort)))
     }))

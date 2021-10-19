@@ -82,7 +82,16 @@ ggsave(filename = paste0(base_dir,'Rplots/',ANALYSIS_NAME,'_9_custom_CellCycle_G
 
 
 
+#####
 
+# Quickly checking the ZBED1 genes
+# See SCENIC_regulons_core_genes$`ZEB1(+)`
+gene_list_ZBED1 = c("CHCHD3",  "CCDC91",  "CAPNS1",  "DENND5A", "C6orf89", "RAB7A",   "TPM1",    "MDH2",    "SLC25A4")
+shorthand_seurat_custom_expr(seuratObject = current_analysis[[ANALYSIS_NAME]], 
+                                                    gene_of_interest = gene_list_ZBED1, textsize=8, pointsize=2, 
+                                                    custom_title = 'ZBED1 related', mymargin = .5, zscore = T)
+# Difficult to see here:
+VlnPlot(object = current_analysis[[ANALYSIS_NAME]], features = shorthand_seurat_fullgenename_faster(current_analysis[[ANALYSIS_NAME]], gene_list_ZBED1))
 
 
 

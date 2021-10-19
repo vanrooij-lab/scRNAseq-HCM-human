@@ -22,7 +22,7 @@ give_better_textsize_plot <- function(TEXTSIZE, myFamily='Arial'){
 # Use lapply and wrap_plots to create a list of plots
 shorthand_plotViolinBox_custom = function(myseuratobjectlist, analysis_name, cat_by='seurat_clusters', 
     cat_name = 'category', gene_of_interest=NULL,base_dir, percentile=.02, type='boxplot', 
-    myfontsize=8, manual_expr=NULL,manual_expr_featname=NULL,custom_ylab=NULL, custom_title=NULL, custom_ylim=NULL) {
+    myfontsize=8, manual_expr=NULL,manual_expr_featname=NULL,custom_ylab=NULL, custom_title=NULL, custom_ylim=NULL, myfillcolor='#bd001f') {
   # TO DO: rename gene_of_interest to feature_of_interest
     
     # create df for plotting
@@ -56,10 +56,10 @@ shorthand_plotViolinBox_custom = function(myseuratobjectlist, analysis_name, cat
     my_max_limit=max(sapply(unique(plot_df[[cat_name]]), function(x) { calc_limits(current_expr[plot_df[[cat_name]]==x], percentile = .02)[2] } ))
 
     # start plotting w/ desired options
-    p=ggplot(plot_df, aes_string(x=cat_name, y='count',fill=cat_name))
+    p=ggplot(plot_df, aes_string(x=cat_name, y='count'))
     
-    if (type=='violin') {p=p+geom_violin(scale='width')}
-    if (type=='boxplot') {p=p+geom_boxplot()}
+    if (type=='violin') {p=p+geom_violin(scale='width', fill=myfillcolor)}
+    if (type=='boxplot') {p=p+geom_boxplot(fill=myfillcolor)}
     
     p=p+
         #geom_bar(aes_string(y='count', fill=as.factor(cat_name)),stat='summary',fun='mean',fill='grey',color='black')+
@@ -67,7 +67,7 @@ shorthand_plotViolinBox_custom = function(myseuratobjectlist, analysis_name, cat
         ggtitle(if(is.null(custom_title)){gene_of_interest}else{custom_title})+theme_bw()+
         theme(legend.position='none')+
         theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
-        xlab(element_blank())+ylab(if(is.null(custom_ylab)){'Expression'}else{custom_ylab})+give_better_textsize_plot(myfontsize)
+        xlab(element_blank())+ylab(if(is.null(custom_ylab)){'UMI count'}else{custom_ylab})+give_better_textsize_plot(myfontsize)
     # p
     
     if (!is.null(custom_ylim)) {p=p+ylim(custom_ylim)}
@@ -208,6 +208,8 @@ shorthand_seurat_fullgenename_faster = function(seuratObject, gene_names, return
 shorthand_custom_boxplot = function(seuratObject_list, gene_lists, seuratObjectNameToTake, group.by='annotation_paper_fct', topX=10, mylimits=.01) {
     
     for (current_list_name in names(gene_lists)) {
+      
+      # current_list_name = names(gene_lists)[1]
         
         current_genes = gene_lists[[current_list_name]]
         current_genes = current_genes[1:(min(length(current_genes), topX))]
@@ -279,6 +281,25 @@ shorthand_custom_boxplot = function(seuratObject_list, gene_lists, seuratObjectN
         # Save
         ggsave(filename = paste0(base_dir, 'Rplots/', seuratObjectNameToTake, '_9_customBarplotGenes_', current_list_name,'.pdf'), plot = p,
                height=42, width=42, units='mm', device=cairo_pdf)
+        
+        # 3rd style
+        p=ggplot(df, mapping=aes_string(x=group.by, y='expression', fill=group.by))+
+            #geom_bar(stat='identity',position='dodge')+
+            geom_boxplot(outlier.size = .1, lwd=.25, alpha=.1)+
+            geom_jitter(size=.25, aes_string(color=group.by),position=position_dodge(width=1))+
+            xlab(element_blank())+ylab('Expression (z-score)')+
+            theme_bw()+give_better_textsize_plot(6)+
+            theme(legend.position = 'none', legend.key.size = unit(3, "mm"), axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
+                  panel.spacing = unit(c(0),'mm'))+
+            labs(fill = element_blank())+
+            facet_grid(cols=vars(gene))
+        
+        ggsave(filename = paste0(base_dir, 'Rplots/', seuratObjectNameToTake, '_9_customBoxplotGenes_v3_', current_list_name,'.pdf'), plot = p,
+               height=172/6, width=172/3*2/10*length(current_genes), units='mm', device=cairo_pdf)
+        
+        # Now also save the data for stat. analysis
+        # save(list = 'df_agr', file=paste0(base_dir, 'Rplots/', seuratObjectNameToTake, '_9_customBoxplotGenes-PerPat-data_', current_list_name,'.Rdata'))
+        openxlsx::write.xlsx(x = df, file=paste0(base_dir, 'Rplots/', seuratObjectNameToTake, '_9_customBoxplotGenes-data_', current_list_name,'.xlsx'), overwrite = T)
         
     }
 }

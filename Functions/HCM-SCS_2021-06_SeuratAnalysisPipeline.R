@@ -95,7 +95,8 @@ mySeurat_genenames = function(mySeuratObject, gene_names, complete=T) {
 mySeuratCommonPlots = function(mySeuratObject, 
     run_name,
     mymarkers = c('MALAT1', 'TTN', 'MYH7', 'MYH6', 'NPPA', 'NPPB', 'ACTA1','MYL2','SORBS2','CSRP3','NDUFA4','CRYAB','HSPB1', 'KCNQ1OT1'),
-    mypointsize=NULL) {    
+    mypointsize=NULL,
+    add_custom_fields=NULL) {    
     
     mymarkers_ext = mySeurat_genenames(mySeuratObject, mymarkers)
     
@@ -106,9 +107,10 @@ mySeuratCommonPlots = function(mySeuratObject,
     mySeuratObject[['Seurat_Clusters_plus1']] = plyr::revalue(Idents(mySeuratObject), clusterplus1mapping)
     
     # Show umap with annotations
-    for (current_annotation in c('annotation_sample_str','annotation_patient_str','annotation_paper_str','annotation_region_str','ident','Seurat_Clusters_plus1')) {
+    for (current_annotation in c('annotation_sample_str','annotation_patient_str','annotation_paper_str','annotation_region_str','ident','Seurat_Clusters_plus1', add_custom_fields)) {
+        
         # create labeled and unlabeled version
-        p=DimPlot(mySeuratObject, group.by = current_annotation, cols = rep(col_vector_60,2), label = T, repel = T, label.size = 7, pt.size = mypointsize)+
+        p=DimPlot(mySeuratObject, group.by = current_annotation, cols = rep(col_vector_60,2), label = T, repel = T, label.size = 7/.pt, pt.size = mypointsize)+
             theme_void()+ggtitle(element_blank())+theme(legend.position = 'none')
         # p
         p_nl=DimPlot(mySeuratObject, group.by = current_annotation, cols = rep(col_vector_60,2))
@@ -117,6 +119,10 @@ mySeuratCommonPlots = function(mySeuratObject,
          p=p+theme(legend.position = 'none') # now redundant
          p_nl=p_nl+theme(legend.position = 'none')
         }}
+        
+        # test
+        ggsave(plot = p, filename = paste0(base_dir,'Rplots/',run_name,'_2_umapLabeled_by_',current_annotation,'_style3.pdf'), height=172/3-4, width=172/3-4, units='mm')
+        
         # Save files
         ggsave(plot = p, filename = paste0(base_dir,'Rplots/',run_name,'_2_umapLabeled_by_',current_annotation,'.pdf'), height=5.5, width=5.5, units='cm')
         ggsave(plot = p_nl, filename = paste0(base_dir,'Rplots/',run_name,'_2_umap_by_',current_annotation,'.pdf'), height=7, width=7, units='cm')
@@ -134,9 +140,10 @@ mySeuratCommonPlots = function(mySeuratObject,
         
         # marker = 'KCNQ1OT1'
         # marker = 'ACTC1'
+        # marker = 'ENSG00000120937:NPPB'
         
         # marker projection on umaps
-        p_cm = FeaturePlot(mySeuratObject, features = marker, cols = rainbow_colors)
+        p_cm = FeaturePlot(mySeuratObject, features = marker, cols = rainbow_colors)+theme_void()+ggtitle(element_blank())+theme(legend.position = 'none')
         ggsave(filename = paste0(base_dir,'Rplots/',run_name,'_2_umap_markers_',marker,'.png'), plot = p_cm, height=5, width=5)
         
         # Violins
@@ -169,6 +176,9 @@ mySeuratCommonPlots = function(mySeuratObject,
 
         
     }
+    # Add one plot that has legend
+    p_cm = p_cm+theme(legend.position = 'bottom')
+    ggsave(filename = paste0(base_dir,'Rplots/',run_name,'_2_umap_markers_',marker,'_LEGEND.png'), plot = p_cm, height=5, width=5)
     
     # Custom plot that shows distribution of patients over clusters
     # mymaxy=1.5*max(table(Idents(mySeuratObject)))
@@ -199,6 +209,8 @@ mySeuratCommonPlots = function(mySeuratObject,
     # p
     ggsave(filename = paste0(base_dir,'Rplots/',run_name,'_5_Barplot_PatientCluster_distr_DonorNoSet.pdf'), 
         plot = p, height=172/3-4, width=172/3-4, units='mm', device = cairo_pdf)
+    
+    
     
 }
 
@@ -268,6 +280,24 @@ diff_express_clusters_save_results = function(all_markers, run_name, base_dir, t
         colnames(topHitsPerCluster_FC)=rep(names(all_markers), each=2)
         # and save
         if (save) {openxlsx::write.xlsx(x = as.data.frame(topHitsPerCluster_FC), file = paste0(base_dir,'Rplots/ClusterTopHits_',run_name,'_plusFC.xlsx'), overwrite=T)}
+        
+        # SAME table as above BUT INCLUDING FC, AND MOST NEGATIVE GENES
+        # Also return an overview that includes FC
+        # Now collect the top-10 (log2fold) genes for each
+        topHitsPerCluster_FC_neg=
+            Reduce(cbind, lapply(all_markers, function(x) {
+                x_sel = x[x$p_val_adj<pval_cutoff&x$avg_log2FC<0,] # !!
+                data.frame(
+                    GENE=c(  shorthand_cutname (  rownames(x_sel[order(x_sel$avg_log2FC, decreasing = F),][1:min(length(x_sel$avg_log2FC), topX),])   ), 
+                        rep(NA, topX-min(length(x_sel$avg_log2FC), topX))),
+                    FC=c(  sprintf("%.2f",    round(2^(x_sel[order(x_sel$avg_log2FC, decreasing = F),][1:min(length(x_sel$avg_log2FC), topX),]$avg_log2FC),2)     )     , 
+                        rep(NA, topX-min(length(x_sel$avg_log2FC), topX)))
+                )
+                } ))
+        colnames(topHitsPerCluster_FC_neg)=rep(names(all_markers), each=2)
+        # and save
+        if (save) {openxlsx::write.xlsx(x = as.data.frame(topHitsPerCluster_FC_neg), file = paste0(base_dir,'Rplots/ClusterTopHits_',run_name,'_plusFC_DOWNgenes.xlsx'), overwrite=T)}
+        
         
         # ****
         
