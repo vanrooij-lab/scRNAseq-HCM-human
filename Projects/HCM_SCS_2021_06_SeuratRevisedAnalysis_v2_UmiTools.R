@@ -16,12 +16,7 @@
 # First I load the raw data, and create Seurat objects for each sample,
 # then I define the general analysis that is performed as a function;
 # this since I want to perform several versions of the analysis. 
-# (The Seurat default versions emphasize different features than
-# the RaceID2 analysis due to normalization choices.)
-#
-# I will then
-# 1. Create UMAP to compare the different data sets
-# (..)
+
 
 ########################################################################
 
@@ -41,18 +36,24 @@
 # seurat
 # https://satijalab.org/seurat/archive/v3.1/merge_vignette.html
 
-# To determine which cells are vCM cells, use
-# Wang_2021_05_looking_processed_data.R
-# (See /Users/m.wehrens/Documents/git_repos/SCS_More_analyses/Projects/)
-# base_dir = '/Users/m.wehrens/Data/_2020_03_Wang/'
-# base_dir = '/Volumes/workdrive_m.wehrens_hubrecht/data/2020_04_Wang-heart/'
-# load(paste0(base_dir,'Rdata/desired_cells_mwName.Rdata'))
+# Datasets used here:
+# 
+# - Our own dataset
+# - Wang et al. dataset
+#       Wang, L., Yu, P., Zhou, B., Song, J., Li, Z., Zhang, M., … Hu, S. (2020). Single-cell reconstruction of the adult human heart during heart failure and recovery reveals the cellular landscape underlying cardiac function. Nature Cell Biology, 22(1), 108–119. https://doi.org/10.1038/s41556-019-0446-7
+#       Metadata was obtained via 
+#       https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE121893 and https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE109816 
+#       Raw data was downloaded using fasterq-dump and mapped with custom pipeline to make it more comparable to our own data
+# - Litviňuková et al. dataset
+#       Litviňuková, M., Talavera-López, C., Maatz, H., Reichart, D., Worth, C. L., Lindberg, E. L., … Teichmann, S. A. (2020). Cells of the adult human heart. Nature, (September). https://doi.org/10.1038/s41586-020-2797-4
+#       Data was downloaded from https://www.heartcellatlas.org/#DataSources, where "Heart Ventricular Cardiomyocytes" where downloaded, 
+#       and this file was converted to an H5Seurat file.
 
-# For the HPC, load the following file:
-# base_dir = '/hpc/hub_oudenaarden/mwehrens/data/Wang/'
-# load(file = paste0(base_dir,'Rdata/RHL_whole_analysis.Rdata'))
+########################################################################
 
-# Some notes about the Seurat object (provided by Andrew Butler, author*)
+# Some small personal notes
+# ==
+# About the Seurat object (provided by Andrew Butler, author*):
 # Yes it expected that both the counts and data slot contain the raw counts immediately after converting based on the commands you ran. This way of doing things is fine.
 # Yes, after normalizing in Seurat, the data slot should contain the normalized data (and the counts slot still contains the raw data).
 # Yes, ScaleData works off of the normalized data (data slot). The source code for ScaleData is here
@@ -183,6 +184,9 @@ markers$CM=c('TTN','MYH7','TNNT2','MYH6')
 markers$EC=c('VWF','IFI27')
 markers$FB=c('DCN','COL1A2')
 markers$SMC=c('ACTA2','CALD1','MYH11')
+
+PANEL_HEIGHT=47.597
+PANEL_WIDTH=172/3
 
 ########################################################################
 # Define where data is
@@ -682,9 +686,14 @@ if ('select_genes_cells' %in% desired_command) {
         RHL_SeuratObject_merged_noMito_sel[['rnaDiscardedCounts']] <- subset(RHL_SeuratObject_merged_noMito[['rnaDiscardedCounts']], cells = colnames(RHL_SeuratObject_merged_noMito_sel))
     }
     
-    # table(RHL_SeuratObject_merged_sel$orig.ident)
-    table(RHL_SeuratObject_merged_noMito_sel$annotation_paper_str)
-    table(RHL_SeuratObject_merged_noMito_sel$annotation_patient_str)
+    # table(RHL_SeuratObject_merged_sel$orig.ident) XXX
+    cell_count_overview_tabl_paper    = as.data.frame(table(RHL_SeuratObject_merged_noMito_sel$annotation_paper_str))
+    colnames(cell_count_overview_tabl_paper) = c('Source','Cell_count')
+    cell_count_overview_table_patient = as.data.frame(table(RHL_SeuratObject_merged_noMito_sel$annotation_patient_str))
+    colnames(cell_count_overview_table_patient) = c('Donor','Cell_count')
+    openxlsx::write.xlsx(x = list(cellCounts_source=cell_count_overview_tabl_paper, 
+                                  cellCounts_patients=cell_count_overview_table_patient) ,
+                         file = paste0(base_dir,'Rplots/QC_general_statistics_cellcounts_alldata.xlsx'), overwrite = T)
     
     # Save it
     save(list = c('RHL_SeuratObject_merged_noMito_sel'), file = paste0(base_dir,'Rdata/RHL_SeuratObject_merged_noMito_sel.Rdata'))
@@ -1192,7 +1201,9 @@ if ('ALL.SP_RID2l_ext_cluster_analysis' %in% desired_command) {
     
     # Save differential expression results
     save(list='DE_cluster', file = paste0(base_dir,'Rdata/DE_cluster__','ALL.SP_RID2l_clExtended','.Rdata'))
+        # load(file = paste0(base_dir,'Rdata/DE_cluster__','ALL.SP_RID2l_clExtended','.Rdata')) # DE_cluster
     save(list='enriched_genes_lists_clusters_ALL.SP', file = paste0(base_dir,'Rdata/enriched_genes_lists_clusters_ALL.SP__','ALL.SP_RID2l_clExtended','.Rdata'))
+        
     
 }    
     
@@ -1204,6 +1215,8 @@ if ('ALL.SP_RID2l_ext_cluster_analysis' %in% desired_command) {
 # source(paste0(script_dir,'Functions/MW_customized_plot_functions.R'))
 
 if ('more_custom_plots' %in% desired_command) {
+    
+    # --- load / set up data
     
     # CURRENT_RUNNAME='all_RID2l_VAR'
     CURRENT_RUNNAME='ALL.SP_RID2l_clExtended'
@@ -1225,8 +1238,21 @@ if ('more_custom_plots' %in% desired_command) {
     current_analysis[[CURRENT_RUNNAME]]$annotation_paper_fct = 
         factor(current_analysis[[CURRENT_RUNNAME]]$annotation_paper_str, levels=c("vRooij", "Hu", "Teichmann"))
     
+    # --- end of load / set up data
+    
     # Original plots, with a few extra tweaks
     mySeuratCommonPlots(current_analysis[[CURRENT_RUNNAME]], CURRENT_RUNNAME, add_custom_fields = 'annotation_paper_beatified')
+    
+    
+    # Beautified UMAP with custom color
+    # library(scales); library(wesanderson); show_col(wesanderson::wes_palettes$BottleRocket2)
+    #
+    custom_colors = c('#bd0020','#9d9d9c','#575756')
+    p=DimPlot(current_analysis[[CURRENT_RUNNAME]], group.by = 'annotation_paper_beatified', cols = custom_colors, label = T, repel = T, label.size = 7/.pt, pt.size = NULL)+
+        theme_void()+ggtitle(element_blank())+theme(legend.position = 'none')
+    # test
+    ggsave(plot = p, filename = paste0(base_dir,'Rplots/',CURRENT_RUNNAME,'_2_umapLabeled_by_','annotation_paper_beatified','_style4-customColors.pdf'), height=172/3-4, width=172/3-4, units='mm')
+    
     
     # Stress gene plots
     LIST_NAME='stress'; CAT = 'annotation_paper_beatified'; CATNAME = 'Dataset'; PLOTTYPE='boxplot'
@@ -1235,17 +1261,29 @@ if ('more_custom_plots' %in% desired_command) {
         function(x) {shorthand_plotViolinBox_custom(current_analysis,analysis_name=CURRENT_RUNNAME,cat_by = CAT, 
                                                     gene_of_interest=x,base_dir=base_dir, cat_name = CATNAME,
                                                     type = 'violin')})
+    # Small 2x2 version
     p=wrap_plots(plot_list, nrow = 2)& theme(plot.margin = margin(t = .5, r = .5, b = .5, l = 2, unit = "mm"))
-    #p
     ggsave(plot = p,filename = paste0(base_dir, 'Rplots/',CURRENT_RUNNAME,'_6_',PLOTTYPE,'_by-', CAT, '_',LIST_NAME,'.pdf'), width = 172/3-4, height= 172/3-4, units='mm', device=cairo_pdf)
-
+    #p
+    p=wrap_plots(plot_list, nrow = 1)& theme(plot.margin = margin(t = .5, r = .5, b = .5, l = 2, unit = "mm"))
+    # ggsave(plot = p,filename = paste0(base_dir, 'Rplots/',CURRENT_RUNNAME,'_6_',PLOTTYPE,'_by-', CAT, '_',LIST_NAME,'-style2.pdf'), width = 172-4, height= (172-4)/4, units='mm', device=cairo_pdf)
+    #ggsave(plot = p,filename = paste0(base_dir, 'Rplots/',CURRENT_RUNNAME,'_6_',PLOTTYPE,'_by-', CAT, '_',LIST_NAME,'-style2.pdf'), width = (172/3*2)-4, height= ((172/3*2)-4)/4*1.5, units='mm', device=cairo_pdf)
+    ggsave(plot = p,filename = paste0(base_dir, 'Rplots/',CURRENT_RUNNAME,'_6_',PLOTTYPE,'_by-', CAT, '_',LIST_NAME,'-style2.pdf'), width = (172/3*2)-4, height= PANEL_HEIGHT, units='mm', device=cairo_pdf)
+    
+    
+    
     # Distribution of source paper over clusters (bar plot)
+    # library(scales); show_col(col_vector_60)
+    # library(wesanderson); show_col(wesanderson::wes_palettes$BottleRocket2)
+    # TO DO: Maybe put wes anderson here? Because color conflict?
+    custom_colors = c('#bd0020','#9d9d9c','#575756')
     p=ggplot(data.frame( cluster = Idents(current_analysis$ALL.SP_RID2l_clExtended),
                          Donor   = current_analysis$ALL.SP_RID2l_clExtended$annotation_paper_beatified))+
         geom_bar(aes(x=cluster, fill=Donor))+theme_bw()+
         xlab('Cluster')+ylab('Number of cells')+
         give_better_textsize_plot(8)+
-        theme(legend.position = 'right', legend.key.size = unit(3, "mm"))
+        theme(legend.position = 'right', legend.key.size = unit(3, "mm"))+
+        scale_fill_manual(values = custom_colors)
     ggsave(filename = paste0(base_dir,'Rplots/','ALL.SP_RID2l_clExtended','_5_Barplot_PatientCluster_distr_Datasets.pdf'), 
         plot = p, height=172/3-4, width=172/3-4, units='mm', device = cairo_pdf)
     
@@ -1273,83 +1311,96 @@ if ('more_custom_plots' %in% desired_command) {
         print('Regulon file doesnt exist yet..') 
     } else { 
         load(file = paste0(base_dir,'Rplots/',REGULON_DATASET,'_core_regulons_sorted.Rdata')) # core_regulons_sorted 
-        
-        # Super redundant with previous, but here again in case you're doing manual run for regulon plots only
-        if (!('annotation_paper_oneletter_fct' %in% names(current_analysis[[CURRENT_RUNNAME]]))) {
-            name_change = c("vRooij"="R", "Hu"="H", "Teichmann"="T")
-            current_analysis[[CURRENT_RUNNAME]]$annotation_paper_oneletter_fct = 
-                factor(name_change[current_analysis[[CURRENT_RUNNAME]]$annotation_paper_str], levels=c('R','H','T'))
-        }
     
         # Box plots
         shorthand_custom_boxplot(seuratObject_list=current_analysis, 
                                  gene_lists=core_regulons_sorted, 
                                  seuratObjectNameToTake=CURRENT_RUNNAME, 
-                                 group.by='annotation_paper_oneletter_fct', 
+                                 group.by='annotation_paper_beatified', 
                                  topX=10, mylimits=.01) 
         
         # Summary composite plots
+        # seuratObject_list=current_analysis; gene_lists=core_regulons_sorted; seuratObjectNameToTake=CURRENT_RUNNAME; group.by='annotation_paper_beatified'; group.by2='annotation_patient_fct'; zscore=T
         p_lists=shorthand_custom_compositeplot(seuratObject_list=current_analysis, 
                                  gene_lists=core_regulons_sorted, 
                                  seuratObjectNameToTake=CURRENT_RUNNAME, 
-                                 group.by='annotation_paper_oneletter_fct', 
+                                 group.by='annotation_paper_beatified', 
                                  group.by2='annotation_patient_fct',
                                  zscore=T) 
         p=wrap_plots(p_lists$p_violin_list, nrow=1)
         ggsave(filename = paste0(base_dir, 'Rplots/', CURRENT_RUNNAME, '_9_customCOMPOSITE_REG.pdf'), plot = p,
-               height=26.5, width=min(184.6-4, 26.5*6), units='mm', device=cairo_pdf)
+               height=(PANEL_WIDTH*3-4)/length(core_regulons_sorted), width=(PANEL_WIDTH*3-4), units='mm', device=cairo_pdf)
+        
         p=wrap_plots(p_lists$p_bar_list_g2, nrow=1)
         ggsave(filename = paste0(base_dir, 'Rplots/', CURRENT_RUNNAME, '_9_customCOMPOSITE_REG_g2.pdf'), plot = p,
-               height=26.5, width=min(184.6-4, 26.5*6), units='mm', device=cairo_pdf)
+               height=(PANEL_WIDTH*3-4)/length(core_regulons_sorted), width=(PANEL_WIDTH*3-4), units='mm', device=cairo_pdf)
         
         # core regulon expr on UMAPs
-        p_list = lapply(names(core_regulons_sorted), function(reg_name) {
+        p_list_modules = lapply(names(core_regulons_sorted), function(reg_name) {
                     shorthand_seurat_custom_expr(seuratObject = current_analysis[[CURRENT_RUNNAME]], 
                                      gene_of_interest = core_regulons_sorted[[reg_name]],
                                      textsize = 6, pointsize = .5, custom_title = reg_name, mymargin = .1, zscore = T) 
             })
-        p=wrap_plots(p_list, nrow=1)
-        ggsave(filename = paste0(base_dir, 'Rplots/', CURRENT_RUNNAME, '_9_customUMAPs_REG.pdf'), plot = p,
-               height=30, width=min(184.6-4, 30*6), units='mm', device=cairo_pdf)      
+        p_modules=wrap_plots(p_list_modules, nrow=1)
+        ggsave(filename = paste0(base_dir, 'Rplots/', CURRENT_RUNNAME, '_9_customUMAPs_REG.pdf'), plot = p_modules,
+               height=(PANEL_WIDTH*3-4)/5, width=(PANEL_WIDTH*3-4), units='mm', device=cairo_pdf)    
+        ggsave(filename = paste0(base_dir, 'Rplots/', CURRENT_RUNNAME, '_9_customUMAPs_REG.png'), plot = p_modules,
+               height=(PANEL_WIDTH*3-4)/5, width=(PANEL_WIDTH*3-4), units='mm', dpi=1200)      
+        
         
         # Also do SCENIC regulons
-        # ===
-        load(file=paste0(base_dir, 'Rdata/SCENIC_regulons_core_genes_sel.Rdata'))
+        # === 
+        load(file=paste0(base_dir,'Rdata/','ROOIJonly_RID2l','__SCENIC_reg_top_genes_sorted_full.Rdata')) # SCENIC_reg_top_genes_sorted_full
         
         # Box plots
         shorthand_custom_boxplot(seuratObject_list=current_analysis, 
-                                 gene_lists=SCENIC_regulons_core_genes_sel, 
+                                 gene_lists=SCENIC_reg_top_genes_sorted_full, 
                                  seuratObjectNameToTake=CURRENT_RUNNAME, 
                                  group.by='annotation_paper_oneletter_fct', 
                                  topX=10, mylimits=.01) 
         
         # Summary plots
         p_lists=shorthand_custom_compositeplot(seuratObject_list=current_analysis, 
-                                 gene_lists=SCENIC_regulons_core_genes_sel, 
+                                 gene_lists=SCENIC_reg_top_genes_sorted_full, 
                                  seuratObjectNameToTake=CURRENT_RUNNAME, 
                                  group.by='annotation_paper_oneletter_fct', 
                                  group.by2='annotation_patient_fct',
                                  zscore=T) 
-        p=wrap_plots(p_lists$p_violin_list, nrow=4)
+        p=wrap_plots(p_lists$p_violin_list, nrow=5)
         ggsave(filename = paste0(base_dir, 'Rplots/', CURRENT_RUNNAME, '_9_customCOMPOSITE_REG_SCENIC.pdf'), plot = p,
-               height=26.5*4, width=min(184.6-4, 26.5*4), units='mm', device=cairo_pdf)
-        p=wrap_plots(p_lists$p_bar_list_g2, nrow=4)
+               height=(PANEL_WIDTH*3-4), width=(PANEL_WIDTH*3-4), units='mm', device=cairo_pdf)
+        
+        p=wrap_plots(p_lists$p_bar_list_g2, nrow=5)
         ggsave(filename = paste0(base_dir, 'Rplots/', CURRENT_RUNNAME, '_9_customCOMPOSITE_REG_SCENIC_g2.pdf'), plot = p,
-               height=26.5*4, width=min(184.6-4, 26.5*4), units='mm', device=cairo_pdf)
+               height=(PANEL_WIDTH*3-4), width=(PANEL_WIDTH*3-4),  units='mm', device=cairo_pdf)
         
         # UMAP
-        p_list = lapply(names(SCENIC_regulons_core_genes_sel), function(reg_name) {
+        p_list = lapply(names(SCENIC_reg_top_genes_sorted_full), function(reg_name) {
                     shorthand_seurat_custom_expr(seuratObject = current_analysis[[CURRENT_RUNNAME]], 
-                                     gene_of_interest = SCENIC_regulons_core_genes_sel[[reg_name]],
+                                     gene_of_interest = SCENIC_reg_top_genes_sorted_full[[reg_name]],
                                      textsize = 6, pointsize = .5, custom_title = reg_name, mymargin = .1, zscore = T) 
             })
-        p=wrap_plots(p_list, nrow=4)
+        p=wrap_plots(p_list, nrow=5)
         ggsave(filename = paste0(base_dir, 'Rplots/', CURRENT_RUNNAME, '_9_customUMAPs_REG_SCENIC.pdf'), plot = p,
-               height=4*30, width=min(184.6-4, 30*4), units='mm', device=cairo_pdf)      
+               height=(PANEL_WIDTH*3-4), width=(PANEL_WIDTH*3-4), units='mm', device=cairo_pdf)      
+        # Also in png to avoid difficult-to-load files
+        ggsave(filename = paste0(base_dir, 'Rplots/', CURRENT_RUNNAME, '_9_customUMAPs_REG_SCENIC.png'), plot = p,
+               height=(PANEL_WIDTH*3-4), width=(PANEL_WIDTH*3-4), units='mm', dpi=1200)
+        # UMAP, smaller size
+        p_list = lapply(names(SCENIC_reg_top_genes_sorted_full), function(reg_name) {
+                    shorthand_seurat_custom_expr(seuratObject = current_analysis[[CURRENT_RUNNAME]], 
+                                     gene_of_interest = SCENIC_reg_top_genes_sorted_full[[reg_name]],
+                                     textsize = 6, pointsize = .1, custom_title = reg_name, mymargin = .1, zscore = T) 
+            })
+        ggsave(filename = paste0(base_dir, 'Rplots/', CURRENT_RUNNAME, '_9_customUMAPs_REG_SCENIC-smaller.pdf'), plot = p,
+               height=(PANEL_WIDTH*3-4), width=(PANEL_WIDTH*3-4), units='mm', device=cairo_pdf)      
+        ggsave(filename = paste0(base_dir, 'Rplots/', CURRENT_RUNNAME, '_9_customUMAPs_REG_SCENIC-smaller.png'), plot = p,
+               height=(PANEL_WIDTH-4), width=(PANEL_WIDTH-4), units='mm', dpi=1200)    
+
 
         # Now do the SCENIC TFs
         shorthand_custom_boxplot_perpatient(seuratObject_list=current_analysis, 
-                         gene_lists=list(SCENIC_TFs=gsub('\\(\\+\\)','',names(SCENIC_regulons_core_genes_sel))), 
+                         gene_lists=list(SCENIC_TFs=gsub('\\(\\+\\)','',names(SCENIC_reg_top_genes_sorted_full))), 
                          seuratObjectNameToTake=CURRENT_RUNNAME, 
                          group.by='annotation_paper_beatified', 
                          aggr.by='annotation_patient_fct',
@@ -1380,7 +1431,7 @@ if ('more_custom_plots' %in% desired_command) {
                                  seuratObjectNameToTake=CURRENT_RUNNAME, 
                                  group.by='annotation_paper_beatified', 
                                  aggr.by='annotation_patient_fct',
-                                 topX=10, mylimits=.01) 
+                                 topX=10, mylimits=.01, mySize=c(PANEL_WIDTH*2-4,PANEL_HEIGHT), myFontSize=8) 
         
     }
     
@@ -1422,13 +1473,15 @@ if ('more_custom_plots' %in% desired_command) {
                height=172/3-4, width=172/3-4, units='mm', device = cairo_pdf)     
     }
     # And some more
+    # label:UMAPforCorrs
     for (GENE in c('NPPA', 'NPPB', 'IGFBP2', 'RTN4', 'GAPDH', 'ACTC1', 'MYL4', 'TTN', 'RYR2', 'NRAP')) {
+        # GENE='RTN4'
         p=shorthand_seurat_custom_expr(seuratObject = current_analysis[[DATASET_NAME]], 
                                          gene_of_interest = GENE,
                                          textsize = 8, pointsize = 1, custom_title = GENE, mymargin = .1) 
         # p
         ggsave(filename = paste0(base_dir, 'Rplots/', DATASET_NAME, '_9_customUMAPs_',GENE,'_small.pdf'), plot = p,
-               height=(172/3*2-4)/3, width=(172/3*2-4)/3, units='mm', device = cairo_pdf)     
+               height=(PANEL_WIDTH-4)/2, width=((PANEL_WIDTH*2)-4)/3, units='mm', device = cairo_pdf)     
     }
     
     # Generate QC plots for this dataset that look pretty
@@ -1491,11 +1544,12 @@ if (F) {
 
 # DATASET_NAME='ALL.SP_RID2l'
 # DATASET_NAME='TEICHMANNonly_RID2l'
-# DATASET_NAME='ROOIJonly_RID2l'
 # DATASET_NAME='ROOIJonly_Int1c'
 # DATASET_NAME='HUonly_RID2l'
 # DATASET_NAME='HUonly'
 # DATASET_NAME='ROOIJonly_default'
+# DATASET_NAME='ROOIJonly_RID2l'
+# DATASET_NAME='ROOIJonly_RID2l_clExtended'
 if (F) {
     
     # load the file

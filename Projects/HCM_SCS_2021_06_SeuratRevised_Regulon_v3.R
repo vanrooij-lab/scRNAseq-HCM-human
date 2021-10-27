@@ -379,6 +379,10 @@ regulon_overlap_heatmap = function(pooled_regulons, base_dir, run_name, MYTREECU
 # ANALYSIS_NAME = 'HUonly_RID2l' #  c('ROOIJonly_RID2l', 'HUonly_RID2l')
 # ANALYSIS_NAME = 'TEICHMANN.SP.only_RID2l'
 
+# base_dir = '/Users/m.wehrens/Data/_2019_02_HCM_SCS/2021_HPC_analysis.3_temp/'
+
+#config$dataset='ROOIJonly_RID2l'
+
 MAX_GENES=1000 # previously 500
 
 if ('run_regulon_step1' %in% desired_command_regulon) {
@@ -423,7 +427,7 @@ if ('run_regulon_step1' %in% desired_command_regulon) {
                 
                 print(paste0('Starting patient ',current_patient))
                 
-                current_analysis_for_patient=
+                current_analysis_for_patient =
                     subset(whole_SeuratData_filtered, annotation_patient_str == current_patient)
                 
                 # if (!is.null(regulon_cell_selection)) {
@@ -565,15 +569,17 @@ if ('XXXXXXX' %in% desired_command_regulon) {
     
     cutree_df = overlap_output$cutree_df
     pooled_regulons=regulon_gene_names
+    shared_regulon_origins = list()
     for (group_idx in unique(cutree_df$group)) {
         
-        # group_idx=4
+        # group_idx=1
         
         # rownames(cutree_df[cutree_df$group==group_idx,,drop=F])
         
         # Now calculate how often each gene occurs in the joined regulons
         
         regulon_group = rownames(cutree_df[cutree_df$group==group_idx,,drop=F])
+        shared_regulon_origins[[group_idx]] = regulon_group
         
         genes_in_current_group = unique(unlist(pooled_regulons[regulon_group]))
         gene_table_regulon_group = data.frame(sapply(regulon_group, function(x) {1*(genes_in_current_group %in% pooled_regulons[[x]])}))
@@ -598,6 +604,8 @@ if ('XXXXXXX' %in% desired_command_regulon) {
     core_regulons_length
 
     save(list='core_regulons_extended', file = paste0(base_dir,'Rplots/',ANALYSIS_NAME,'_core_regulons_extended.Rdata'))
+    save(list='shared_regulon_origins', file = paste0(base_dir,'Rplots/',ANALYSIS_NAME,'__shared_regulon_origins.Rdata'))
+    
     
     # Create output
     #matrix_core_regulons_padded = t(plyr::ldply(core_regulons, rbind))
@@ -679,19 +687,41 @@ if ('XXXXXXX' %in% desired_command_regulon) {
     save(list = 'core_regulons_sorted_shortname', file = paste0(base_dir,'Rplots/',ANALYSIS_NAME,'_core_regulons_sorted_shortname.Rdata'))
     
     # And export for HOMER
+    dir.create(paste0(base_dir,'Homer/REGULONS/'),recursive = T, showWarnings = F)
     for (reg_name in names(core_regulons_sorted_shortname)) { 
-        write.table(x = core_regulons_sorted_shortname[[reg_name]], file = paste0(base_dir,'Homer/',ANALYSIS_NAME,'_HOMER_core_regulons_',reg_name,'.txt'), quote = F, row.names = F, col.names = F)
+        write.table(x = core_regulons_sorted_shortname[[reg_name]], file = paste0(base_dir,'Homer/REGULONS/',ANALYSIS_NAME,'_HOMER_core_regulons_',reg_name,'.txt'), quote = F, row.names = F, col.names = F)
     }
     # Add background genes
     background_genes = 
         # Treshold: at least 5% of all cells
-        shorthand_cutname(rownames(current_analysis[[ANALYSIS_NAME]]@assays$RNA@data[rowMeans(current_analysis[[ANALYSIS_NAME]]@assays$RNA@data>0)>.05,]))
+        shorthand_cutname(rownames(current_analysis[[ANALYSIS_NAME]]@assays$RNA@data[rowMeans(current_analysis[[ANALYSIS_NAME]]@assays$RNA@counts>0)>.05,]))
+            # Note counts and data produce equivalent lists in this case
+            # check=shorthand_cutname(rownames(current_analysis[[ANALYSIS_NAME]]@assays$RNA@data[rowMeans(current_analysis[[ANALYSIS_NAME]]@assays$RNA@data>0)>.05,]))
+            # all(background_genes==check) 
         # Treshold: At least in 2 cells
         # shorthand_cutname(rownames(current_analysis[[ANALYSIS_NAME]]@assays$RNA@data[rowSums(current_analysis[[ANALYSIS_NAME]]@assays$RNA@data>0)>2,]))
-    write.table(x = background_genes, file = paste0(base_dir,'Homer/',ANALYSIS_NAME,'_HOMER_backgroundGenes.txt'), quote = F, row.names = F, col.names = F)    
+    write.table(x = background_genes, file = paste0(base_dir,'Homer/REGULONS/',ANALYSIS_NAME,'_HOMER_backgroundGenes_0.05.txt'), quote = F, row.names = F, col.names = F)    
     save(list = 'background_genes', file = paste0(base_dir,'Rplots/',ANALYSIS_NAME,'_background_genes.Rdata'))
 }    
     
+
+################################################################################
+# Small overview of patient-specific memberships
+
+if (F) {
+    custom_regs_contributing_patients = lapply(shared_regulon_origins, function(x) {sapply(strsplit(x, '\\.'),function(x){x[[2]]})})
+    
+    custom_regs_contributing_patients_heatmap =
+        sapply(custom_regs_contributing_patients, function(x) {out=rep(F, 5); names(out)=paste0('P',1:5); out[x]=T; return(out)})
+    colnames(custom_regs_contributing_patients_heatmap) = paste0('M',1:length(shared_regulon_origins))
+    
+    p=pheatmap(t(custom_regs_contributing_patients_heatmap*1), cluster_rows = F, cluster_cols = F, color = c('#FFFFFF','#000000'), legend = F, fontsize = 8)
+    
+    ggsave(filename = paste0(base_dir,'Rplots/',ANALYSIS_NAME,'_7_Regulons_ContributionsPatients.pdf'), 
+            plot = p, width=172/3/2-4, height=172/3/2-4, units='mm', device = cairo_pdf) # 184.6/3*2-4
+}
+    
+
 ################################################################################
 
 # Calculate regulon expression (composite)
@@ -826,6 +856,7 @@ if (F) {
 ################################################################################
 
 # Run GO analyses
+# Not used, since I do it in another script now
 
 if (F) {
 

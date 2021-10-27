@@ -91,7 +91,7 @@ get_volcano_df3 = function(expression_matrix,my_gene,calc_qvals=T,no_expression_
 # now plot the volcano
 plot_volcano3 = function(my_corrs_df_current,mytextsize=15,mycex=3,manual_gene_name=NULL,
         NRLABELED=20,mypvaltreshold=0.01,custom_highlight_group=NULL,NRLABELED_hlgroup=NULL,
-                  mypointsize=.1, mylinesize=.25, mylabelsize=NULL) {
+                  mypointsize=.1, mylinesize=.25, mylabelsize=NULL, myforce=1, mydirection='both') {
 
     if (!is.null(manual_gene_name)){
         current_gene=manual_gene_name
@@ -118,6 +118,8 @@ plot_volcano3 = function(my_corrs_df_current,mytextsize=15,mycex=3,manual_gene_n
         geom_hline(yintercept = -log10(mypvaltreshold), size=mylinesize)+
         #xlim(c(-.6,.6))+
         ggtitle(paste0('Genes correlated with ', current_gene))
+    
+    # add labels
     if (is.null(custom_highlight_group)) {
       # add labels to 1st N genes (determined by p-val)
       p=p+ggrepel::geom_text_repel(data=my_corrs_df_current[pval_idx[1:NRLABELED],],
@@ -130,8 +132,11 @@ plot_volcano3 = function(my_corrs_df_current,mytextsize=15,mycex=3,manual_gene_n
       if (!is.null(NRLABELED_hlgroup)) {toshow_df = toshow_df[1:NRLABELED_hlgroup,]}
       # add labels
       p=p+ggrepel::geom_text_repel(data=toshow_df,
-            mapping = aes(x=corr,y=-log10(pval.adj),label=gene_name_short), size=mylabelsize/.pt,color='black',cex=mycex,
-            max.overlaps = Inf, min.segment.length = 0)#,segment.color='gray')+#,cex=.3
+                                   mapping = aes(x=corr,y=-log10(pval.adj),label=gene_name_short), size=mylabelsize/.pt ,color='black',
+            cex=mycex,segment.size	=mylinesize, max.overlaps = Inf, min.segment.length = 0, force=myforce, direction=mydirection, )#,segment.color='gray')+#,cex=.3
+      
+            #mapping = aes(x=corr,y=-log10(pval.adj),label=gene_name_short), size=mylabelsize/.pt,color='black',cex=mycex,
+            #max.overlaps = Inf, min.segment.length = 0, segment.size	=mylinesize, force = 50, direction = 'y')#,segment.color='gray')+#,cex=.3
         
     }
     p

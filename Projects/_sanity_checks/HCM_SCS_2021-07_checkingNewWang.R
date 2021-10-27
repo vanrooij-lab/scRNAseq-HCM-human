@@ -1,42 +1,7 @@
 
+library(pheatmap)
 library(ggrepel)
 library(patchwork)
-
-################################################################################
-
-# This section loads (an older version) of the new wang data, don't use this.
-
-if (F) {
-    # Let's just do some checks on the Wang data beforehand
-    SCS_df_list_data_raw_WANGonly = loadData_MW_parallel(dataset_list_paths_WANG, mc.cores=MYMCCORES, prefix=F)
-    SCS_df_list_data_WANGonly = lapply(SCS_df_list_data_raw_WANGonly, preprocess_convertAAnames_toSymbol, revert_to_hgnc=T, script_dir=script_dir)
-    PREL_SeuratObject_list_WANGOnly = mclapply(1:length(SCS_df_list_data_WANGonly), 
-                function(idx) {
-                    object=CreateSeuratObject(counts = SCS_df_list_data_WANGonly[[idx]], project = names(SCS_df_list_data_WANGonly)[idx])
-                    print(paste0(names(SCS_df_list_data_WANGonly)[idx],' done .'))
-                    return(object)
-                    }, mc.cores = 1)
-    names(PREL_SeuratObject_list_WANGOnly) = names(SCS_df_list_data_WANGonly)
-    object_size(PREL_SeuratObject_list_WANGOnly) 
-    
-    # merged object
-    PREL_SeuratObject_merged_WANGonly <- merge(PREL_SeuratObject_list_WANGOnly[[1]], y = unlist(PREL_SeuratObject_list_WANGOnly)[2:length(PREL_SeuratObject_list_WANGOnly)], 
-                                            add.cell.ids = names(PREL_SeuratObject_list_WANGOnly), project = "H")
-    dim(PREL_SeuratObject_merged_WANGonly@assays$RNA@counts)        
-    
-    # Add some annotation
-    currentcellnames=colnames(PREL_SeuratObject_merged_WANGonly)
-    PREL_SeuratObject_merged_WANGonly[['annotation_sample_str']] = sapply(str_split(string = currentcellnames, pattern = '_'),function(x){x[[2]]})
-    PREL_SeuratObject_merged_WANGonly[['annotation_sample_fct']] = as.factor(PREL_SeuratObject_merged_WANGonly$annotation_sample_str)
-    PREL_SeuratObject_merged_WANGonly[['annotation_patient_str']] = sapply(str_split(string = currentcellnames, pattern = '_'),function(x){x[[1]]})
-    PREL_SeuratObject_merged_WANGonly[['annotation_patient_fct']] = as.factor(PREL_SeuratObject_merged_WANGonly$annotation_patient_str)
-    PREL_SeuratObject_merged_WANGonly[['annotation_paper_str']] = rep('Hu', dim(PREL_SeuratObject_merged_WANGonly)[2])
-    PREL_SeuratObject_merged_WANGonly[['annotation_paper_fct']] = factor(PREL_SeuratObject_merged_WANGonly$annotation_paper_str)
-    
-    SaveH5Seurat(object = PREL_SeuratObject_merged_WANGonly, overwrite = T,
-            filename = paste0(base_dir,'Rdata/PREL_SeuratObject_merged_WANGonly.h5seurat'))
-
-}
 
 ################################################################################
 
@@ -53,7 +18,7 @@ if (F) {
                                                          mc.cores=MYMCCORES, prefix=F, sep=',')
     names(SCS_df_list_data_raw_WANGORIGINAL) = names(dataset_list_original_counttablesWANG)
     
-    # repeat above
+    # Create Seurat objects
     RHL_SeuratObject_list_WANGORIGINAL = mclapply(1:length(SCS_df_list_data_raw_WANGORIGINAL), 
                 function(idx) {
                     object=CreateSeuratObject(counts = SCS_df_list_data_raw_WANGORIGINAL[[idx]], project = names(SCS_df_list_data_raw_WANGORIGINAL)[idx])
@@ -90,9 +55,11 @@ if (F) {
             filename = paste0(base_dir,'Rdata/RHL_SeuratObject_merged_WANGORIGINAL.h5seurat'))
     # RHL_SeuratObject_merged_WANGORIGINAL = LoadH5Seurat(file = paste0(base_dir,'Rdata/RHL_SeuratObject_merged_WANGORIGINAL.h5seurat'))
     
+    # Remove working file
+    rm('RHL_SeuratObject_merged_WANGORIGINAL')
     
-    test_table = read.table('/Volumes/workdrive_m.wehrens_hubrecht/data/2020_04_Wang-heart/Original_counttables/GSE121893_human_heart_sc_umi.csv', header = 1, row.names = 1, sep = ',')
-    rm('test_table')
+    #test_table = read.table('/Volumes/workdrive_m.wehrens_hubrecht/data/2020_04_Wang-heart/Original_counttables/GSE121893_human_heart_sc_umi.csv', header = 1, row.names = 1, sep = ',')
+    #rm('test_table')
     
     # Load the dataset
     # RHL_SeuratObject_merged_WANGORIGINAL= LoadH5Seurat(file = paste0(base_dir,'Rdata/RHL_SeuratObject_merged_WANGORIGINAL.h5seurat'))
@@ -100,12 +67,9 @@ if (F) {
 
 }
 
-if (F) {
-    # To load this file, use 
-    current_analysis$RHL_SeuratObject_merged_WANGORIGINAL = LoadH5Seurat(file = paste0(base_dir,'Rdata/RHL_SeuratObject_merged_WANGORIGINAL.h5seurat'))
-}    
 
-##########
+
+################################################################################
 
 # Now compare with latest Seurat Wang/Hu object
 # If necessary, load
@@ -113,9 +77,17 @@ if (F) {
 # current_analysis$HUonly_RID2l = LoadH5Seurat(file = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_',DATASET_NAME,'.h5seurat'))
 # current_analysis$RHL_SeuratObject_merged_WANGORIGINAL = LoadH5Seurat(file = paste0(base_dir,'Rdata/RHL_SeuratObject_merged_WANGORIGINAL.h5seurat'))
 
+if (F) {
+    # To load this files, use 
+    if (!exists('current_analysis')) {current_analysis = list()}
+    current_analysis$RHL_SeuratObject_merged_WANGORIGINAL = LoadH5Seurat(file = paste0(base_dir,'Rdata/RHL_SeuratObject_merged_WANGORIGINAL.h5seurat'))
+    current_analysis$HUonly_RID2l = LoadH5Seurat(file = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_','HUonly_RID2l','.h5seurat'))
+}    
+
 ##
 # First load name conversion
 load(file = paste0(base_dir,'Rdata/metadata_Wang_full_table_selection.Rdata'))
+load(file = paste0(base_dir,'Rdata/metadata_Wang_full_table.Rdata')) # also load full table for later making overview
     # loads metadata_Wang_full_table_selection
     # metadata_Wang_full_table_selection$ID_MW; metadata_Wang_full_table_selection$ID
 # Make convenient conversion table
@@ -164,8 +136,8 @@ current_analysis$WANG_old_new <- FindVariableFeatures(current_analysis$WANG_old_
 current_analysis$WANG_old_new <- ScaleData(current_analysis$WANG_old_new) # features = all_variable_features is default
 current_analysis$WANG_old_new <- RunPCA(object=current_analysis$WANG_old_new, npcs = 30)
 current_analysis$WANG_old_new <- RunUMAP(current_analysis$WANG_old_new, reduction = "pca", dims = 1:30)
-# current_analysis$WANG_old_new <- FindNeighbors(current_analysis$WANG_old_new, reduction = "pca", dims = 1:30)
-# current_analysis$WANG_old_new <- FindClusters(current_analysis$WANG_old_new, resolution = cluster_resolution)
+current_analysis$WANG_old_new <- FindNeighbors(current_analysis$WANG_old_new, reduction = "pca", dims = 1:30)
+current_analysis$WANG_old_new <- FindClusters(current_analysis$WANG_old_new)#, resolution = .4)
 
 current_analysis$WANG_old_new[['version']]= sapply(str_split(colnames(current_analysis$WANG_old_new),pattern = '_'), function(x){x[[1]]})
 
@@ -181,13 +153,30 @@ current_analysis$WANG_old_new_geneIntersect <- FindVariableFeatures(current_anal
 current_analysis$WANG_old_new_geneIntersect <- ScaleData(current_analysis$WANG_old_new_geneIntersect, features =gene_intersect) # features = all_variable_features is default
 current_analysis$WANG_old_new_geneIntersect <- RunPCA(object=current_analysis$WANG_old_new_geneIntersect, npcs = 30, features =gene_intersect)
 current_analysis$WANG_old_new_geneIntersect <- RunUMAP(current_analysis$WANG_old_new_geneIntersect, reduction = "pca", features =gene_intersect)
+current_analysis$WANG_old_new_geneIntersect <- FindNeighbors(current_analysis$WANG_old_new_geneIntersect, reduction = "pca", dims = 1:30)
+current_analysis$WANG_old_new_geneIntersect <- FindClusters(current_analysis$WANG_old_new_geneIntersect)#, resolution = .4)
+
+################################################################################
+# Save the resulting Seurat analyses
+
+SaveH5Seurat(object = current_analysis$WANG_old_new, overwrite = T,
+            filename = paste0(base_dir,'Rdata/RHL_WANG_old_new.h5seurat'))
+
+SaveH5Seurat(object = current_analysis$WANG_old_new_geneIntersect, overwrite = T,
+            filename = paste0(base_dir,'Rdata/RHL_WANG_old_new_geneIntersect.h5seurat'))
+    
+################################################################################
 
 p= DimPlot(current_analysis$WANG_old_new_geneIntersect, group.by='version')+give_better_textsize_plot(8)+theme_void()
+p
 ggsave(filename = paste0(base_dir, 'Rplots/_0checks_HU_newoldcell_mixing.pdf'), plot=p, width=50, height=50, units='mm')
 
 # PCA analysis
-DimPlot(current_analysis$WANG_old_new_geneIntersect, group.by='version', reduction = 'pca')+give_better_textsize_plot(8)+theme_void()
-DimPlot(current_analysis$WANG_old_new_geneIntersect, reduction = 'pca')+give_better_textsize_plot(8)+theme_void()
+p=DimPlot(current_analysis$WANG_old_new_geneIntersect, group.by='version', reduction = 'pca')+give_better_textsize_plot(8)+theme_void()+ggtitle('Re-mapping Wang et al. data')
+p
+ggsave(filename = paste0(base_dir, 'Rplots/_0checks_HU_newoldcell_mixing_PCA.pdf'), plot=p, width=50, height=50, units='mm')
+
+#DimPlot(current_analysis$WANG_old_new_geneIntersect, reduction = 'pca')+give_better_textsize_plot(8)+theme_void()
 
 current_analysis$WANG_old_new_geneIntersect[['cellname_noON']] = 
     as.vector(sapply(colnames(current_analysis$WANG_old_new_geneIntersect), function(x){gsub(pattern = 'old_|new_', replacement = '', x=x)}))
@@ -204,6 +193,7 @@ p2=ggplot(df_plot, aes(x=pc1, y=pc2, color=cellname_noON))+
     theme_minimal()+theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),axis.text.x=element_blank(),axis.text.y=element_blank())+
     geom_line()+theme(legend.position='none')+xlab('PC1')+ylab('PC2')
 p=(p1+p2+plot_layout(nrow = 1))
+p
 ggsave(filename = paste0(base_dir, 'Rplots/_0checks_HU_newoldcell_mixing_PCA-lines.pdf'), plot=p, width=100, height=50, units='mm')
 
 # Which genes are in PC1?
@@ -247,11 +237,164 @@ p=ggplot(data.frame(cell_nr=1:dim(cor_matrix_out)[1], matched_nr = matches_x_to_
 # p
 ggsave(paste0(base_dir,'Rplots/_0checks_HU_newcelloldcellpairing_cellNrMatch.pdf'), plot = p, width=50, height=50, units='mm')
 
+################################################################################
+# Overview tables of samples based metadata_Wang_full_table & metadata_Wang_full_table_sel
 
+# Let's also create a table that's a bit more clear
+metadata_Wang_full_table$group
+metadata_Wang_full_table$sample
+metadata_Wang_full_table$Type
+metadata_Wang_full_table$ident
+metadata_Wang_full_table$plate_nr
+
+metadata_Wang_full_table_selFields = metadata_Wang_full_table[,c('group','sample','Type','plate_nr')] # ,'ident'
+    # Leaving out ident, since it creates much more complex table
+
+metadata_Wang_full_table_selFields_summaryTable = data.frame(table(metadata_Wang_full_table_selFields))
+View(metadata_Wang_full_table_selFields_summaryTable)
+
+sum(metadata_Wang_full_table_selFields_summaryTable$Freq>0)
+
+###
+
+metadata_Wang_full_table_selection_selFields = metadata_Wang_full_table_selection[,c('group','sample','Type','plate_nr', 'ident')]
+metadata_Wang_full_table_selection_selFields_summaryTable = data.frame(table(metadata_Wang_full_table_selection_selFields))
+
+View(metadata_Wang_full_table_selection_selFields_summaryTable[metadata_Wang_full_table_selection_selFields_summaryTable$Freq>0,])
+dim(metadata_Wang_full_table_selection_selFields_summaryTable[metadata_Wang_full_table_selection_selFields_summaryTable$Freq>0,])
+
+metadata_Wang_full_table_selection_selFields_summaryTable_final = metadata_Wang_full_table_selection_selFields_summaryTable[metadata_Wang_full_table_selection_selFields_summaryTable$Freq>0,]
+openxlsx::write.xlsx(x = as.data.frame(metadata_Wang_full_table_selection_selFields_summaryTable_final), 
+                     file = paste0(base_dir,'Rplots/mapped_Wang_cells_overview_stats.xlsx'), overwrite=T)
+
+##MARKERNOTEREMOVE-XXXX
 
 ################################################################################
 
+# A better cor matrix might perhaps be on normalized expression, as it is not
+# biased by highly expressed genes (that might also be more susceptible to
+# mitochondrial mapping artifacts etc)
 
+# Previously, I used scale.data, but this is biased towards genes that are different between
+# the two sets, since it selects for max var genes; as such this decreases the correlations
+# 
+# joined_datamatrix_featnorm = as.matrix(current_analysis[[WITHSET]]@assays$RNA@scale.data)
+
+# Now use custom normalized count matrix
+joined_datamatrix_featnorm2 = t(scale(t(as.matrix(current_analysis[[WITHSET]]@assays$RNA@data[rowSums(current_analysis[[WITHSET]]@assays$RNA@counts>0)>10,]))))
+cor_matrix_featnorm_out = cor(x=joined_datamatrix_featnorm2[,sort(oldcellnames)],y=joined_datamatrix_featnorm2[,sort(newcellnames)])
+dim(cor_matrix_featnorm_out)
+
+pheatmap(cor_matrix_featnorm_out[1:10,1:10], cluster_rows = F, cluster_cols = F)
+
+# Partial heatmap (full = too big to display)
+p=pheatmap(cor_matrix_featnorm_out[1:10,1:10], cluster_rows = F, cluster_cols = F, fontsize = 2)
+ggsave(paste0(base_dir,'Rplots/_0checks_HU_newcelloldcellpairing_corrmat100_featnorm_10x10.pdf'), plot = p, width=200, height=200, units='mm')
+p=pheatmap(cor_matrix_featnorm_out[1:100,1:100], cluster_rows = F, cluster_cols = F, fontsize = 2)
+ggsave(paste0(base_dir,'Rplots/_0checks_HU_newcelloldcellpairing_corrmat100_featnorm.pdf'), plot = p, width=200, height=200, units='mm')
+# Illustrating how well it matches for all
+matches_x_to_y_featnorm = apply(cor_matrix_featnorm_out, 1, function(x) {order(x,decreasing = T)[1]})
+p=ggplot(data.frame(cell_nr=1:dim(cor_matrix_featnorm_out)[1], matched_nr = matches_x_to_y_featnorm))+
+    geom_point(aes(x=cell_nr,y=matched_nr))+theme_bw()
+# p
+ggsave(paste0(base_dir,'Rplots/_0checks_HU_newcelloldcellpairing_cellNrMatch.pdf'), plot = p, width=50, height=50, units='mm')
+
+# Sanity check showing read counts
+hist(log10(.1+colSums(current_analysis[[WITHSET]]@assays$RNA@counts)))
+
+# Distribution of 1st and 2nd best R-values
+Rmatch1_featnorm = apply(cor_matrix_featnorm_out, 1, function(x) {x[order(x,decreasing = T)][1]})
+Rmatch2_featnorm = apply(cor_matrix_featnorm_out, 1, function(x) {x[order(x,decreasing = T)][2]})
+p=ggplot(data.frame(Rmatch=c(Rmatch1_featnorm, Rmatch2_featnorm), matchtype=rep(c('1st_match','2nd_best'), each=length(Rmatch1_featnorm))))+
+    geom_freqpoly(aes(x=Rmatch, color=matchtype), binwidth=.05)+theme_bw()+give_better_textsize_plot(8)+xlab('Correlation coefficient')
+p+give_better_textsize_plot(12)
+ggsave(paste0(base_dir,'Rplots/_0checks_HU_newcelloldcellpairing_Rvals_matches.pdf'), plot = p, width=50, height=50, units='mm', device = cairo_pdf)
+
+################################################################################
+
+# Another simple check would be whether cells cluster in similar ways
+
+class_old_or_new = rep(NA, length(Cluster_assignments))
+class_old_or_new[grepl('^old_',names(Cluster_assignments))] = 'old'
+class_old_or_new[grepl('^new_',names(Cluster_assignments))] = 'new'
+
+current_analysis$WANG_old_new_geneIntersect$source_old_or_new = class_old_or_new
+p=DimPlot(current_analysis$WANG_old_new_geneIntersect, group.by = 'source_old_or_new')+theme_void()+ggtitle(element_blank())
+p
+ggsave(paste0(base_dir,'Rplots/_0checks_HU_newcelloldcellpairing_clusterAssignments_UMAP_source.pdf'), plot = p, width=75, height=75, units='mm', device = cairo_pdf)
+
+
+p=DimPlot(current_analysis$WANG_old_new_geneIntersect)+theme_void()
+ggsave(paste0(base_dir,'Rplots/_0checks_HU_newcelloldcellpairing_clusterAssignments_UMAP.pdf'), plot = p, width=75, height=75, units='mm', device = cairo_pdf)
+
+Cluster_assignments = Idents(current_analysis$WANG_old_new_geneIntersect)
+
+Cluster_assignments_old = Cluster_assignments[grepl('^old_',names(Cluster_assignments))]
+names(Cluster_assignments_old) = gsub('^old_','',names(Cluster_assignments_old))
+Cluster_assignments_new = Cluster_assignments[grepl('^new_',names(Cluster_assignments))]
+names(Cluster_assignments_new) = gsub('^new_','',names(Cluster_assignments_new))
+
+compare_clusters_assignments_old_new = 
+    data.frame(cell_name=names(Cluster_assignments_old), cluster_old=Cluster_assignments_old[names(Cluster_assignments_old)], cluster_new=Cluster_assignments_new[names(Cluster_assignments_old)])
+
+# compare_clusters_assignments_old_new_melted = 
+#     data.frame(cell_name=c(names(Cluster_assignments_old),names(Cluster_assignments_new)), 
+#                cluster=c(Cluster_assignments_old[names(Cluster_assignments_old)], Cluster_assignments_new[names(Cluster_assignments_old)]),
+#                old_or_new=rep(c('old','new'), each=length(Cluster_assignments_old)))
+
+compare_clusters_assignments_old_new_table = table(compare_clusters_assignments_old_new[c('cluster_old','cluster_new')])
+
+library(ggalluvial) # install.packages('ggalluvial')
+
+p=ggplot(as.data.frame(compare_clusters_assignments_old_new_table),
+       aes(y = Freq, axis1 = cluster_old, axis2 = cluster_new)) +
+  #geom_alluvium(aes(fill = cluster_old), width = 1/12)
+  geom_alluvium(aes(fill = cluster_old)) +
+  geom_stratum() +
+  geom_text(stat = "stratum",
+            aes(label = after_stat(stratum))) +
+  #scale_x_discrete(limits = c("Survey", "Response"),
+  #                 expand = c(0.15, 0.05)) +
+  theme_void()+theme(legend.position = 'none', 
+                     axis.title.x=element_blank(),
+                     axis.text.x=element_blank(),
+                     axis.ticks.x=element_blank(),
+                     axis.title.y=element_blank(),
+                     axis.text.y=element_blank(),
+                     axis.ticks.y=element_blank())+
+    give_better_textsize_plot(7)
+p
+ggsave(paste0(base_dir,'Rplots/_0checks_HU_newcelloldcellpairing_clusterAssignments.pdf'), plot = p, width=50, height=100, units='mm', device = cairo_pdf)
+
+# Perform cluster enrichment
+DE_Wang_New_old = diff_express_clusters(current_analysis$WANG_old_new_geneIntersect, mc.cores = 1)
+# Export results
+DE_Wang_New_old_Tables = diff_express_clusters_save_results(
+  all_markers = DE_Wang_New_old, run_name = 'DE_Wang_New_old', base_dir = base_dir, topX = 60, extendedOutput = T, FC_cutoff = 1.1, pval_cutoff = .05, easy_names = F)
+    
+DE_Wang_New_old_OldVsNew = diff_express_clusters(current_analysis$WANG_old_new_geneIntersect, mc.cores = 1, custom_ident = factor(grepl('^new_',names(Cluster_assignments))*1, levels=c(0,1)))
+DE_Wang_New_old_OldVsNew_Tables = diff_express_clusters_save_results(
+  all_markers = DE_Wang_New_old_OldVsNew, run_name = 'DE_Wang_New_old_OldVsNew', base_dir = base_dir, topX = 60, extendedOutput = T, FC_cutoff = 1.1, pval_cutoff = .05, easy_names = F)
+
+################################################################################
+
+# Project original Wang cluster assignments on the data
+cellnames_WANG_old_new_geneIntersect_ = gsub(pattern = '^old_|^new_', replacement = '', colnames(current_analysis$WANG_old_new_geneIntersect))
+metadata_Wang_full_table_selection_ = metadata_Wang_full_table_selection
+rownames(metadata_Wang_full_table_selection_) = metadata_Wang_full_table_selection_$ID_MW
+current_analysis$WANG_old_new_geneIntersect[['ident_wang']] = metadata_Wang_full_table_selection_[cellnames_WANG_old_new_geneIntersect_,]$ident
+p=DimPlot(current_analysis$WANG_old_new_geneIntersect, group.by = 'ident_wang')+theme_void()+theme()+give_better_textsize_plot(10)+theme_void_extramw_removeTickText()+ggtitle(element_blank())
+p
+ggsave(paste0(base_dir,'Rplots/_0checks_HU_newcelloldcellpairing_UMAPoriginalWANGIdents.pdf'), plot = p, width=75, height=75, units='mm', device = cairo_pdf)
+
+# Now also project Wang sample annotation on the data
+current_analysis$WANG_old_new_geneIntersect[['sample_annot_wang']] = metadata_Wang_full_table_selection_[cellnames_WANG_old_new_geneIntersect_,]$Type
+p=DimPlot(current_analysis$WANG_old_new_geneIntersect, group.by = 'sample_annot_wang')+theme_void()+theme()+give_better_textsize_plot(10)+theme_void_extramw_removeTickText()+ggtitle(element_blank())
+p
+ggsave(paste0(base_dir,'Rplots/_0checks_HU_newcelloldcellpairing_UMAPoriginalWANG_SampleType.pdf'), plot = p, width=75, height=75, units='mm', device = cairo_pdf)
+
+
+################################################################################
 
 # Just some more sanity checking
 
@@ -267,7 +410,9 @@ current_analysis$HUonly_RID2l[['Individual']] = metadata_Wang_full_table_selecti
 
 # Some plots
 DimPlot(current_analysis$HUonly_RID2l)
-DimPlot(current_analysis$HUonly_RID2l, group.by = 'ident_wang')
+p=DimPlot(current_analysis$HUonly_RID2l, group.by = 'ident_wang')+theme_void()+theme()+give_better_textsize_plot(10)+theme_void_extramw_removeTickText()+ggtitle(element_blank())
+p
+ggsave(paste0(base_dir,'Rplots/_0checks_HU_cellIdentitiesWangOnMyUMAP.pdf'), plot = p, width=50, height=100, units='mm', device = cairo_pdf)
 DimPlot(current_analysis$HUonly_RID2l, group.by = 'enrichment_group')
 DimPlot(current_analysis$HUonly_RID2l, group.by = 'annotation_patient_fct')
 DimPlot(current_analysis$HUonly_RID2l, group.by = 'annotation_region_fct')

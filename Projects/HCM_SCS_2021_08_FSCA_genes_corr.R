@@ -12,6 +12,7 @@ current_analysis[[TRIAGE_DATASET_NAME]] =
 
 
 
+
 # Also required: ---->
 load(paste0(base_dir,'Rplots/ROOIJonly_RID2l_core_regulons_sorted.Rdata'))
     # core_regulons_sorted
@@ -58,12 +59,24 @@ indexData_MW$Cell_newname =
 rownames(indexData_MW) = indexData_MW$Cell_newname
 
 ################################################################################
+# Insert data into clExtended
+
+current_analysis$ROOIJonly_RID2l_clExtended_FSCA = current_analysis$ROOIJonly_RID2l_clExtended
+current_analysis$ROOIJonly_RID2l_clExtended_FSCA[['FSCA']]=indexData_MW[colnames(current_analysis$ROOIJonly_RID2l_clExtended),]$FSC_A
+
+SaveH5Seurat(object = current_analysis$ROOIJonly_RID2l_clExtended_FSCA, filename = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_','ROOIJonly_RID2l_clExtended_FSCA','.h5seurat'))
+    # (Currently, this file is not used by other scripts)
+
+save(list = 'indexData_MW', file = paste0(base_dir,'Rdata/FSCA__indexData_MW.Rdata')) # indexData_MW, colnames match cell names
+    # load(file = paste0(base_dir,'Rdata/FSCA__indexData_MW.Rdata')) # indexData_MW
+    # e.g. use indexData_MW[colnames(current_analysis$ROOIJonly_RID2l_clExtended),]$FSC_A
+
+################################################################################
 # Project data on UMAP
 
-current_analysis$ROOIJonly_RID2l_clExtended[['FSCA']]=indexData_MW[colnames(current_analysis$ROOIJonly_RID2l_clExtended),]$FSC_A
-
-FeaturePlot(object = current_analysis$ROOIJonly_RID2l_clExtended, features = 'FSCA', cols = rainbow_colors, pt.size = 2)
-VlnPlot(object = current_analysis$ROOIJonly_RID2l_clExtended, features = 'FSCA')#, cols = rainbow_colors, pt.size = 2)
+FeaturePlot(object = current_analysis$ROOIJonly_RID2l_clExtended_FSCA, features = 'FSCA', cols = rainbow_colors, pt.size = 2)
+DimPlot(object = current_analysis$ROOIJonly_RID2l_clExtended_FSCA, group.by='annotation_patient_fct')
+VlnPlot(object = current_analysis$ROOIJonly_RID2l_clExtended_FSCA, features = 'FSCA')#, cols = rainbow_colors, pt.size = 2)
 
 # Triage clusters
 current_analysis$ROOIJonly_TRIAGE_clExt[['FSCA']]=indexData_MW[colnames(current_analysis$ROOIJonly_RID2l_clExtended),]$FSC_A
@@ -169,6 +182,9 @@ ggsave(plot = p,filename = paste0(base_dir, 'Rplots/ROOIJonly_RID2l_clExtended_8
        width = 172/2-4, height= 172/2-4, units='mm', device = cairo_pdf)
 
 
+# Save data for later use
+save(list = 'correlations_FSCA_per_patient_combined', file = paste0(base_dir,'Rdata/FSCA__correlations_FSCA_per_patient_combined.Rdata')) # correlations_FSCA_per_patient_combined
+save(list = 'correlations_FSCA_per_patient_list', file = paste0(base_dir,'Rdata/FSCA__correlations_FSCA_per_patient_list.Rdata')) # correlations_FSCA_per_patient_list
 
 
 
@@ -185,15 +201,25 @@ selected_genes_extended = correlations_FSCA_per_patient_combined$P4_cor>treshold
 # Now show some regulons
 load(file=paste0(base_dir, 'Rdata/SCENIC_regulons_core_genes_sel.Rdata'))
 load(file=paste0(base_dir, 'Rplots/ROOIJonly_RID2l_core_regulons_sorted_shortname.Rdata'))
+# If already generated, load data generated above
+if (F) {
+    load(file = paste0(base_dir,'Rdata/FSCA__correlations_FSCA_per_patient_combined.Rdata')) # correlations_FSCA_per_patient_combined
+    #load(file = paste0(base_dir,'Rdata/FSCA__correlations_FSCA_per_patient_list.Rdata')) # correlations_FSCA_per_patient_list   
+}
+
 
 REGULON_SETS = list(custom=core_regulons_sorted_shortname, SCENIC=SCENIC_regulons_core_genes_sel)
 
 for (reg_set_name in names(REGULON_SETS)) {
 
+    # reg_set_name='custom'
+    
     current_regulon_set = REGULON_SETS[[reg_set_name]]
     
     list_p=list()
     for (reg_name in names(current_regulon_set)) {
+        
+        # reg_name = 'ATF4(+)'
         
         current_highlight_genes = current_regulon_set[[reg_name]]
         
@@ -205,22 +231,37 @@ for (reg_set_name in names(REGULON_SETS)) {
         #     geom_density_2d(aes(color=regulon_membership))+theme_bw()+give_better_textsize_plot(6)+ggtitle(gsub('\\(\\+\\)','',reg_name))+
         #     scale_color_manual(values=c('grey','black'))+theme(legend.position = 'none')
         
-        list_p[[reg_name]]=ggplot(correlations_FSCA_per_patient_combined %>% arrange(regulon_membership), aes(x=P4_cor, y=P5_cor))+
+        lims_p4=c(min(c(-.21, correlations_FSCA_per_patient_combined$P4_cor)), max(c(.21, correlations_FSCA_per_patient_combined$P4_cor)))
+        lims_p5=c(min(c(-.21, correlations_FSCA_per_patient_combined$P5_cor)), max(c(.21, correlations_FSCA_per_patient_combined$P5_cor)))
+        p=ggplot(correlations_FSCA_per_patient_combined %>% arrange(regulon_membership), aes(x=P4_cor, y=P5_cor))+
             #geom_point(shape=1,alpha=.1,aes(color=regulon_membership))+
-            geom_point(data=correlations_FSCA_per_patient_combined %>% subset(regulon_membership=='no'), color='grey', size=.5)+
+            geom_point(data=correlations_FSCA_per_patient_combined %>% subset(regulon_membership=='no'), color='grey', size=.25)+
             geom_density_2d(data=correlations_FSCA_per_patient_combined %>% subset(regulon_membership=='no'), color='dodgerblue2', size=.1)+
-            geom_point(data=correlations_FSCA_per_patient_combined %>% subset(regulon_membership=='yes'), color='black', size=.5)+
-            geom_density_2d(data=correlations_FSCA_per_patient_combined %>% subset(regulon_membership=='yes'), color='black', size=.1)+theme_bw()+give_better_textsize_plot(6)+ggtitle(gsub('\\(\\+\\)','',reg_name))+
-            theme(legend.position = 'none')
-            
+            geom_point(data=correlations_FSCA_per_patient_combined %>% subset(regulon_membership=='yes'), color='black', size=.25)+
+            theme_bw()+give_better_textsize_plot(6)+ggtitle(gsub('\\(\\+\\)','',reg_name))+
+            theme(legend.position = 'none')+
+            scale_x_continuous(breaks = seq(-1, 1, by = .2), limits = lims_p4)+
+            scale_y_continuous(breaks = seq(-1, 1, by = .2), limits = lims_p5)
+        if (sum(correlations_FSCA_per_patient_combined$gene_symbol %in% current_highlight_genes)>1) {
+            p=p+geom_density_2d(data=correlations_FSCA_per_patient_combined %>% subset(regulon_membership=='yes'), color='black', size=.1)
+        }
+        #p
+        list_p[[reg_name]]=p
         
     }
-    myncol=5
-    mynrow=ceiling(length(current_regulon_set)/myncol)
-    p=wrap_plots(list_p, ncol=myncol)&theme(plot.margin = margin(t = 1, r = 1, b = 1, l = 1, unit = "mm"))
-    p
-    ggsave(plot = p,filename = paste0(base_dir, 'Rplots/ROOIJonly_RID2l_clExtended_8_FSCA_corrs_',reg_set_name,'_RegulonsHighlighted.pdf'), 
-           width = 172-4, height= (172/5*mynrow)-4, units='mm', device = cairo_pdf)
+    
+    if (reg_set_name=='custom') {
+        p=wrap_plots(list_p, ncol=1)&theme(plot.margin = margin(t = 1, r = 1, b = 1, l = 1, unit = "mm"))
+        #p
+        ggsave(plot = p,filename = paste0(base_dir, 'Rplots/ROOIJonly_RID2l_clExtended_8_FSCA_corrs_',reg_set_name,'_RegulonsHighlighted.pdf'), 
+               width = (172/6)-4, height= (172*5/6)-4, units='mm', device = cairo_pdf)
+    }
+    if (reg_set_name=='SCENIC') {
+        p=wrap_plots(list_p, ncol=5)&theme(plot.margin = margin(t = 1, r = 1, b = 1, l = 1, unit = "mm"))
+        #p
+        ggsave(plot = p,filename = paste0(base_dir, 'Rplots/ROOIJonly_RID2l_clExtended_8_FSCA_corrs_',reg_set_name,'_RegulonsHighlighted.pdf'), 
+               width = (172*5/6)-4, height= (172*5/6)-4, units='mm', device = cairo_pdf)
+    } 
     
 }
 

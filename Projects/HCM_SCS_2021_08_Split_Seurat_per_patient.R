@@ -5,6 +5,7 @@
 # Seurat analyses at patient-level
 
 ################################################################################
+# Generate per patient data sets
 
 # Load the data
 DATASET_NAME='ROOIJonly_RID2l'
@@ -32,6 +33,7 @@ for (current_seurat_subset_name in names(temp_seurat_subsets) ) {
 rm('temp_seurat_subsets')
 
 ################################################################################
+# Perform the standard analysis
 
 # Run the analysis
 for (current_patient in all_patients) {
@@ -47,6 +49,26 @@ for (current_set in paste0(all_patients,'RID2l')) {
         filename = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_',current_set,'.h5seurat'))
 }
 
+################################################################################
+################################################################################
+
+# Load the analyses (in case of re-running this script)
+if (F) {
+    DATASET_NAME='ROOIJonly_RID2l'
+    # Load original analysis (not strictly necessary), just to get "patient annotation"
+    if (!exists('current_analysis')) {current_analysis = list()}
+    if (!(DATASET_NAME %in% names(current_analysis))) { 
+        current_analysis[[DATASET_NAME]] = LoadH5Seurat(file = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_',DATASET_NAME,'.h5seurat')) 
+    }
+    # Patient names
+    all_patients = unique(current_analysis[[DATASET_NAME]]$annotation_patient_str)
+    
+    for (current_set in paste0(all_patients,'RID2l')) {
+        current_analysis[[current_set]] =
+            LoadH5Seurat(file = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_',current_set,'.h5seurat'))
+    }
+}
+
 # Create some plots
 for (current_set in paste0(all_patients,'RID2l')) {
     mySeuratCommonPlots(mySeuratObject = current_analysis[[current_set]], run_name = current_set)
@@ -58,7 +80,6 @@ for (current_set in paste0(all_patients,'RID2l')) {
 
 # Some additional custom plots
 
-
 for (GENE in c('TTN','XIRP2','CMYA5')) {
     
     #GENE='TTN'
@@ -67,12 +88,15 @@ for (GENE in c('TTN','XIRP2','CMYA5')) {
 
     # Make plot
     plot_list = lapply(sort(all_patients), function(current_patient) {
-        shorthand_seurat_custom_expr(seuratObject = current_analysis[[paste0(current_patient,'RID2l')]], gene_of_interest = GENE, custom_title = paste0(GENE,' (',current_patient,')'))})
+        # current_patient = 'R.P1'
+        shorthand_seurat_custom_expr(seuratObject = current_analysis[[paste0(current_patient,'RID2l')]], gene_of_interest = GENE, custom_title = paste0(GENE,' (',gsub('^R\\.','',current_patient),')'), mymargin = 1, add_box = T)
+        })
+     
     p=wrap_plots(plot_list, nrow=1)    
     p
     # Save
     ggsave(plot = p,filename = paste0(base_dir, 'Rplots/R.PALL.RooijPerPatient_Custom_',GENE,'.pdf'), 
-           width = min(184.6, 40*5), height= 40, units='mm')
+           width = (PANEL_WIDTH*3-4), height= (PANEL_WIDTH*3-4)/5, units='mm', device = cairo_pdf)
 
 }
 

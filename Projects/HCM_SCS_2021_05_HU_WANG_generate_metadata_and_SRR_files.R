@@ -1,11 +1,17 @@
 
 
+######################################################################
 
-# base_dir = '/Volumes/workdrive_m.wehrens_hubrecht/data/2020_04_Wang-heart/'
+# - Wang et al. dataset
+#       Wang, L., Yu, P., Zhou, B., Song, J., Li, Z., Zhang, M., … Hu, S. (2020). Single-cell reconstruction of the adult human heart during heart failure and recovery reveals the cellular landscape underlying cardiac function. Nature Cell Biology, 22(1), 108–119. https://doi.org/10.1038/s41556-019-0446-7
+#       Metadata was obtained via 
+#       https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE121893 and https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE109816 
+#       Raw data was downloaded using fasterq-dump and mapped with custom pipeline to make it more comparable to our own data
 
 ######################################################################
 
-base_dir = '/hpc/hub_oudenaarden/mwehrens/data/Wang/'
+# base_dir = '/Volumes/workdrive_m.wehrens_hubrecht/data/2020_04_Wang-heart/'
+# base_dir = '/hpc/hub_oudenaarden/mwehrens/data/Wang/'
 
 library(plyr)
 
@@ -17,7 +23,7 @@ library(plyr)
 # First batch of cells, patients N1-N12
 # Conveniently, there's also RSA numbers in Wang_MetaData_GSE109816
 # (though not in other file)
-Wang_MetaData_GSE109816 = read.csv(paste0(base_dir,'Metadata/GSE109816_metadata_barcodes_9994cells.txt'), sep='\t')
+Wang_MetaData_GSE109816 = read.csv(paste0(base_dir,'Wang_metadata/GSE109816_metadata_barcodes_9994cells.txt'), sep='\t')
 colnames(Wang_MetaData_GSE109816)[1] = 'ID' # rename rows such that they're consisent with the other tables
 colnames(Wang_MetaData_GSE109816)[colnames(Wang_MetaData_GSE109816)=='characteristics..individual'] = 'Individual'
 dim(Wang_MetaData_GSE109816) # 9994   40
@@ -26,15 +32,15 @@ sort(unique(Wang_MetaData_GSE109816$characteristics..individual)) # "N1"  "N10" 
 colnames(Wang_MetaData_GSE109816)
 
 # Second batch of cells, HF and N13 and N14
-Wang_Info_GSE121893  = read.csv(paste0(base_dir,'Metadata/MW_GSE121893_human_heart_sc_info.txt'), sep='\t', comment.char = '#') 
+Wang_Info_GSE121893  = read.csv(paste0(base_dir,'Wang_metadata/MW_GSE121893_human_heart_sc_info.txt'), sep='\t', comment.char = '#') 
 dim(Wang_Info_GSE121893) # 4933   35
 length(unique(Wang_Info_GSE121893$ID)) # checking whether IDs are unique (l=4933, yes)
 sort(unique(Wang_Info_GSE121893$Individual)) # "C1"  "C2"  "D1"  "D2"  "D4"  "D5"  "N13" "N14"
 
 # so for the Wang_MetaData_GSE109816 part there's already SRR info, but now we'd also
 # like to get the SRR info for the Wang_Info_GSE121893 part.
-# This can be found in the file 
-GSE121893_files = read.table(paste0(base_dir, 'GSE121893_files.txt'))
+# This can be found in the file (couples SRR to {plate,x,y}
+GSE121893_files = read.table(paste0(base_dir, 'Wang_metadata/GSE121893_files.txt'))
 # Let's modify this data
 GSE121893_SRR_ = matrix(data=GSE121893_files$V1[!GSE121893_files$V1=='END'], ncol =3, byrow = T)
 GSE121893_SRR = data.frame(SRR=gsub(pattern = ':',replacement = '',x = GSE121893_SRR_[,1]), 
@@ -70,7 +76,7 @@ length(unique(combined_metadata_Wang$ID)) # IDs are still unique, also n=14927
 # they determined, 
 # we'll be looking for LV-CMs + LA-CMs, 
 # which after filtering should be 3894 cells
-Wang_ClusterInfo_GSE121893 = read.csv(paste0(base_dir,'Metadata/GSE121893_all_heart_cell_cluster_info.txt'), sep='\t')
+Wang_ClusterInfo_GSE121893 = read.csv(paste0(base_dir,'Wang_metadata/GSE121893_all_heart_cell_cluster_info.txt'), sep='\t')
 dim(Wang_ClusterInfo_GSE121893) # 11377     8
 length(unique(Wang_ClusterInfo_GSE121893$ID)) # checking whether IDs are unique
 sort(unique(Wang_ClusterInfo_GSE121893$sample)) # "C1"  "C2"  "D1"  "D2"  "D4"  "D5"  "N1"  "N10" "N11" "N12" "N13" "N14" "N2"  "N3"  "N4"  "N5"  "N6"  "N7"  "N8"  "N9" 
@@ -116,6 +122,7 @@ sum(desired_celltypes&desired_individuals) # 1893, a bit more than expected 1864
 # that allow us to gather their raw data
 metadata_Wang_full_table_selection = metadata_Wang_full_table[desired_celltypes&desired_individuals,]
 
+
 ######################################################################
 
 # let's create the SRR files
@@ -123,6 +130,7 @@ metadata_Wang_full_table_selection = metadata_Wang_full_table[desired_celltypes&
 # the bar codes will identify the cells
 all_samples_list = c()
 SRR_export_summary_info=list()
+current_SRR_of_interest_list=list()
 for (current_patient in c('N1','N2','N3','N4','N5','N13','N14')) {
     
     # current_patient = 'N2'
@@ -132,9 +140,14 @@ for (current_patient in c('N1','N2','N3','N4','N5','N13','N14')) {
     
     # now gather SRR numbers that belong to this patient, to this plate
     for (current_plate in plates_for_this_patient) {
+        
+        print(paste0('=======','PATIENT ',current_patient, ', PLATE ',current_plate,'======='))
+        
         # current_plate = '97452'
         current_SRR_of_interest = metadata_Wang_full_table_selection[metadata_Wang_full_table_selection$sample==current_patient&
                                                                      metadata_Wang_full_table_selection$plate_nr==current_plate,]$SRR.run.accession
+        # Just another sanity check
+        current_SRR_of_interest_list[[length(current_SRR_of_interest_list)+1]] = current_SRR_of_interest
         
         # Also collect current barcodes, this is just to do another sanity check 
         # whether these are unique
@@ -161,8 +174,10 @@ for (current_patient in c('N1','N2','N3','N4','N5','N13','N14')) {
         dir.create(current_directory_part1, recursive = T)
         dir.create(current_directory_part2, recursive = T)
         # Write tables
-        write.table(x = current_SRR_Part1, file = paste0(current_directory_part1,sample_name_part1,'_SRR_Acc_List.txt'), quote = F, row.names = F, col.names = F)
-        write.table(x = current_SRR_Part2, file = paste0(current_directory_part2,sample_name_part2,'_SRR_Acc_List.txt'), quote = F, row.names = F, col.names = F)
+        if (!exists('NOWRITESRR')){ # set NOWRITESRR to not write these files but still complete loop
+            write.table(x = current_SRR_Part1, file = paste0(current_directory_part1,sample_name_part1,'_SRR_Acc_List.txt'), quote = F, row.names = F, col.names = F)
+            write.table(x = current_SRR_Part2, file = paste0(current_directory_part2,sample_name_part2,'_SRR_Acc_List.txt'), quote = F, row.names = F, col.names = F)
+        }
         
         # User info
         print(paste0('Exporting ',sample_name_part1, ' with ', length(current_SRR_Part1),' cells SRR ..'))
@@ -178,6 +193,10 @@ for (current_patient in c('N1','N2','N3','N4','N5','N13','N14')) {
 }
 # export sample list
 write.table(data.frame(as.list(all_samples_list)), file = paste0(base_dir, 'SRR/','sample_list.txt'), quote = F, row.names = F, col.names = F)
+
+# Another sanity check
+print('Are the collected SRRs now unique?')
+length(unique(unlist(current_SRR_of_interest_list)))==length(unlist(current_SRR_of_interest_list))
 
 # length(SRR_N3_97438)
 # length(unique(SRR_N3_97438))
@@ -202,6 +221,7 @@ write.table(data.frame(as.list(all_samples_list)), file = paste0(base_dir, 'SRR/
 
 ################################################################################
 # I've noted that the numbers don't quite add up
+# This is due to some striking features of the Wang data
 
 # Problem 1: the table with selected cells contains 1893 cells; but only
 # 1423 SRR values are exported, why are there cells missing?
@@ -209,7 +229,30 @@ write.table(data.frame(as.list(all_samples_list)), file = paste0(base_dir, 'SRR/
 sum(unlist(SRR_export_summary_info)) # 1423 SRR values
 # Turns out that those "missing cells" belong to patients from who no LV was collected.
 dim(metadata_Wang_full_table_selection[metadata_Wang_full_table_selection$sample %in% c('N6', 'N7', 'N8', 'N9', 'N10', 'N11', 'N12'),])
-# So, there's 470 cells that are classified as LV, whilst they are from LA source
+dim(metadata_Wang_full_table_selection[grepl('_LA',metadata_Wang_full_table_selection$source.name) & metadata_Wang_full_table_selection$sample %in% c('N6', 'N7', 'N8', 'N9', 'N10', 'N11', 'N12'),])
+    # So, there's 470 cells that are classified as LV, whilst they are from LA source
+
+# Also double check this with "original" tables
+# Can be seen from "cluster info" table directly 
+dim(Wang_ClusterInfo_GSE121893[grepl('_LA',Wang_ClusterInfo_GSE121893$condition) & Wang_ClusterInfo_GSE121893$sample %in% c('N6', 'N7', 'N8', 'N9', 'N10', 'N11', 'N12') &
+                                grepl('^LV',Wang_ClusterInfo_GSE121893$ident),])
+
+# Let's summarize this table
+Wang_ClusterInfo_GSE121893_selectedFields = Wang_ClusterInfo_GSE121893[,c('condition','group','sample')]
+Wang_ClusterInfo_GSE121893_selectedFields$identClass = gsub('[0-9]*$','',Wang_ClusterInfo_GSE121893$ident)
+Wang_ClusterInfo_GSE121893_selectedFields_summaryTable_ = as.data.frame(table(Wang_ClusterInfo_GSE121893_selectedFields))
+Wang_ClusterInfo_GSE121893_selectedFields_summaryTable = Wang_ClusterInfo_GSE121893_selectedFields_summaryTable_[Wang_ClusterInfo_GSE121893_selectedFields_summaryTable_$Freq>0,]
+Wang_ClusterInfo_GSE121893_selectedFields_summaryTable_customSel = Wang_ClusterInfo_GSE121893_selectedFields_summaryTable[grepl('^N_',Wang_ClusterInfo_GSE121893_selectedFields_summaryTable$condition),]
+Wang_ClusterInfo_GSE121893_selectedFields_summaryTable_customSel2 = Wang_ClusterInfo_GSE121893_selectedFields_summaryTable[grepl('^N_',Wang_ClusterInfo_GSE121893_selectedFields_summaryTable$condition) & 
+                                                                                                                         Wang_ClusterInfo_GSE121893_selectedFields_summaryTable$identClass=='LV',]
+
+# custom order
+mapping_temp = paste0('N',c(paste0('0',1:9),10:20))
+names(mapping_temp) = paste0('N',1:20)
+Wang_ClusterInfo_GSE121893_selectedFields_summaryTable_customSel2_Sorted = Wang_ClusterInfo_GSE121893_selectedFields_summaryTable_customSel2[order(mapping_temp[as.character(Wang_ClusterInfo_GSE121893_selectedFields_summaryTable_customSel2$sample)]),]
+openxlsx::write.xlsx(x = as.data.frame(Wang_ClusterInfo_GSE121893_selectedFields_summaryTable_customSel2_Sorted), 
+                     file = paste0(base_dir,'Rplots/mapped_Wang_cells_overview_stats2_healthy-IdentLV.xlsx'), overwrite=T)
+
 
 # Problem 2: there are 1864 cells listed as CMs in the excel table, coming from LV
 # source. But now I only have 1423 cells. Are these then classified as LA?
@@ -237,7 +280,14 @@ rownames(metadata_Wang_full_table_selection) = extended_names
 # metadata_Wang_full_table_selection[cellname]$ID now gives the old name (or other info)
 save(list = c('metadata_Wang_full_table_selection'),file = paste0(base_dir,'Rdata/metadata_Wang_full_table_selection.Rdata'))
 
-# Old alternative
+# Also save the full table
+save(list = c('metadata_Wang_full_table'),file = paste0(base_dir,'Rdata/metadata_Wang_full_table.Rdata'))
+
+
+################################################################################
+
+# Old alternative for name conversion
+
 simplified_names = paste0(  metadata_Wang_full_table_selection$sample, '_',
                             metadata_Wang_full_table_selection$plate_nr, '_',
                             metadata_Wang_full_table_selection$Barcode)

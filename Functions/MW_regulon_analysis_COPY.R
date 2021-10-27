@@ -612,8 +612,11 @@ MW_determine_regulons_part5 = function(regulon_object, hierarchical_cutoff=NULL,
     # dev.off()
     
     p=pheatmap(mat = cor_out_selected_2, cluster_rows = hclust_out, cluster_cols = hclust_out, 
-        fontsize_row = 2, fontsize_col = 2,color = viridis_pal(option = "D")(100), breaks = seq(min_val,max_val,d_val))
-    ggsave(filename = paste0(regulon_object$outputDir_sub,'regulons_gene_corrmatrix.png'), plot=p, units = 'cm',height = dim(cor_out_selected_2)[2]*0.06, width = dim(cor_out_selected_2)[2]*0.06, dpi = 1200)
+        fontsize_row = 2, fontsize_col = 2,color = viridis_pal(option = "D")(100), breaks = seq(min_val,max_val,d_val), border_color = NA, treeheight_row = 20*.pt, treeheight_col = 20*.pt)
+    ggsave(filename = paste0(regulon_object$outputDir_sub,'regulons_gene_corrmatrix.png'), plot=p, units = 'mm',height = dim(cor_out_selected_2)[2]*0.6, width = dim(cor_out_selected_2)[2]*0.6, dpi = 1200)
+    # fixed width
+    ggsave(filename = paste0(regulon_object$outputDir_sub,'regulons_gene_corrmatrix_figSizFix.png'), plot=p, units = 'mm',height = 300, width = 300, dpi = 1200)
+    
     
     # binary map
     if (regulon_object$chosen_cutoff_parameter=='r') {

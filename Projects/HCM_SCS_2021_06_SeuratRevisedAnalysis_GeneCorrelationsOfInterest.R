@@ -6,6 +6,7 @@
 #
 
 ################################################################################
+# Loading libraries and setting up parameters
 
 print('Executing main script to load libraries')
 
@@ -46,6 +47,8 @@ names(INTEGRATED_OR_NOT)=OBJECTS_TO_ANALYZE
 ################################################################################
 # Load the objects
 
+# !!DO NOT RUN THIS CODE UNLESS YOU WANT TO REGENERATE ALL CORRELATIONS!!
+
 # For testing purposes
 #OBJECTS_TO_ANALYZE = c('ROOIJonly_RID2l')
 #INTEGRATED_OR_NOT = c('no'              )
@@ -71,13 +74,15 @@ for (analysis_name in OBJECTS_TO_ANALYZE) {
 # Some TTN correlations
 # To do: automate this such that it just loops over multiple datasets, patients, and the pooled/integrated data
 
+
+# !!DO NOT RUN THIS CODE UNLESS YOU WANT TO REGENERATE ALL CORRELATIONS!!
 if (T) {
     
     OBJECTS_TO_ANALYZE=OBJECTS_TO_ANALYZE # defined above; this is just a reminder
     GENES_OF_INTEREST_ = c('TTN','NPPA','CMYA5','XIRP2')
     
     # let's assume the genes of interest are among the features in each dataset 
-    GENES_OF_INTEREST = shorthand_seurat_fullgenename(seuratObject = current_analysis[[1]], gene_names = GENES_OF_INTEREST_)
+    GENES_OF_INTEREST = shorthand_seurat_fullgenename(seuratObject = current_analysis$ROOIJonly_RID2l, gene_names = GENES_OF_INTEREST_)
     
     Volcano_df_collection=list()
     
@@ -190,6 +195,8 @@ if (T) {
 ################################################################################
 # An additional nice summary plot would be where we show the average and CV
 # in a plot
+#
+# Run this part to load the data for plotting purposes
 
 SAVEPLOT=F
 
@@ -208,6 +215,7 @@ if (F) {
     }
     rm('Volcano_df_gene_pt')
     
+    # Pretty comparison plots
     df_corr_collection = list()
     for (CURRENT_DATASET in OBJECTS_TO_ANALYZE) {
         for (CURRENT_GENE in c('ENSG00000155657:TTN', 'ENSG00000175206:NPPA', "ENSG00000163092:XIRP2", "ENSG00000164309:CMYA5")) {
@@ -329,6 +337,41 @@ if (F) {
     }
             
 }    
+
+################################################################################
+# More customized versions of Volcano plots in Rooij data for NPPA and XIRP2
+# label:volcanoRooijGOI
+
+# c('ENSG00000155657:TTN', 'ENSG00000175206:NPPA', "ENSG00000163092:XIRP2", "ENSG00000164309:CMYA5")
+
+# Make a plot
+TOPX=10
+gene_name = 'ENSG00000175206:NPPA'
+gene_name = 'ENSG00000163092:XIRP2'
+analysis_name='ROOIJonly_RID2l'
+current_patient='Rpooled'
+
+for (idx in 1:2) {
+    
+    gene_name = c('ENSG00000175206:NPPA', 'ENSG00000163092:XIRP2')[idx]
+    current_force = c(1000, 100)[idx]
+    
+    temp_vdf = Volcano_df_collection[[gene_name]][[analysis_name]][[current_patient]]
+    temp_vdf = temp_vdf[order(temp_vdf$corr, decreasing = T),]
+    custom_top_genes = c(temp_vdf$gene_name_short[2:(TOPX+1)],
+        temp_vdf$gene_name_short[(dim(temp_vdf)[1]):(dim(temp_vdf)[1]-TOPX)])
+    p=plot_volcano3(my_corrs_df_current = Volcano_df_collection[[gene_name]][[analysis_name]][[current_patient]],mycex=3,
+                NRLABELED=10,mypvaltreshold=0.01,manual_gene_name = shorthand_cutname(gene_name),
+                  #mypointsize=.1, mylinesize=.1, mytextsize=8, mylabelsize = 5, custom_highlight_group = custom_top_genes, myforce = 33, mydirection = 'y')+ 
+                  mypointsize=.1, mylinesize=.1, mytextsize=8, mylabelsize = 5, custom_highlight_group = custom_top_genes, myforce = current_force, mydirection = 'both')+ 
+                    ggtitle(paste0('Correlation with ',shorthand_cutname(gene_name)))+xlim(-.8,.8)
+                    # ggtitle(paste0('Correlations with ',gene_name,'\n(',analysis_name,'); ',current_patient,''))
+    p
+    # Save & export it
+    ggsave(filename = paste0(base_dir,'Rplots/',analysis_name,'_6_Volcano_',gene_name,'_',current_patient,'-customStyle3.pdf'), 
+        plot = p, height=PANEL_WIDTH-4, width=PANEL_WIDTH-4, units = 'mm', device = cairo_pdf)
+}
+
 ################################################################################
 # Another overview plot; expand on what we did above
 # This throws all datasets together
@@ -484,6 +527,9 @@ if (F) {
         # determing ordering
         for (negpos in c('pos','neg')){
         
+            # negpos = 'pos'
+            # negpos = 'neg'
+            
             if(is.na(selected_genes_correlated[[negpos]])) {print(paste0('No genes that are ',negpos,' correlated to ',CURRENT_GENE,' '));next}
             
             # negpos='pos'
@@ -517,8 +563,15 @@ if (F) {
             ggsave(filename = paste0(base_dir,'Rplots/customALL',SP_SWITCH,'_6_TableSignCorrelations_',CURRENT_GENE,'_Corr',negpos,'_.pdf'), 
                              plot = p, height=2.5*nrow_effective, width=172, units = 'mm', device=cairo_pdf) # 185/4 || 46*2 || ncol_effective*7.5
             
+            ##########
+            # label:XIRP2corrHeatm
             # Slightly adjusted heatmap in case of more information
-            p=ggplot(df_melted_sel2, aes(x=factor(donor, levels=CUSTOM_PATIENT_ORDER), y=factor(gene_name_short, levels=rev(gene_order_short)), fill=corr)) +
+            df_melted_sel2$donor_beautified = df_melted_sel2$donor 
+            df_melted_sel2$donor_beautified = gsub('^R\\.','HCM.',df_melted_sel2$donor_beautified); df_melted_sel2$donor_beautified=gsub('^H\\.','Ctrl1.',df_melted_sel2$donor_beautified); df_melted_sel2$donor_beautified=gsub('^T\\.','Ctrl2.',df_melted_sel2$donor_beautified)
+            CUSTOM_PATIENT_ORDER_beautified = CUSTOM_PATIENT_ORDER
+            CUSTOM_PATIENT_ORDER_beautified = gsub('^R\\.','HCM.',CUSTOM_PATIENT_ORDER_beautified); CUSTOM_PATIENT_ORDER_beautified=gsub('^H\\.','Ctrl1.',CUSTOM_PATIENT_ORDER_beautified); CUSTOM_PATIENT_ORDER_beautified=gsub('^T\\.','Ctrl2.',CUSTOM_PATIENT_ORDER_beautified)
+            
+            p=ggplot(df_melted_sel2, aes(x=factor(donor_beautified, levels=CUSTOM_PATIENT_ORDER_beautified), y=factor(gene_name_short, levels=rev(gene_order_short)), fill=corr)) +
                 geom_tile(size=.5, width=1, height=1)+
                 geom_point(data=df_melted_sel2[df_melted_sel2$pval.adj.sign, ])+
                 scale_color_manual(values=c('white','black'))+
@@ -536,6 +589,32 @@ if (F) {
             p=p+theme(legend.position='bottom') # p
             ggsave(filename = paste0(base_dir,'Rplots/customALL',SP_SWITCH,'_6_TableSignCorrelations-style2_LEGEND_',CURRENT_GENE,'_.pdf'), 
                              plot = p, height=min(172,3.5*nrow_effective+5), width=2/3*172-4, units = 'mm', device=cairo_pdf) # 185/4 || 46*2 || ncol_effective*7.5
+            
+            ##########
+            # label:NPPAcorrHeatm
+            # Now same with only Rooij data displayed (could have been made earlier, but OK)
+            # Slightly adjusted heatmap in case of more information
+            df_melted_sel2$donor_short = gsub('^.\\.','',df_melted_sel2$donor)
+            CUSTOM_PATIENT_ORDER_short = gsub('^.\\.','',CUSTOM_PATIENT_ORDER)
+            p=ggplot(df_melted_sel2[df_melted_sel2$paper=='R',], aes(x=factor(donor_short, levels=CUSTOM_PATIENT_ORDER_short), y=factor(gene_name_short, levels=rev(gene_order_short)), fill=corr)) +
+                geom_tile(size=.5, width=1, height=1)+
+                geom_point(data=df_melted_sel2[df_melted_sel2$pval.adj.sign&df_melted_sel2$paper=='R', ])+
+                scale_color_manual(values=c('white','black'))+
+                scale_fill_gradientn(colours = rainbow_colors, breaks=seq(-1,1,.5), limits=c(-1,1))+
+                #geom_text(aes(label=round(corr,2)), color='#666666', size=6/.pt)+
+                theme_bw()+ylab(element_blank())+give_better_textsize_plot(8)+
+                ggtitle(paste0('Correlations with ',shorthand_cutname(CURRENT_GENE)))+
+                theme(legend.position = 'none', legend.key.height = unit(2,"mm"),
+                    axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
+                xlab('donor')
+            # p
+            ggsave(filename = paste0(base_dir,'Rplots/','ROOIJonly_RID2l','_6_TableSignCorrelations-style2_',CURRENT_GENE,'_Corr',negpos,'_.pdf'), 
+                             plot = p, height=min(172,3*nrow_effective+20), width=1/3*172-4, units = 'mm', device=cairo_pdf) # 185/4 || 46*2 || ncol_effective*7.5
+            # Now with legend
+            p=p+theme(legend.position='bottom') # p
+            ggsave(filename = paste0(base_dir,'Rplots/','ROOIJonly_RID2l','_6_TableSignCorrelations-style2_LEGEND_',CURRENT_GENE,'_.pdf'), 
+                             plot = p, height=min(172,3.5*nrow_effective+5), width=2/3*172-4, units = 'mm', device=cairo_pdf) # 185/4 || 46*2 || ncol_effective*7.5
+            
             
             # # Less sophisticated heatmap
             # # Note: this isn't 100 rows, because not all top-100 mean genes are also sign. in >1 patient

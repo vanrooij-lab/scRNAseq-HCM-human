@@ -307,6 +307,7 @@ diff_express_clusters_save_results = function(all_markers, run_name, base_dir, t
             
             marker_df = all_markers[[subset_name]]
             
+            # Determine selection for genes up and down resp.
             x_sel      = marker_df[marker_df$p_val_adj<pval_cutoff & 2^(marker_df$avg_log2FC)>FC_cutoff,]
             x_sel_down = marker_df[marker_df$p_val_adj<pval_cutoff & 2^(marker_df$avg_log2FC)<(1/FC_cutoff),]
             

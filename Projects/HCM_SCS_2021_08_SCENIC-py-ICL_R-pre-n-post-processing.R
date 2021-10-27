@@ -180,6 +180,7 @@ upset_df_Rooij = upset_df_Rooij[apply(upset_df_Rooij, 1, any),]
 cellsize=200/nrow(upset_df_Rooij)
 p=pheatmap(1*upset_df_Rooij, fontsize = cellsize*.pt, cluster_cols = F, cluster_rows = T, color = c('white','black'), legend = F, 
            treeheight_row = 0, cellwidth = cellsize*.pt, cellheight = cellsize*.pt, border_color = NA) # .pt = points/mm
+p
 ggsave(filename = paste0(base_dir,'Rplots/',DATASET_NAME,'_7_RegulonsSCENIC_overlapHeatmap.pdf'), 
         plot = p, width=15+ncol(upset_df_Rooij)*cellsize, height=15+nrow(upset_df_Rooij)*cellsize, units='mm') # 184.6/3*2-4
 
@@ -216,6 +217,8 @@ upset_df_NES = data.frame(lapply(names(scenic_regulons_collected_all_patients_li
         return(column_w_score)
     }), row.names=all_regulons)
 colnames(upset_df_NES) = names(scenic_regulons_collected_all_patients_list_regnames)
+rownames(upset_df_NES)=gsub('\\(\\+\\)','',rownames(upset_df_NES))
+
 
 # Make heatmap again
 cellsize=200/nrow(upset_df_NES)
@@ -225,18 +228,58 @@ upset_df_NES_ = Reduce(rbind, rev(lapply(split(upset_df_NES_, apply(upset_df[row
         # X[hclust(dist(X))$order,] # clustering
         X[order(apply(X, 1, mean), decreasing = T),]
     })))
-p=pheatmap(upset_df_NES_, fontsize = cellsize*.pt, cluster_cols = F, cluster_rows = F, legend = F, 
+# beautify colnames
+theDonorNames = colnames(upset_df_NES_)
+theDonorNames=gsub('^R\\.','HCM.',theDonorNames);theDonorNames=gsub('^H\\.','Ctrl1.',theDonorNames);theDonorNames=gsub('^T\\.','Ctrl2.',theDonorNames)
+upset_df_NES_btNames_ = upset_df_NES_
+colnames(upset_df_NES_btNames_)=theDonorNames
+p=pheatmap(upset_df_NES_btNames_, fontsize = cellsize*.pt, cluster_cols = F, cluster_rows = F, legend = F, 
            treeheight_row = 0, cellwidth = cellsize*.pt, cellheight = cellsize*.pt, border_color = NA) # .pt = points/mm
+#p
 ggsave(filename = paste0(base_dir,'Rplots/','ALL.SPcustom','_7_RegulonsSCENIC_overlapHeatmap_NES.pdf'), 
-        plot = p, width=15+ncol(upset_df)*cellsize, height=15+nrow(upset_df)*cellsize, units='mm') # 184.6/3*2-4
+        plot = p, width=5+ncol(upset_df_NES_btNames_)*cellsize, height=5+nrow(upset_df_NES_btNames_)*cellsize, units='mm') # 184.6/3*2-4
+
+# Rather arbitrarily, show 1st 30 rows, just as a zoom
+FIRSTX=70
+MARGIN=10
+cellsize=(100-MARGIN)/FIRSTX
+p=pheatmap(upset_df_NES_btNames_[1:FIRSTX,], fontsize = cellsize*.pt*.9, cluster_cols = F, cluster_rows = F, legend = F, 
+           treeheight_row = 0, cellwidth = cellsize*.pt, cellheight = cellsize*.pt, border_color = NA) # .pt = points/mm
+#p
+ggsave(filename = paste0(base_dir,'Rplots/','ALL.SPcustom','_7_RegulonsSCENIC_overlapHeatmap_NES_first',FIRSTX,'.pdf'), 
+        plot = p, width=MARGIN+ncol(upset_df_NES_btNames_)*cellsize, height=MARGIN+FIRSTX*cellsize, units='mm') # 184.6/3*2-4
+
 
 # Now also Rooij-specific again
 upset_df_NES_Rooij_ = upset_df_NES_[,c(paste0('R.P',1:5))]
-upset_df_NES_Rooij_ = upset_df_NES_Rooij_[apply(upset_df_NES_Rooij_, 1, any),]
-p=pheatmap(upset_df_NES_Rooij_, fontsize = cellsize*.pt, cluster_cols = F, cluster_rows = F, legend = F, 
+colnames(upset_df_NES_Rooij_) = paste0('P',1:5)
+upset_df_NES_Rooij_ = upset_df_NES_Rooij_[apply(upset_df_NES_Rooij_>0, 1, any),]
+
+# Create index to order the regulons (note that it's already sorted, but for all patients, including other data)
+nr_patients_w_R = apply(upset_df_NES_Rooij_>0,1,sum)
+mean_NES_score  = apply(upset_df_NES_Rooij_,1,mean)
+custom_order = unlist(lapply(5:1, function(x) {theorder=order(mean_NES_score, decreasing = T); theorder[theorder %in% which(nr_patients_w_R==x)]}))
+# alternative 2
+custom_order = order(mean_NES_score, decreasing = T)
+# perform sort
+upset_df_NES_Rooij_ordered_ = upset_df_NES_Rooij_[custom_order,]
+
+# Heatmap
+p=pheatmap(upset_df_NES_Rooij_ordered_, fontsize = cellsize*.pt, cluster_cols = F, cluster_rows = F, legend = F, 
            treeheight_row = 0, cellwidth = cellsize*.pt, cellheight = cellsize*.pt, border_color = NA) # .pt = points/mm
+p
 ggsave(filename = paste0(base_dir,'Rplots/',DATASET_NAME,'_7_RegulonsSCENIC_overlapHeatmap_NES.pdf'), 
-        plot = p, width=15+ncol(upset_df_NES_Rooij_)*cellsize, height=15+nrow(upset_df_NES_Rooij_)*cellsize, units='mm') # 184.6/3*2-4
+        plot = p, width=15+ncol(upset_df_NES_Rooij_)*cellsize, height=15+nrow(upset_df_NES_Rooij_)*cellsize, units='mm', device = cairo_pdf) # 184.6/3*2-4
+
+# Now again Rooij-specific, but only regulons in >1 patient, and beautified names
+eff_rows = nrow(upset_df_NES_Rooij_ordered_[current_selection,]); eff_cols=ncol(upset_df_NES_Rooij_ordered_[current_selection,])
+cellsize=200/eff_rows
+current_selection = apply(upset_df_NES_Rooij_ordered_>0,1,sum)>1
+psel=pheatmap(upset_df_NES_Rooij_ordered_[current_selection,], fontsize = cellsize*.pt, cluster_cols = F, cluster_rows = F, legend = F, 
+           treeheight_row = 0, cellwidth = cellsize*.pt, cellheight = cellsize*.pt, border_color = NA, device = cairo_pdf) # .pt = points/mm
+psel
+ggsave(filename = paste0(base_dir,'Rplots/',DATASET_NAME,'_7_RegulonsSCENIC_overlapHeatmap_NES_selMoreThan1Pat.pdf'), 
+        plot = psel, width=15+eff_cols*cellsize, height=15+eff_rows*cellsize, units='mm', device = cairo_pdf) # 184.6/3*2-4
 
 
 ################################################################################
@@ -300,15 +343,15 @@ openxlsx::write.xlsx(x= SCENIC_patient_counts_overview, file = paste0(base_dir,'
 NR_PATIENTS_SCEN_FILTER = 3
 
 # Create some Rooij specific info
-upset_df_NES_ROOIJonly = upset_df_NES[,paste0('R.P',1:5)]
+# --> Use "upset_df_NES_Rooij_ordered_" for this.
 
-current_selection_regulons_SCENIC_Rooij = rownames(upset_df_Rooij[apply(upset_df_Rooij, 1, sum)>=NR_PATIENTS_SCEN_FILTER,])
+current_selection_regulons_SCENIC_Rooij = rownames(upset_df_NES_Rooij_ordered_[apply(upset_df_NES_Rooij_ordered_>0, 1, sum)>=NR_PATIENTS_SCEN_FILTER,])
 # potential other selections:
-rownames(upset_df[apply(upset_df, 1, sum)>=5,])
-rownames(upset_df[apply(upset_df, 1, sum)>=3,])
-
+rownames(upset_df_NES_Rooij_ordered_[apply(upset_df_NES_Rooij_ordered_>0, 1, sum)>=5,])
+rownames(upset_df_NES_Rooij_ordered_[apply(upset_df_NES_Rooij_ordered_>0, 1, sum)>=3,])
+    
 # Export this selection, with patient count overview
-SCENIC_regulons_Rooij_selection_overview = cbind(upset_df_Rooij, patient_sum_df[rownames(upset_df_Rooij),])
+SCENIC_regulons_Rooij_selection_overview = cbind(upset_df_NES_Rooij_ordered_, patient_sum_df[paste0(rownames(upset_df_NES_Rooij_ordered_),'(+)'),])
 openxlsx::write.xlsx(x= SCENIC_regulons_Rooij_selection_overview, file = paste0(base_dir,'Rplots/','ALL.SPcustom','_SCENIC_overview_Rooij_regulons.xlsx'), overwrite = T)
 
 # Find out gene overlap between those ones
@@ -349,14 +392,15 @@ overlapping_scores_regulons_df_Rooij$gene = factor(overlapping_scores_regulons_d
 overlapping_scores_regulons_df_Rooij$NES = apply(upset_df_NES_ROOIJonly, 1, function(x) {median(x[x>0&!is.na(x)])})[overlapping_scores_regulons_df_Rooij$gene]
 
 # Now show gene overlap between those regulons that were identified in the separate patients 
-p=ggplot(overlapping_scores_regulons_df_Rooij, aes(x=gene, y=overlap))+
+overlapping_scores_regulons_df_Rooij$gene_ = factor(gsub('\\(\\+\\)','',overlapping_scores_regulons_df_Rooij$gene), levels=(gsub('\\(\\+\\)','',levels(overlapping_scores_regulons_df_Rooij$gene))))
+p=ggplot(overlapping_scores_regulons_df_Rooij, aes(x=gene_, y=overlap))+
     geom_bar(stat='identity')+coord_flip()+theme_bw()+give_better_textsize_plot(8)+ylim(c(0,1))+ylab('Fraction identical genes\nbetween patients')+xlab('Regulon')
 # p
 ggsave(filename = paste0(base_dir,'Rplots/',DATASET_NAME,'_7_RegulonsSCENIC_MemberGeneConsistencyPatients.pdf'), 
         plot = p, width=50, height=8/.pt*nrow(overlapping_scores_regulons_df_Rooij), units='mm', device=cairo_pdf) # 184.6/3*2-4
 
 # Now including NES color
-p=ggplot(overlapping_scores_regulons_df_Rooij, aes(x=gene, y=overlap, fill=NES))+
+p=ggplot(overlapping_scores_regulons_df_Rooij, aes(x=gene_, y=overlap, fill=NES))+
     geom_bar(stat='identity')+coord_flip()+theme_bw()+give_better_textsize_plot(7)+
     ylab('Fraction identical\ngenes between\npatients')+xlab('Regulon')+
     # scale_fill_gradientn(colours = rainbow_colors)+
@@ -388,11 +432,19 @@ SCENIC_regulons_core_genes_sel = SCENIC_regulons_core_genes[sapply(SCENIC_regulo
     # TFOI_list = c('CREB3L1', 'HLF', 'IRF6', 'KLF15', 'NFYB', 'NPAS2', 'NR1H2', 'SMAD4', 'SRF', 'STAT1', 'USF2', 'ZBED1', 'ZBTB7A', 'GATA4')
     # TFOI_list[paste0(TFOI_list,'(+)') %in% names(SCENIC_regulons_core_genes_sel)]
 
-regulon_overlap_heatmap(pooled_regulons = SCENIC_regulons_core_genes_sel, base_dir = base_dir, run_name = 'SCENIC_regulons_overlap_core_sel', MYTREECUTTINGHEIGHT = 1.8, myfontsize = 8, makeallheatmaps=T)
-    
 length(SCENIC_regulons_core_genes_sel)
 
 save(list='SCENIC_regulons_core_genes_sel', file=paste0(base_dir, 'Rdata/SCENIC_regulons_core_genes_sel.Rdata'))
+
+
+################################################################################
+# Additionally, also show overlap inbetween regulons
+
+SCENIC_regulons_core_genes_sel_ = SCENIC_regulons_core_genes_sel
+names(SCENIC_regulons_core_genes_sel_) = gsub('\\(\\+\\)','',names(SCENIC_regulons_core_genes_sel_))
+regulon_overlap_heatmap(pooled_regulons = SCENIC_regulons_core_genes_sel_, base_dir = base_dir, run_name = 'SCENIC_regulons_overlap_core_sel', 
+                        MYTREECUTTINGHEIGHT = 1.8, myfontsize = 8, makeallheatmaps=T)
+    
 
 ################################################################################
 # Create lists of top genes for the selected core regulons
@@ -502,7 +554,9 @@ names(SCENIC_reg_top_genes_sorted_full) = gsub('\\([+-]\\)', '', names(SCENIC_re
 
 
 # Save the list of SCENIC regulon genes
+# TO DO: Not sure why I chose the name "full" here, I use selection anyways
 save(x='SCENIC_reg_top_genes_sorted_full', file=paste0(base_dir,'Rdata/',DATASET_NAME,'__SCENIC_reg_top_genes_sorted_full.Rdata'))
+    # load(file=paste0(base_dir,'Rdata/',DATASET_NAME,'__SCENIC_reg_top_genes_sorted_full.Rdata')) # SCENIC_reg_top_genes_sorted_full
 
 #####
 
@@ -574,17 +628,17 @@ if (F) {
     
     # X=shorthand_cutname(core_regulons$s.R.4)
     
-    plotlist=lapply(1:length(SCENIC_regulons_core_genes),
+    plotlist=lapply(1:length(SCENIC_reg_top_genes_sorted_full),
         function(X) {shorthand_seurat_custom_expr(seuratObject = current_analysis[[DATASET_NAME]], 
-                                                    gene_of_interest = SCENIC_regulons_core_genes[[X]], textsize=6, pointsize=.5, 
-                                                    custom_title = gsub(pattern = '\\(\\+\\)',replacement = '',x = names(SCENIC_regulons_core_genes)[X]), mymargin = .5, zscore = T)})
-    plots_per_row=round((172/2-4)/25)
-    n_rows=length(plotlist)/plots_per_row
-    p=wrap_plots(plotlist, nrow = ceiling(n_rows))
+                                                    gene_of_interest = SCENIC_reg_top_genes_sorted_full[[X]], textsize=6, pointsize=.5, 
+                                                    custom_title = gsub(pattern = '\\(\\+\\)',replacement = '',x = names(SCENIC_reg_top_genes_sorted_full)[X]), mymargin = .5, zscore = T)})
+    #plots_per_row=round((172/2-4)/25)
+    #n_rows=ceiling(length(plotlist)/plots_per_row)
+    p=wrap_plots(plotlist, nrow = 5)
     
     #p
     ggsave(filename = paste0(base_dir,'Rplots/',DATASET_NAME,'_7_RegulonsSCENIC_UMAP_compositeExpr.pdf'), 
-        plot = p, width=20*plots_per_row, height=20*n_rows, units='mm', device=cairo_pdf) # 184.6/3*2-4
+        plot = p, width=90, height=90, units='mm', device=cairo_pdf) # 184.6/3*2-4
     ggsave(filename = paste0(base_dir,'Rplots/',DATASET_NAME,'_7_RegulonsSCENIC_UMAP_compositeExpr-v2.pdf'), 
         plot = p, width=172/2-4, height=20*n_rows, units='mm', device=cairo_pdf) # 184.6/3*2-4
     

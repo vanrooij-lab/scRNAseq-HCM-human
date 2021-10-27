@@ -38,6 +38,13 @@ if (!exists('current_analysis')) {current_analysis = list()}
 current_analysis[[DATASET_NAME]] =
     LoadH5Seurat(file = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_',DATASET_NAME,'.h5seurat'))
 
+# load the clExtended manually, if desired
+if (F) {
+  ANALYSIS_NAME_clExtended = 'ROOIJonly_RID2l_clExtended'
+  current_analysis[[ANALYSIS_NAME_clExtended]] =
+    LoadH5Seurat(file = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_',ANALYSIS_NAME_clExtended,'.h5seurat'))
+}
+
 ####################################################################################################
 # Create different number of clusters
 
@@ -224,8 +231,8 @@ p=ggplot(data.frame( cluster = Idents(mySeuratObject),
     #theme(legend.position=c(.99,.99), legend.justification = c(1,1), legend.key.size = unit(3, "mm"))
     # ylim(c(0,mymaxy)); p
 # p
-ggsave(filename = paste0(base_dir,'Rplots/',run_name,'_5_Barplot_PatientCluster_ClExt_distr.pdf'), 
-    plot = p, height=40, width=42, units='mm')
+ggsave(filename = paste0(base_dir,'Rplots/',run_name,'_5_Barplot_PatientCluster_ClExt_distr_cstm.pdf'), 
+    plot = p, height=PANEL_HEIGHT, width=PANEL_WIDTH-4, units='mm', device = cairo_pdf)
 
 
 ####################################################################################################

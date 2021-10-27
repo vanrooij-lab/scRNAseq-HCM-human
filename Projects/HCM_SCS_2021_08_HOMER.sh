@@ -5,7 +5,7 @@ dir="/Users/m.wehrens/Data/_2019_02_HCM_SCS/2021_HPC_analysis.3/Homer/REGULONS"
 
 for i in {1..6}
 do
-   { findMotifs.pl $dir/ROOIJonly_RID2l_HOMER_core_regulons_s.R.$i.txt human $dir/output_s.R.$i -bg $dir/ROOIJonly_RID2l_HOMER_backgroundGenes.txt ;
+   { findMotifs.pl $dir/ROOIJonly_RID2l_HOMER_core_regulons_s.R.$i.txt human $dir/output_s.R.$i -bg $dir/ROOIJonly_RID2l_HOMER_backgroundGenes_0.05.txt ;
     echo "Regulon $i done"} &
 done
 

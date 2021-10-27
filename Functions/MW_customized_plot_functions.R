@@ -16,6 +16,17 @@ give_better_textsize_plot <- function(TEXTSIZE, myFamily='Arial'){
   }
 }
 
+theme_void_extramw_removeTickText = function() {
+  
+  theme(axis.title.x=element_blank(),
+                     axis.text.x=element_blank(),
+                     axis.ticks.x=element_blank(),
+                     axis.title.y=element_blank(),
+                     axis.text.y=element_blank(),
+                     axis.ticks.y=element_blank())
+                     
+}
+
 
 
 # Violin plot
@@ -106,7 +117,8 @@ shorthand_cutname_table = function(gene_table, PART1OR2=2) {
 ################################################################################
 
 # function to plot expression of a gene
-shorthand_seurat_custom_expr = function(seuratObject, gene_of_interest, textsize=8, pointsize=1, mypercentile=0.03, custom_title=NULL,mymargin=0.1,zscore=F,myFamily='Arial') {
+# textsize=8; pointsize=1; mypercentile=0.03; custom_title=NULL;mymargin=0.1;zscore=F;myFamily='Arial'; add_box=F
+shorthand_seurat_custom_expr = function(seuratObject, gene_of_interest, textsize=8, pointsize=1, mypercentile=0.03, custom_title=NULL,mymargin=0.1,zscore=F,myFamily='Arial', add_box=F) {
     
     if (length(gene_of_interest)>1){
       print('You gave >1 genes, assuming you want composite expression.')  
@@ -143,17 +155,26 @@ shorthand_seurat_custom_expr = function(seuratObject, gene_of_interest, textsize
     expr_limits=calc_limits(current_expr, percentile = mypercentile)
     # expr_limits
     
-    ggplot(data.frame(UMAP_1=seuratObject@reductions$umap@cell.embeddings[,1],
+    if (add_box) {boxpad=.1} else {boxpad=0}
+    p=ggplot(data.frame(UMAP_1=seuratObject@reductions$umap@cell.embeddings[,1],
                       UMAP_2=seuratObject@reductions$umap@cell.embeddings[,2],
                       expr=current_expr),
             mapping = aes(x=UMAP_1, y=UMAP_2, color=expr))+
         geom_point(size = pointsize, stroke = 0, shape = 16)+
         scale_color_gradientn(colours=rainbow_colors, limits=c(0,expr_limits[2]), oob=squish)+
         #+ggtitle(gene_of_interest)+
-        annotate("text", -Inf, Inf, label = mytitle, hjust = 0, vjust = 1, size=textsize / .pt, family = myFamily)+
+        annotate("text", -Inf, Inf, label = mytitle, hjust = 0-boxpad, vjust = 1+textsize*boxpad, size=textsize / .pt, family = myFamily)+
         theme_void()+
         #give_better_textsize_plot(textsize)+
         theme(legend.position = 'none', plot.margin = margin(mymargin,mymargin,0,0,'mm'))
+    
+    # p
+    
+    if (add_box) {
+      p=p+theme(panel.border = element_rect(colour = "black", fill=NA, size=.5))
+    }
+    
+    return(p)
         
         
 }
@@ -306,7 +327,7 @@ shorthand_custom_boxplot = function(seuratObject_list, gene_lists, seuratObjectN
 
 ##########
 
-shorthand_custom_boxplot_perpatient = function(seuratObject_list, gene_lists, seuratObjectNameToTake, group.by='annotation_paper_fct', topX=10, mylimits=.01, aggr.by='annotation_patient_fct') {
+shorthand_custom_boxplot_perpatient = function(seuratObject_list, gene_lists, seuratObjectNameToTake, group.by='annotation_paper_fct', topX=10, mylimits=.01, aggr.by='annotation_patient_fct',mySize=NULL, myFontSize=6) {
     
     for (current_list_name in names(gene_lists)) {
         
@@ -347,7 +368,7 @@ shorthand_custom_boxplot_perpatient = function(seuratObject_list, gene_lists, se
             geom_boxplot(position=position_dodge(width=1), outlier.size = .1, lwd=.25, alpha=.5)+
             # geom_point(data=df_agr, stat='identity', position=position_dodge(width=1), shape=23, size=.5)+
             xlab('Gene')+ylab('Expression')+
-            theme_bw()+give_better_textsize_plot(6)+
+            theme_bw()+give_better_textsize_plot(myFontSize)+
             theme(legend.position = 'none', legend.key.size = unit(3, "mm"), axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
                   panel.spacing = unit(c(0),'mm'))+
             #ylim(c(min(df$expression),mylims[2]))
@@ -363,7 +384,7 @@ shorthand_custom_boxplot_perpatient = function(seuratObject_list, gene_lists, se
             geom_boxplot(outlier.size = .1, lwd=.25, alpha=.1)+
             geom_jitter(size=.25, aes_string(color=group.by),position=position_dodge(width=1))+
             xlab(element_blank())+ylab('Expression (z-score)')+
-            theme_bw()+give_better_textsize_plot(6)+
+            theme_bw()+give_better_textsize_plot(myFontSize)+
             theme(legend.position = 'none', legend.key.size = unit(3, "mm"), axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
                   panel.spacing = unit(c(0),'mm'))+
             labs(fill = element_blank())+
@@ -371,7 +392,11 @@ shorthand_custom_boxplot_perpatient = function(seuratObject_list, gene_lists, se
         
         ggsave(filename = paste0(base_dir, 'Rplots/', seuratObjectNameToTake, '_9_customBoxplotGenes-PerPat-v2_', current_list_name,'.pdf'), plot = p,
                height=172/6, width=172/3*2/10*length(current_genes), units='mm', device=cairo_pdf)
-        
+        if (!is.null(mySize)) {
+          ggsave(filename = paste0(base_dir, 'Rplots/', seuratObjectNameToTake, '_9_customBoxplotGenes-PerPat-v2_', current_list_name,'_customSize.pdf'), plot = p,
+                 height=mySize[2], width=mySize[1], units='mm', device=cairo_pdf)
+        }
+          
         # Now also save the data for stat. analysis
         # save(list = 'df_agr', file=paste0(base_dir, 'Rplots/', seuratObjectNameToTake, '_9_customBoxplotGenes-PerPat-data_', current_list_name,'.Rdata'))
         openxlsx::write.xlsx(x = df_agr, file=paste0(base_dir, 'Rplots/', seuratObjectNameToTake, '_9_customBoxplotGenes-PerPat-data_', current_list_name,'.xlsx'), overwrite = T)
@@ -380,12 +405,13 @@ shorthand_custom_boxplot_perpatient = function(seuratObject_list, gene_lists, se
 
 ##########
 
-
+# zscore=T; myfontsize=6; custom_legend=NULL; mymargin=2; mypointsize=.25
 shorthand_custom_compositeplot = function(seuratObject_list, gene_lists, seuratObjectNameToTake, group.by='annotation_paper_fct', group.by2=NULL, zscore=T, myfontsize=6, custom_legend=NULL, mymargin=2, mypointsize=.25) {
     
   print('Note: this function assumes input names are long format.')
   
     p_violin_list=list(); p_bar_list = list(); p_bar_list_g2 = list(); p_boxplot_list = list()
+    df_agr_list = list()
     for (current_list_name in names(gene_lists)) {
         
         # Overall mean
@@ -432,7 +458,12 @@ shorthand_custom_compositeplot = function(seuratObject_list, gene_lists, seuratO
           agr_list=list(df[[group.by]]); names(agr_list) = c(group.by)
         }
         df_agr = aggregate(x = list(expression=df$expression), by = agr_list, FUN = mean)
+        df_agr$set_name = current_list_name
+        df_agr_list[[current_list_name]] = df_agr
         
+        # Now export excel file, to do statistics (Note: later will also export joined one)
+        openxlsx::write.xlsx(x = df_agr, file = paste0(base_dir, 'Rplots/', seuratObjectNameToTake, '_9_customSummaryMean_', current_list_name,'_for_',group.by,'_splt2',group.by2,'-data.xlsx'), overwrite = T)
+
         # Abbreviate dataset names
         # abbreviations=c('vRooij'='R', 'Hu'='H', 'Teichmann'='T')
         # if (group.by=='annotation_paper_str') {
@@ -448,7 +479,7 @@ shorthand_custom_compositeplot = function(seuratObject_list, gene_lists, seuratO
             # theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
             xlab(element_blank())+give_better_textsize_plot(myfontsize)+
             ylab('Expression')
-        p
+        # p
         p_violin_list[[current_list_name]]=p
         ggsave(filename = paste0(base_dir, 'Rplots/', seuratObjectNameToTake, '_9_customSummaryComposite_', current_list_name,'_for_',group.by,'.pdf'), plot = p,
                height=26.5, width=26.5, units='mm', device=cairo_pdf)
@@ -478,7 +509,7 @@ shorthand_custom_compositeplot = function(seuratObject_list, gene_lists, seuratO
             #ylim(c(min(df$expression),mylims[2]))
             #ylim(c(max(-3,mylims[1]),min(3,mylims[2])))
         p_bar_list[[current_list_name]]=p
-        p 
+        # p 
         
         ggsave(filename = paste0(base_dir, 'Rplots/', seuratObjectNameToTake, '_9_customSummaryMean_', current_list_name,'_for_',group.by,'.pdf'), plot = p,
                height=26.5, width=26.5, units='mm', device=cairo_pdf)
@@ -512,6 +543,10 @@ shorthand_custom_compositeplot = function(seuratObject_list, gene_lists, seuratO
         }
         
     }
+    
+    # Now export all composite data
+    df_agr_combined = Reduce(f = rbind, df_agr_list)
+    openxlsx::write.xlsx(x = df_agr_combined, file = paste0(base_dir, 'Rplots/', seuratObjectNameToTake, '_9_customSummaryMean_ALL-', current_list_name,'-etc_for_',group.by,'_splt2',group.by2,'-data.xlsx'), overwrite = T)
     
     return(list(p_violin_list=p_violin_list, p_bar_list=p_bar_list, p_bar_list_g2=p_bar_list_g2, p_boxplot_list=p_boxplot_list))
         
