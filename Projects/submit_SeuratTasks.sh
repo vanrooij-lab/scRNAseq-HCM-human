@@ -257,7 +257,8 @@ script_name=run_SeuratRegulonTask.sh
 #last_jobid=$(sbatch --dependency=afterany:${jobid_Hu_Cl} --parsable --output=slurm-${commands}-%x.%j.out --job-name="${commands}" -c ${processors} --time=2-00:00:00 --mem=${mem} --export=ALL,commands="${commands}" ${script_dir}/${script_name})
 last_jobid=$(sbatch --parsable --output=slurm-${commands}-%x.%j.out --job-name="${commands}" -c ${processors} --time=2-00:00:00 --mem=${mem} --export=ALL,commands="${commands}" ${script_dir}/${script_name})
 
-# Regulons for Teichmann
+# (INCLUDING NON-SEPTAL, DON'T USE)
+# Regulons for Teichmann 
 processors=14
 commands="run_regulon_step1-dataset=TEICHMANNonly_RID2l-CORES=${processors}"
 mem=255G

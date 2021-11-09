@@ -1414,13 +1414,14 @@ if ('more_custom_plots' %in% desired_command) {
         load(paste0(base_dir,'Rdata/gene_lists_customcorrelated__Rooijbased.Rdata'))
         
         # Re-organize lists
+        # Now added also "original" gene of interest itself to beginning of lists
         gene_lists_customcorrelated_reorganized=list()
         for (gene in names(gene_lists_customcorrelated)) {
             if (!is.na(gene_lists_customcorrelated[[gene]]$pos)) {
-                gene_lists_customcorrelated_reorganized[[paste0('posCorrWith_',gene)]] = gene_lists_customcorrelated[[gene]]$pos
+                gene_lists_customcorrelated_reorganized[[paste0('posCorrWith_',gene)]] = c(gene, gene_lists_customcorrelated[[gene]]$pos)
             }
             if (!is.na(gene_lists_customcorrelated[[gene]]$neg)) {
-                gene_lists_customcorrelated_reorganized[[paste0('negCorrWith_',gene)]] = gene_lists_customcorrelated[[gene]]$neg
+                gene_lists_customcorrelated_reorganized[[paste0('negCorrWith_',gene)]] = c(gene, gene_lists_customcorrelated[[gene]]$neg)
             }
         }
     
@@ -1435,6 +1436,65 @@ if ('more_custom_plots' %in% desired_command) {
         
     }
     
+    
+    # ROOIJ CLUSTERS
+    # Now also check whether the genes in the clusters are enriched in direct comparison of three samples
+    # 
+    if (!(  file.exists(paste0(base_dir,'Rdata/enriched_genes_lists_clusters_ROOIJ__ROOIJonly_RID2l_clExtended.Rdata'))  )) {
+        print('Gene lists custom correlations file doesnt exist yet..') 
+    } else { 
+        load(paste0(base_dir,'Rdata/enriched_genes_lists_clusters_ROOIJ__ROOIJonly_RID2l_clExtended.Rdata')) # enriched_genes_lists_clusters_ROOIJ
+    
+        enriched_genes_lists_clusters_ROOIJ_=enriched_genes_lists_clusters_ROOIJ
+        names(enriched_genes_lists_clusters_ROOIJ_) = paste0('Cl.',names(enriched_genes_lists_clusters_ROOIJ))
+        
+        # per-patient plots
+        # Summary plots
+        # Note: these are not so useful, since the enrichment is really per cluster !
+        p_lists=shorthand_custom_compositeplot(seuratObject_list=current_analysis, 
+                                 gene_lists=enriched_genes_lists_clusters_ROOIJ_, 
+                                 seuratObjectNameToTake=CURRENT_RUNNAME, 
+                                 group.by='annotation_paper_oneletter_fct', 
+                                 group.by2='annotation_patient_fct',
+                                 zscore=T) 
+        p=wrap_plots(p_lists$p_violin_list, nrow=1)
+        ggsave(filename = paste0(base_dir, 'Rplots/', CURRENT_RUNNAME, '_9_customCOMPOSITE_CL.pdf'), plot = p,
+               height=(PANEL_WIDTH*3-4)/length(enriched_genes_lists_clusters_ROOIJ_), width=(PANEL_WIDTH*3-4), units='mm', device=cairo_pdf)
+        
+        p=wrap_plots(p_lists$p_bar_list_g2, nrow=1)
+        ggsave(filename = paste0(base_dir, 'Rplots/', CURRENT_RUNNAME, '_9_customCOMPOSITE_CL_g2.pdf'), plot = p,
+               height=(PANEL_WIDTH*3-4)/length(enriched_genes_lists_clusters_ROOIJ_), width=(PANEL_WIDTH*3-4), units='mm', device=cairo_pdf)
+        
+        # core regulon expr on UMAPs
+        ZOOM_FACTOR=4
+        p_list_clusters = lapply(names(enriched_genes_lists_clusters_ROOIJ_), function(cl_name) {
+                    shorthand_seurat_custom_expr(seuratObject = current_analysis[[CURRENT_RUNNAME]], 
+                                     gene_of_interest = enriched_genes_lists_clusters_ROOIJ_[[cl_name]],
+                                     textsize = 6*ZOOM_FACTOR, pointsize = .5, custom_title = cl_name, mymargin = .5*ZOOM_FACTOR, zscore = T) 
+                                        # note: text size twice as large, because i save at zoom 200%, as trick to reduce point size
+            })
+        # p_clusters=wrap_plots(p_list_clusters, nrow=1)
+        # ggsave(filename = paste0(base_dir, 'Rplots/', CURRENT_RUNNAME, '_9_customUMAPs_CL.pdf'), plot = p_clusters,
+        #        height=(PANEL_WIDTH*3-4)/5, width=(PANEL_WIDTH*3-4), units='mm', device=cairo_pdf)    
+        # ggsave(filename = paste0(base_dir, 'Rplots/', CURRENT_RUNNAME, '_9_customUMAPs_CL.png'), plot = p_clusters,
+        #        height=(PANEL_WIDTH*3-4)/5, width=(PANEL_WIDTH*3-4), units='mm', dpi=1200)    
+        p_clusters=wrap_plots(p_list_clusters, nrow=2)
+        ggsave(filename = paste0(base_dir, 'Rplots/', CURRENT_RUNNAME, '_9_customUMAPs_CL_v2.png'), plot = p_clusters,
+               height=(PANEL_WIDTH-4)*2/3*ZOOM_FACTOR, width=(PANEL_WIDTH-4)*ZOOM_FACTOR, units='mm', dpi=1200)    
+        ggsave(filename = paste0(base_dir, 'Rplots/', CURRENT_RUNNAME, '_9_customUMAPs_CL_v2.pdf'), plot = p_clusters,
+               height=(PANEL_WIDTH-4)*2/3*ZOOM_FACTOR, width=(PANEL_WIDTH-4)*ZOOM_FACTOR, units='mm', device=cairo_pdf)
+        # long aspect ratio
+        p_clusters=wrap_plots(p_list_clusters, nrow=1)
+        ggsave(filename = paste0(base_dir, 'Rplots/', CURRENT_RUNNAME, '_9_customUMAPs_CL_v3l.png'), plot = p_clusters,
+               height=(3*PANEL_WIDTH-4)/6*ZOOM_FACTOR, width=(3*PANEL_WIDTH-4)*ZOOM_FACTOR, units='mm', dpi=1200)    
+        ggsave(filename = paste0(base_dir, 'Rplots/', CURRENT_RUNNAME, '_9_customUMAPs_CL_v3l.pdf'), plot = p_clusters,
+               height=(3*PANEL_WIDTH-4)/6*ZOOM_FACTOR, width=(3*PANEL_WIDTH-4)*ZOOM_FACTOR, units='mm', device=cairo_pdf)    
+        
+        # Show plot per cluster
+        # current_analysis[[CURRENT_RUNNAME]]$
+        # (..) unfinished
+        
+    }    
     
 }
 

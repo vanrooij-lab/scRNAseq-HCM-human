@@ -27,5 +27,11 @@ ggsave(plot = p,filename = paste0(base_dir, 'Rplots/','ALL.SP_RID2l','_9_custom_
     #   width = 172/3-4, height= 172/3-4, units='mm', device=cairo_pdf)
     width = 172/3-4, height= 172/3+8/.pt, units='mm', device=cairo_pdf)
 
+################################################################################
+# 
+# TO DO: could later also make violin plots with the van Rooij clusters that are
+# projected on the combined data. But would need to think about how to best 
+# implement this.
+
 
 

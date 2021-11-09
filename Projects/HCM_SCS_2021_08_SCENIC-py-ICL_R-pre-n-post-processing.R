@@ -171,9 +171,10 @@ cellsize=200/nrow(upset_df)
 p=pheatmap(1*upset_df, fontsize = cellsize*.pt, cluster_cols = F, cluster_rows = T, color = c('white','black'), legend = F, 
            treeheight_row = 0, cellwidth = cellsize*.pt, cellheight = cellsize*.pt, border_color = NA) # .pt = points/mm
 p
-ggsave(filename = paste0(base_dir,'Rplots/ALL.SPcustom_7_RegulonsSCENIC_overlapHeatmap.pdf'), 
+if (!exists('NOSAVE')) { ggsave(filename = paste0(base_dir,'Rplots/ALL.SPcustom_7_RegulonsSCENIC_overlapHeatmap.pdf'), 
         plot = p, width=15+ncol(upset_df)*cellsize, height=15+nrow(upset_df)*cellsize, units='mm') # 184.6/3*2-4
-    
+}
+
 # Now Rooij-specific 
 upset_df_Rooij = upset_df[,c(paste0('R.P',1:5))]
 upset_df_Rooij = upset_df_Rooij[apply(upset_df_Rooij, 1, any),]
@@ -181,8 +182,13 @@ cellsize=200/nrow(upset_df_Rooij)
 p=pheatmap(1*upset_df_Rooij, fontsize = cellsize*.pt, cluster_cols = F, cluster_rows = T, color = c('white','black'), legend = F, 
            treeheight_row = 0, cellwidth = cellsize*.pt, cellheight = cellsize*.pt, border_color = NA) # .pt = points/mm
 p
-ggsave(filename = paste0(base_dir,'Rplots/',DATASET_NAME,'_7_RegulonsSCENIC_overlapHeatmap.pdf'), 
+if (!exists('NOSAVE')) { ggsave(filename = paste0(base_dir,'Rplots/',DATASET_NAME,'_7_RegulonsSCENIC_overlapHeatmap.pdf'), 
         plot = p, width=15+ncol(upset_df_Rooij)*cellsize, height=15+nrow(upset_df_Rooij)*cellsize, units='mm') # 184.6/3*2-4
+}
+
+# Specific reviewer's question: are there regulons specific to MYBPC3 patients?
+# At least no P2 & P4 specific ones (undisclosed/untested patients might also carry MYBPC3 mutations)
+upset_df_Rooij[upset_df_Rooij$R.P2&upset_df_Rooij$R.P4&(!upset_df_Rooij$R.P1)&(!upset_df_Rooij$R.P3)&(!upset_df_Rooij$R.P5),]
 
 
 ################################################################################
@@ -236,18 +242,28 @@ colnames(upset_df_NES_btNames_)=theDonorNames
 p=pheatmap(upset_df_NES_btNames_, fontsize = cellsize*.pt, cluster_cols = F, cluster_rows = F, legend = F, 
            treeheight_row = 0, cellwidth = cellsize*.pt, cellheight = cellsize*.pt, border_color = NA) # .pt = points/mm
 #p
-ggsave(filename = paste0(base_dir,'Rplots/','ALL.SPcustom','_7_RegulonsSCENIC_overlapHeatmap_NES.pdf'), 
+if (!exists('NOSAVE')) { ggsave(filename = paste0(base_dir,'Rplots/','ALL.SPcustom','_7_RegulonsSCENIC_overlapHeatmap_NES.pdf'), 
         plot = p, width=5+ncol(upset_df_NES_btNames_)*cellsize, height=5+nrow(upset_df_NES_btNames_)*cellsize, units='mm') # 184.6/3*2-4
+}
 
-# Rather arbitrarily, show 1st 30 rows, just as a zoom
+# Rather arbitrarily, show 1st X rows, just as a zoom
 FIRSTX=70
 MARGIN=10
 cellsize=(100-MARGIN)/FIRSTX
 p=pheatmap(upset_df_NES_btNames_[1:FIRSTX,], fontsize = cellsize*.pt*.9, cluster_cols = F, cluster_rows = F, legend = F, 
            treeheight_row = 0, cellwidth = cellsize*.pt, cellheight = cellsize*.pt, border_color = NA) # .pt = points/mm
 #p
-ggsave(filename = paste0(base_dir,'Rplots/','ALL.SPcustom','_7_RegulonsSCENIC_overlapHeatmap_NES_first',FIRSTX,'.pdf'), 
+if (!exists('NOSAVE')) { ggsave(filename = paste0(base_dir,'Rplots/','ALL.SPcustom','_7_RegulonsSCENIC_overlapHeatmap_NES_first',FIRSTX,'.pdf'), 
         plot = p, width=MARGIN+ncol(upset_df_NES_btNames_)*cellsize, height=MARGIN+FIRSTX*cellsize, units='mm') # 184.6/3*2-4
+}
+# Same but rotate 90 deg
+p=pheatmap(t(upset_df_NES_btNames_[1:FIRSTX,]), fontsize = cellsize*.pt*.9, cluster_cols = F, cluster_rows = F, legend = F, 
+           treeheight_row = 0, cellwidth = cellsize*.pt, cellheight = cellsize*.pt, border_color = NA, angle_col = '90') # .pt = points/mm
+p
+if (!exists('NOSAVE')) { ggsave(filename = paste0(base_dir,'Rplots/','ALL.SPcustom','_7_RegulonsSCENIC_overlapHeatmap_NES_first',FIRSTX,'-rotated.pdf'), 
+        plot = p, height=MARGIN+ncol(upset_df_NES_btNames_)*cellsize, width=MARGIN+FIRSTX*cellsize, units='mm') # 184.6/3*2-4
+}
+
 
 
 # Now also Rooij-specific again
@@ -268,8 +284,9 @@ upset_df_NES_Rooij_ordered_ = upset_df_NES_Rooij_[custom_order,]
 p=pheatmap(upset_df_NES_Rooij_ordered_, fontsize = cellsize*.pt, cluster_cols = F, cluster_rows = F, legend = F, 
            treeheight_row = 0, cellwidth = cellsize*.pt, cellheight = cellsize*.pt, border_color = NA) # .pt = points/mm
 p
-ggsave(filename = paste0(base_dir,'Rplots/',DATASET_NAME,'_7_RegulonsSCENIC_overlapHeatmap_NES.pdf'), 
+if (!exists('NOSAVE')) { ggsave(filename = paste0(base_dir,'Rplots/',DATASET_NAME,'_7_RegulonsSCENIC_overlapHeatmap_NES.pdf'), 
         plot = p, width=15+ncol(upset_df_NES_Rooij_)*cellsize, height=15+nrow(upset_df_NES_Rooij_)*cellsize, units='mm', device = cairo_pdf) # 184.6/3*2-4
+}
 
 # Now again Rooij-specific, but only regulons in >1 patient, and beautified names
 eff_rows = nrow(upset_df_NES_Rooij_ordered_[current_selection,]); eff_cols=ncol(upset_df_NES_Rooij_ordered_[current_selection,])
@@ -278,9 +295,9 @@ current_selection = apply(upset_df_NES_Rooij_ordered_>0,1,sum)>1
 psel=pheatmap(upset_df_NES_Rooij_ordered_[current_selection,], fontsize = cellsize*.pt, cluster_cols = F, cluster_rows = F, legend = F, 
            treeheight_row = 0, cellwidth = cellsize*.pt, cellheight = cellsize*.pt, border_color = NA, device = cairo_pdf) # .pt = points/mm
 psel
-ggsave(filename = paste0(base_dir,'Rplots/',DATASET_NAME,'_7_RegulonsSCENIC_overlapHeatmap_NES_selMoreThan1Pat.pdf'), 
+if (!exists('NOSAVE')) { ggsave(filename = paste0(base_dir,'Rplots/',DATASET_NAME,'_7_RegulonsSCENIC_overlapHeatmap_NES_selMoreThan1Pat.pdf'), 
         plot = psel, width=15+eff_cols*cellsize, height=15+eff_rows*cellsize, units='mm', device = cairo_pdf) # 184.6/3*2-4
-
+}
 
 ################################################################################
 # Let's quickly check presence of regulons in how # patients per dataset
@@ -311,9 +328,9 @@ p=ggplot(patient_sum_df_extended,aes(x=R, y=T))+
                     aes(label=TF), max.overlaps = Inf, size=6/.pt, segment.size=.25, color='red')+
     theme_bw()+give_better_textsize_plot(8)
 # p
-ggsave(filename = paste0(base_dir,'Rplots/','ALL.SPcustom','_7_RegulonsSCENIC_scatterPatCount.pdf'), 
+if (!exists('NOSAVE')) { ggsave(filename = paste0(base_dir,'Rplots/','ALL.SPcustom','_7_RegulonsSCENIC_scatterPatCount.pdf'), 
         plot = p, width=172/3-4, height=172/3-4, units='mm', device = cairo_pdf) # 184.6/3*2-4
-
+}
 
 p=ggplot(patient_sum_df_extended,aes(x=R, y=T))+
     geom_density_2d_filled(data=patient_sum_df_extended[patient_sum_df_extended$R>1,])+theme_minimal()+
@@ -324,9 +341,9 @@ p=ggplot(patient_sum_df_extended,aes(x=R, y=T))+
                     aes(label=TF), max.overlaps = Inf, size=6/.pt, segment.size=.25, color='red')+
     theme_bw()+give_better_textsize_plot(8)+theme(legend.position = 'none')
 p
-ggsave(filename = paste0(base_dir,'Rplots/','ALL.SPcustom','_7_RegulonsSCENIC_scatterPatCount_v2.pdf'), 
+if (!exists('NOSAVE')) { ggsave(filename = paste0(base_dir,'Rplots/','ALL.SPcustom','_7_RegulonsSCENIC_scatterPatCount_v2.pdf'), 
         plot = p, width=172/3-4, height=172/3-4, units='mm', device = cairo_pdf) # 184.6/3*2-4
-
+}
 
 patient_sum_df_extended[patient_sum_df_extended$R>=3&patient_sum_df_extended$T<=2, ]
 patient_sum_df_extended[patient_sum_df_extended$R>=3&patient_sum_df_extended$H<=2, ]
@@ -336,7 +353,9 @@ patient_sum_df_extended[patient_sum_df_extended$R>=3&(patient_sum_df_extended$T<
 SCENIC_patient_counts_overview = list(patient_totals=patient_sum_df_extended, selected_regulons=
                                           patient_sum_df_extended[patient_sum_df_extended$R>=3&(patient_sum_df_extended$T<=2|patient_sum_df_extended$H<=2), ])
 
-openxlsx::write.xlsx(x= SCENIC_patient_counts_overview, file = paste0(base_dir,'Rplots/','ALL.SPcustom','_SCENIC_patientsStats_regulons.xlsx'), overwrite = T)
+if (!exists('NOSAVE')) { 
+    openxlsx::write.xlsx(x= SCENIC_patient_counts_overview, file = paste0(base_dir,'Rplots/','ALL.SPcustom','_SCENIC_patientsStats_regulons.xlsx'), overwrite = T)
+}
 
 ################################################################################
 # Now further delve into v. Rooij Regulons, select first by requiring minimally present in 4 patients
@@ -396,8 +415,9 @@ overlapping_scores_regulons_df_Rooij$gene_ = factor(gsub('\\(\\+\\)','',overlapp
 p=ggplot(overlapping_scores_regulons_df_Rooij, aes(x=gene_, y=overlap))+
     geom_bar(stat='identity')+coord_flip()+theme_bw()+give_better_textsize_plot(8)+ylim(c(0,1))+ylab('Fraction identical genes\nbetween patients')+xlab('Regulon')
 # p
-ggsave(filename = paste0(base_dir,'Rplots/',DATASET_NAME,'_7_RegulonsSCENIC_MemberGeneConsistencyPatients.pdf'), 
+if (!exists('NOSAVE')) { ggsave(filename = paste0(base_dir,'Rplots/',DATASET_NAME,'_7_RegulonsSCENIC_MemberGeneConsistencyPatients.pdf'), 
         plot = p, width=50, height=8/.pt*nrow(overlapping_scores_regulons_df_Rooij), units='mm', device=cairo_pdf) # 184.6/3*2-4
+}
 
 # Now including NES color
 p=ggplot(overlapping_scores_regulons_df_Rooij, aes(x=gene_, y=overlap, fill=NES))+
@@ -407,8 +427,9 @@ p=ggplot(overlapping_scores_regulons_df_Rooij, aes(x=gene_, y=overlap, fill=NES)
     scale_fill_gradientn(colours = c('orange','red'))+theme(legend.position='none')+
     scale_y_continuous(limits = c(0, 1), breaks = seq(0, 1, .5))
 # p
-ggsave(filename = paste0(base_dir,'Rplots/',DATASET_NAME,'_7_RegulonsSCENIC_MemberGeneConsistencyPatients_NES.pdf'), 
+if (!exists('NOSAVE')) { ggsave(filename = paste0(base_dir,'Rplots/',DATASET_NAME,'_7_RegulonsSCENIC_MemberGeneConsistencyPatients_NES.pdf'), 
         plot = p, width=39, height=8/.pt*nrow(overlapping_scores_regulons_df_Rooij), units='mm', device = cairo_pdf) # 184.6/3*2-4
+}
 
 
 ################################################################################
@@ -608,8 +629,9 @@ p=pheatmap(SCENIC_MW_regulon_comparison, cluster_rows = T,cluster_cols = F,
             fontsize = myfontsize, fontsize_col = myfontsize, fontsize_row = myfontsize, treeheight_row = 0, treeheight_col = 0, legend = F, limits=c(0,1), border_color = NA)
             #annotation_colors = list(colors=col_Dark2[1:max(cutree_out)])))
 print(p)
-ggsave(filename = paste0(base_dir,'Rplots/',DATASET_NAME,'_7_regulon_SCENIC_MW_gene_overlap-v1b-L.pdf'), 
+if (!exists('NOSAVE')) { ggsave(filename = paste0(base_dir,'Rplots/',DATASET_NAME,'_7_regulon_SCENIC_MW_gene_overlap-v1b-L.pdf'), 
     plot = p, width=ncol(SCENIC_MW_regulon_comparison)*myfontsize/.pt*1.1+20, height=nrow(SCENIC_MW_regulon_comparison)*myfontsize/.pt*1.1+15, units='mm', limitsize = F)
+}
 
 ################################################################################
 # And additionally we can project their regulons on our UMAP
@@ -637,10 +659,12 @@ if (F) {
     p=wrap_plots(plotlist, nrow = 5)
     
     #p
-    ggsave(filename = paste0(base_dir,'Rplots/',DATASET_NAME,'_7_RegulonsSCENIC_UMAP_compositeExpr.pdf'), 
-        plot = p, width=90, height=90, units='mm', device=cairo_pdf) # 184.6/3*2-4
-    ggsave(filename = paste0(base_dir,'Rplots/',DATASET_NAME,'_7_RegulonsSCENIC_UMAP_compositeExpr-v2.pdf'), 
-        plot = p, width=172/2-4, height=20*n_rows, units='mm', device=cairo_pdf) # 184.6/3*2-4
+    if (!exists('NOSAVE')) { 
+        ggsave(filename = paste0(base_dir,'Rplots/',DATASET_NAME,'_7_RegulonsSCENIC_UMAP_compositeExpr.pdf'), 
+            plot = p, width=90, height=90, units='mm', device=cairo_pdf) # 184.6/3*2-4
+        ggsave(filename = paste0(base_dir,'Rplots/',DATASET_NAME,'_7_RegulonsSCENIC_UMAP_compositeExpr-v2.pdf'), 
+            plot = p, width=172/2-4, height=20*n_rows, units='mm', device=cairo_pdf) # 184.6/3*2-4
+    }
     
 }
 
@@ -657,9 +681,10 @@ p_list=lapply(regulon_controllers, function(gene) {
                                                     gene_of_interest = gene, textsize=4, pointsize=.25, 
                                                     custom_title = paste0(gene), mymargin = .5, zscore = T)})
 p=wrap_plots(p_list, ncol=5)#ceiling(sqrt(length(p_list))))
-ggsave(filename = paste0(base_dir,'Rplots/',ANALYSIS_NAME,'_9_custom_SCENIC_tfs.pdf'), 
-        plot = p, width=20*5, height=5*20, units='mm', device = cairo_pdf) # 184.6/3*2-4
-
+if (!exists('NOSAVE')) { 
+    ggsave(filename = paste0(base_dir,'Rplots/',ANALYSIS_NAME,'_9_custom_SCENIC_tfs.pdf'), 
+           plot = p, width=20*5, height=5*20, units='mm', device = cairo_pdf) # 184.6/3*2-4
+}
 ################################################################################
 # Now also sort their regulons' genes, just using the same method as for my
 # own regulon analysis

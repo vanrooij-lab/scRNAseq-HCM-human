@@ -1031,6 +1031,7 @@ if (F) {
 ################################################################################
 # dataset to dataset comparison of the regulons
 # approach 1: compare the core regulons
+# NOTE: THIS CODE IS NOT USED FOR THE CURRENT ANALYSIS
 
 name_conversion = c(ROOIJonly_RID2l='R', TEICHMANNonly_RID2l='T', TEICHMANN.SP.only_RID2l='TS', HUonly_RID2l='H')
 SP_SWITCH='.SP.'

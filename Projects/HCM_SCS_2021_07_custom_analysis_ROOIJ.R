@@ -12,6 +12,14 @@
 # to decrease "redundancy" in the clustering, but keep the
 # outlier cluster separate.
 
+########################################################################
+
+# For convenience, source on HPC first the main script;
+# script_dir = '/hpc/hub_oudenaarden/mwehrens/scripts/SCS_HCM_analysis/'; desired_command='dummy'; source(paste0(script_dir, 'HCM_SCS_2021_06_SeuratRevisedAnalysis_v2_UmiTools.R')); rm('desired_command')
+#
+# or locally:
+# LOCAL=1; script_dir = '/Users/m.wehrens/Documents/git_repos/SCS_More_analyses/Projects/'; desired_command='dummy'; source(paste0(script_dir, 'HCM_SCS_2021_06_SeuratRevisedAnalysis_v2_UmiTools.R')); rm('desired_command')
+
 ####################################################################################################
 
 # Execute the Seurat lib loading part of main script first.
@@ -160,7 +168,13 @@ SaveH5Seurat(current_analysis$ROOIJonly_RID2l_clExtended, file = paste0(base_dir
 
 # Save differential expression results
 save(list='DE_cluster', file = paste0(base_dir,'Rdata/DE_cluster__ROOIJonly_RID2l_clExtended.Rdata'))
+  # load(paste0(base_dir,'Rdata/DE_cluster__ROOIJonly_RID2l_clExtended.Rdata')) # DE_cluster
 save(list='enriched_genes_lists_clusters_ROOIJ', file = paste0(base_dir,'Rdata/enriched_genes_lists_clusters_ROOIJ__ROOIJonly_RID2l_clExtended.Rdata'))
+  # load(paste0(base_dir,'Rdata/enriched_genes_lists_clusters_ROOIJ__ROOIJonly_RID2l_clExtended.Rdata')) # enriched_genes_lists_clusters_ROOIJ
+
+
+# sanity check, sorted correctly ..
+# rownames(DE_cluster$ROOIJonly_RID2l_clExtended$`2`[order(DE_cluster$ROOIJonly_RID2l_clExtended$`2`$avg_log2FC, decreasing = T),])[1:143]==enriched_genes_lists_clusters_ROOIJ$'2'
 
 
 ####################################################################################################
@@ -307,7 +321,38 @@ ggsave(plot=p, filename = paste0(base_dir,'Rplots/',ANALYSIS_NAME,'_7_GenesOfInt
                 height=60, width=60, units='mm')
 
 
+# some fibroblast genes
+fibro_markers = c('VIM','POSTN','IFITM3', 'COL1A1')
+for (CURRENT_GENE in fibro_markers) {
+  # CURRENT_GENE='IFITM3'
+  # CURRENT_GENE='COL12A1'; CURRENT_GENE='COL2A1'
+  p=shorthand_seurat_custom_expr(current_analysis[[ANALYSIS_NAME_clExtended]], CURRENT_GENE, textsize=8, pointsize=.75)
+  p
+  ggsave(plot=p, filename = paste0(base_dir,'Rplots/',ANALYSIS_NAME_clExtended,'_7_GenesOfInterest_',CURRENT_GENE,'.pdf'), 
+                  height=150/length(fibro_markers), width=150/length(fibro_markers), units='mm', device = cairo_pdf)
+    # note: MS Word margin is currently ±>150mm
+}
 
+####################################################################################################
+# Specific reviewers questions
+
+# Nr of cells expression NPPA or XIRP2
+
+# shorthand_seurat_fullgenename(current_analysis[[ANALYSIS_NAME_clExtended]], c('XIRP2','NPPA'))
+length(current_analysis[[ANALYSIS_NAME_clExtended]]@assays$RNA@data['ENSG00000175206:NPPA',])
+sum(current_analysis[[ANALYSIS_NAME_clExtended]]@assays$RNA@data['ENSG00000163092:XIRP2',]>0)
+sum(current_analysis[[ANALYSIS_NAME_clExtended]]@assays$RNA@data['ENSG00000175206:NPPA',]>0)
+
+# Nr of cells in cluster 3, and nr in cl3 coming from each patient
+sum(current_analysis[[ANALYSIS_NAME_clExtended]]$clusters_custom==3)
+cl3_counts = sapply(paste0('R.P',1:5), function(pt) {
+  sum(current_analysis[[ANALYSIS_NAME_clExtended]]$clusters_custom==3&current_analysis[[ANALYSIS_NAME_clExtended]]$annotation_patient_str==pt)})
+pt_counts = sapply(paste0('R.P',1:5), function(pt) {
+  sum(current_analysis[[ANALYSIS_NAME_clExtended]]$annotation_patient_str==pt)})
+cl3_counts
+round(cl3_counts/pt_counts*100)
+
+####################################################################################################
 
 
 # Old code below
@@ -482,4 +527,6 @@ if (F) {
 
 
 }
+
+
 
