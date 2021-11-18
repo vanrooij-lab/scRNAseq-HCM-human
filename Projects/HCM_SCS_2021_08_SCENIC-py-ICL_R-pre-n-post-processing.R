@@ -579,6 +579,12 @@ names(SCENIC_reg_top_genes_sorted_full) = gsub('\\([+-]\\)', '', names(SCENIC_re
 save(x='SCENIC_reg_top_genes_sorted_full', file=paste0(base_dir,'Rdata/',DATASET_NAME,'__SCENIC_reg_top_genes_sorted_full.Rdata'))
     # load(file=paste0(base_dir,'Rdata/',DATASET_NAME,'__SCENIC_reg_top_genes_sorted_full.Rdata')) # SCENIC_reg_top_genes_sorted_full
 
+
+save(list='SCENIC_reg_top_genes_sorted_full', file=paste0(base_dir, 'Rdata/SCENIC_reg_top_genes_sorted_full.Rdata'))
+# load(file=paste0(base_dir, 'Rdata/SCENIC_reg_top_genes_sorted_full.Rdata')) # SCENIC_reg_top_genes_sorted_full
+
+openxlsx::write.xlsx(x= SCENIC_reg_top_genes_sorted_full, file = paste0(base_dir, 'Rplots/SCENIC_reg_top_genes_sorted_full.xlsx'))
+
 #####
 
 lapply(SCENIC_reg_top_genes_sorted_full, function(X) {which(X %in% 'MYL2')})

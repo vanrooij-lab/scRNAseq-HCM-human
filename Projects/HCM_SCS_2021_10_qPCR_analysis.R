@@ -1,7 +1,12 @@
-
 ################################################################################
 
 # Processing qPCR data to check correlations
+
+################################################################################
+library(pheatmap)
+
+################################################################################
+
 qPCR_Data_Maya =
     openxlsx::read.xlsx('/Users/m.wehrens/Data/_2019_02_HCM_SCS/2021_HPC_analysis.3/qPCR/qPCR Raw_shared regulon 2_topgenes_MWe.xlsx', sheet = 'relevant_data_CT')
 
@@ -35,6 +40,7 @@ blacklist='HCM106'
     # HCM106 is blacklisted below
 
 qPCR_Data_Maya_HCM = qPCR_dataFrame[[QPCRSET]][qPCR_dataFrame[[QPCRSET]]$metadata_type=='HCM',]
+qPCR_Data_Maya_Ctrl = qPCR_dataFrame[[QPCRSET]][qPCR_dataFrame[[QPCRSET]]$metadata_type=='Ctrl',]
 
 my_unit = list('qPCR_Data_Maya'='(ΔCT)', 'qPCR_Data_Maya_2dCT'='(2^-ΔCT)', 'qPCR_Data_Maya_minusdCT'='(-ΔCT)')[[QPCRSET]]
 p_list =
@@ -76,6 +82,25 @@ ggsave(filename = paste0(base_dir,'Rplots/qPCR_scatters_MYL2_',gsub('Δ','d',my_
 ggsave(filename = paste0(base_dir,'Rplots/qPCR_scatters_MYL2_',gsub('Δ','d',my_unit),'_style2.pdf'), 
         plot = p, width=172-4, height=(172-4)/8*2+15, units='mm', device = cairo_pdf) # 184.6/3*2-4
 
+# Show sample sizes
+sample_sizes = sapply(sort(gene_names_noMYL2), function(current_gene) {
+    # current_gene = 'ACTA1'
+    c(all=sum((!is.na(qPCR_dataFrame[[QPCRSET]][['MYL2']])) & (!is.na(qPCR_dataFrame[[QPCRSET]][[current_gene]])) &
+                                                    (!(qPCR_dataFrame[[QPCRSET]]$metadata_annotation %in% blacklist))),
+        HCM=sum((!is.na(qPCR_Data_Maya_HCM[['MYL2']])) & (!is.na(qPCR_Data_Maya_HCM[[current_gene]])) &
+                                                    (!(qPCR_Data_Maya_HCM$metadata_annotation %in% blacklist))),
+        Ctrl=sum((!is.na(qPCR_Data_Maya_Ctrl[['MYL2']])) & (!is.na(qPCR_Data_Maya_Ctrl[[current_gene]])) &
+                                                    (!(qPCR_Data_Maya_Ctrl$metadata_annotation %in% blacklist)))
+      
+      ) # blacklist)
+        
+        
+})
+sample_sizes
+View(data.frame(colnames(sample_sizes), sample_sizes[1,]))
+# n_ACTA1 = 42, n_ACTC1 = 74, n_CKM = 71, n_COX6A2 = 77, n_CRYAB = 80, n_CSRP3 = 73, n_GAPDH = 71, n_HSPB1 = 70, n_MB = 75, n_MYL3 = 68, n_MYL9 = 83, n_SLC25A3 = 68, n_SLC25A4 = 74, n_TNNC1 = 75, n_TPM1 = 78, n_UBC = 61
+min(sample_sizes[1,])
+max(sample_sizes[1,])
 
 # Test code
 
@@ -86,8 +111,88 @@ lm_out = lm(formula = MYL2 ~ ACTA1, data = qPCR_Data_Maya)
 ggplot(qPCR_dataFrame[['qPCR_Data_Maya_minusdCT']], aes(x=metadata_type,y=MYL2, color=metadata_type))+
     geom_jitter()+theme_bw()+theme(legend.position='none')
 
+################################################################################
+# Creating a full heatmap
+
+qPCR_dataFrame[[QPCRSET]][,gene_names_all]
+2:dim(qPCR_dataFrame[[QPCRSET]][,gene_names_all])[2]
+
+gene_idxs = 1:dim(qPCR_dataFrame[[QPCRSET]][,gene_names_all])[2]
+corr_matrix = 
+    as.data.frame(sapply(gene_idxs, function(idx1) {
+        sapply(gene_idxs, function(idx2) {
+             # idx1=1; idx2=2
+              x=qPCR_dataFrame[[QPCRSET]][,gene_names_all][idx1]
+              y=qPCR_dataFrame[[QPCRSET]][,gene_names_all][idx2]
+              the_cor = cor(x[(!is.na(x))&(!is.na(y))], y[(!is.na(x))&(!is.na(y))])
+              return(the_cor)
+              })}))
+p_matrix = 
+    as.data.frame(sapply(gene_idxs, function(idx1) {
+        sapply(gene_idxs, function(idx2) {
+             # idx1=1; idx2=2
+              x=qPCR_dataFrame[[QPCRSET]][,gene_names_all][idx1]
+              y=qPCR_dataFrame[[QPCRSET]][,gene_names_all][idx2]
+              cor.test_out = cor.test(x[(!is.na(x))&(!is.na(y))], y[(!is.na(x))&(!is.na(y))])
+              return(cor.test_out$p.value)
+              })}))
+colnames(corr_matrix) = gene_names_all
+rownames(corr_matrix) = gene_names_all
+
+# ====
+# Some statistics
+# Note that there are less pairs than the matrix has squares
+# Exclude self-pairing and double pairing
+# Not necessary to exclude double pairing when using percentages
+
+p_values_adjusted = p.adjust(as.vector(as.matrix(p_matrix[corr_matrix<.9999999])))
+fdr_values = p.adjust(as.vector(as.matrix(p_matrix[corr_matrix<.9999999])), method='fdr')
+sum(fdr_values<.05)
+sum(fdr_values<.05)/length(fdr_values)
+paste0('Percentage fdr<.05: ',round(sum(fdr_values<.05)/length(fdr_values)*100,0),'%')
+
+fdr_values_Rpos = p.adjust(as.vector(as.matrix(p_matrix[(corr_matrix<.9999999)&(corr_matrix>0)])), method='fdr')
+paste0('Percentage fdr<.05: ',round(sum(fdr_values_Rpos<.05)/length(fdr_values_Rpos)*100,0),'%')
+
+sum(corr_matrix[corr_matrix<.9999999]>0)/length(corr_matrix[corr_matrix<.9999999])
+paste0('Percentage R>0: ',round(sum(corr_matrix[corr_matrix<.9999999]>0)/length(corr_matrix[corr_matrix<.9999999])*100,0),'%')
+
+# ====
+# Heatmaps
+
+p = pheatmap(corr_matrix, treeheight_row = 0, treeheight_col = 0, fontsize = 8, 
+             cellwidth = 10, cellheight = 10, border_color=NA)
+
+ggsave(filename = paste0(base_dir,'Rplots/qPCR_heatmap_all17genes.pdf'), 
+        plot = p, width=172/3*2-4, height=172/3*2-4, units='mm', device = cairo_pdf) # 184.6/3*2-4
+        # 20*10/.pt
+
+# smaller size
+myBreakList=seq(-1,1,.01)
+myColors=colorRampPalette(rev(brewer.pal(n = 7, name = "RdYlBu")))(length(myBreakList))
+myColors=colorRampPalette(rainbow_colors)(length(myBreakList))
+rainbow_colors
+p = pheatmap(corr_matrix, treeheight_row = 0, treeheight_col = 0, fontsize = 5, 
+             cellwidth = 5, cellheight = 5, border_color=NA, legend_breaks = seq(-1,1,.5), breaks=myBreakList, color=myColors)
+             # 7/.pt # cell height in mm
+ggsave(filename = paste0(base_dir,'Rplots/qPCR_heatmap_all17genes-smallCustomCols.pdf'), 
+        plot = p, width=172/3-4, height=172/3-4, units='mm', device = cairo_pdf) # 184.6/3*2-4
+
+ggplot(data.frame(correlation=corr_matrix[corr_matrix<1]),aes(x=correlation))+
+  geom_histogram()+theme_bw()
 
 
+################################################################################
+# Just to remind ourselves, which genes are we checking out
+
+ANALYSIS_NAME = "ROOIJonly_RID2l"
+load(paste0(base_dir,'Rplots/',ANALYSIS_NAME,'_core_regulons_sorted_shortname.Rdata')) # core_regulons_sorted_shortname
+
+inclusion_list = core_regulons_sorted_shortname$s.R.2 %in% gene_names_all*1
+names(inclusion_list) = core_regulons_sorted_shortname$s.R.2
+View(data.frame(gene=names(inclusion_list), included=inclusion_list))
+
+core_regulons_sorted_shortname$s.R.2[1:20] %in% gene_names_all*1
 
 ################################################################################
 # Looking at raw data

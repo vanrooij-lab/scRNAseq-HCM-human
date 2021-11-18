@@ -22,21 +22,59 @@ human_eq_genes_in_Nomura_hypertr_modules = convertMouseGeneList(genes_in_Nomura_
 
 
 # Now load the SCENIC regulons and custom modules
-
+# SCENIC regulons
+# load(paste0(base_dir, 'Rdata/SCENIC_regulons_core_genes_sel.Rdata')) # SCENIC_regulons_core_genes_sel
+load(paste0(base_dir, 'Rdata/SCENIC_reg_top_genes_sorted_full.Rdata')) # SCENIC_reg_top_genes_sorted_full
+# Custom modules
+ANALYSIS_NAME = "ROOIJonly_RID2l"
+load(paste0(base_dir,'Rplots/',ANALYSIS_NAME,'_core_regulons_sorted_shortname.Rdata')) # core_regulons_sorted_shortname
 
 
 # now look at some stats
-sum(shared_regulon_genes_list[[1]] %in% human_eq_genes_in_Nomura_hypertr_modules)
+sum(core_regulons_sorted_shortname[[1]] %in% human_eq_genes_in_Nomura_hypertr_modules)
 length(shared_regulon_genes_list[[1]])
-sum(shared_regulon_genes_list[[1]] %in% human_eq_genes_in_Nomura_hypertr_modules)/length(shared_regulon_genes_list[[1]])
-sum(shared_regulon_genes_list[[2]] %in% human_eq_genes_in_Nomura_hypertr_modules)/length(shared_regulon_genes_list[[2]])
-sum(shared_regulon_genes_list[[3]] %in% human_eq_genes_in_Nomura_hypertr_modules)/length(shared_regulon_genes_list[[3]])
-sum(shared_regulon_genes_list[[4]] %in% human_eq_genes_in_Nomura_hypertr_modules)/length(shared_regulon_genes_list[[4]])
+module_nomura_overlap = sapply(1:5,function(X){
+    sum(core_regulons_sorted_shortname[[X]] %in% human_eq_genes_in_Nomura_hypertr_modules)/length(core_regulons_sorted_shortname[[X]])})
+names(module_nomura_overlap) = names(core_regulons_sorted_shortname)
+module_nomura_overlap
+round(module_nomura_overlap*100,0)
 
-sum(shared_regulon_core_list$SharedRegulon1 %in% human_eq_genes_in_Nomura_hypertr_modules)/length(shared_regulon_core_list$SharedRegulon1)
-sum(shared_regulon_core_list$SharedRegulon2 %in% human_eq_genes_in_Nomura_hypertr_modules)/length(shared_regulon_core_list$SharedRegulon2)
-sum(shared_regulon_core_list$SharedRegulon3 %in% human_eq_genes_in_Nomura_hypertr_modules)/length(shared_regulon_core_list$SharedRegulon3)
-sum(shared_regulon_core_list$SharedRegulon4 %in% human_eq_genes_in_Nomura_hypertr_modules)/length(shared_regulon_core_list$SharedRegulon4)
+SCENIC_nomura_overlap = sapply(1:25,function(X){
+    sum(SCENIC_reg_top_genes_sorted_full[[X]] %in% human_eq_genes_in_Nomura_hypertr_modules)/length(SCENIC_reg_top_genes_sorted_full[[X]])})
+names(SCENIC_nomura_overlap)=names(SCENIC_reg_top_genes_sorted_full)
+SCENIC_nomura_overlap
+sapply(SCENIC_reg_top_genes_sorted_full, length)
+round(sort(SCENIC_nomura_overlap, decreasing = T)*100,0)
+
+ggplot(data.frame(regulon=names(module_nomura_overlap), overlap=module_nomura_overlap*100), 
+       aes(x=regulon, y=overlap))+
+    geom_bar(stat='identity')+theme_bw()+coord_flip()
+
+ggplot(data.frame(regulon=names(SCENIC_nomura_overlap), overlap=SCENIC_nomura_overlap*100), 
+       aes(x=regulon, y=overlap))+
+    geom_bar(stat='identity')+theme_bw()+coord_flip()
+
+################################################################################
+
+# Create Nomura overlap sets of interest
+
+# Set 1: module 2 - nomura overlapping genes
+genelist_module2_nomura_overlap = 
+    core_regulons_sorted_shortname[[2]][core_regulons_sorted_shortname[[2]] %in% human_eq_genes_in_Nomura_hypertr_modules]
+genelist_module2_nomura_overlap
+
+save(list='genelist_module2_nomura_overlap', file = paste0(base_dir,'Rdata/zcustom__genelist_module2_nomura_overlap.Rdata'))
+# load(paste0(base_dir,'Rdata/zcustom__genelist_module2_nomura_overlap.Rdata')) # genelist_module2_nomura_overlap
+
+# Set 2: SCENIC top overlapping - nomura overlapping genes
+genelist_SCENIC.FOXN3_nomura_overlap = 
+    SCENIC_reg_top_genes_sorted_full[['FOXN3']][SCENIC_reg_top_genes_sorted_full[['FOXN3']] %in% human_eq_genes_in_Nomura_hypertr_modules]
+genelist_SCENIC.FOXN3_nomura_overlap
+
+save(list='genelist_SCENIC.FOXN3_nomura_overlap', file = paste0(base_dir,'Rdata/zcustom__genelist_SCENIC.FOXN3_nomura_overlap.Rdata'))
+# load(paste0(base_dir,'Rdata/zcustom__genelist_SCENIC.FOXN3_nomura_overlap.Rdata')) # genelist_SCENIC.FOXN3_nomura_overlap
+
+
 
 
 

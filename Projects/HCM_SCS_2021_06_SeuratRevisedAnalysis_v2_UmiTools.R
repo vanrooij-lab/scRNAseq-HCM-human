@@ -1494,6 +1494,43 @@ if ('more_custom_plots' %in% desired_command) {
         # current_analysis[[CURRENT_RUNNAME]]$
         # (..) unfinished
         
+        # NOMURA OVERLAP LISTS
+        if (file.exists(paste0(base_dir,'Rdata/zcustom__genelist_module2_nomura_overlap.Rdata'))&file.exists(paste0(base_dir,'Rdata/zcustom__genelist_SCENIC.FOXN3_nomura_overlap.Rdata'))) {
+            
+            load(paste0(base_dir,'Rdata/zcustom__genelist_module2_nomura_overlap.Rdata')) # genelist_module2_nomura_overlap
+            load(paste0(base_dir,'Rdata/zcustom__genelist_SCENIC.FOXN3_nomura_overlap.Rdata')) # genelist_SCENIC.FOXN3_nomura_overlap
+
+            # module 2 expr on UMAPs
+            ZOOM_FACTOR=4
+            NR_GENES=10
+            p_list_nomura1 = lapply(genelist_module2_nomura_overlap[1:NR_GENES], function(current_gene) {
+                        shorthand_seurat_custom_expr(seuratObject = current_analysis[[CURRENT_RUNNAME]], 
+                                         gene_of_interest = current_gene,
+                                         textsize = 6*ZOOM_FACTOR, pointsize = .5, custom_title = current_gene, mymargin = .5*ZOOM_FACTOR, zscore = T) 
+                                            # note: text size twice as large, because i save at zoom 200%, as trick to reduce point size
+                })
+            p_nomura1=wrap_plots(p_list_nomura1, nrow=1)
+            ggsave(filename = paste0(base_dir, 'Rplots/', CURRENT_RUNNAME, '_9_customUMAPs_Nomura-module2_v3l.png'), plot = p_nomura1,
+               height=(3*PANEL_WIDTH-4)/NR_GENES*ZOOM_FACTOR, width=(3*PANEL_WIDTH-4)*ZOOM_FACTOR, units='mm', dpi=1200)    
+        
+            # SCENIC FOXN3 expr on UMAPs
+            ZOOM_FACTOR=4
+            NR_GENES=10
+            p_list_nomura2 = lapply(genelist_SCENIC.FOXN3_nomura_overlap[1:NR_GENES], function(current_gene) {
+                        shorthand_seurat_custom_expr(seuratObject = current_analysis[[CURRENT_RUNNAME]], 
+                                         gene_of_interest = current_gene,
+                                         textsize = 6*ZOOM_FACTOR, pointsize = .5, custom_title = current_gene, mymargin = .5*ZOOM_FACTOR, zscore = T) 
+                                            # note: text size twice as large, because i save at zoom 200%, as trick to reduce point size
+                })
+            p_nomura2=wrap_plots(p_list_nomura2, nrow=1)
+            ggsave(filename = paste0(base_dir, 'Rplots/', CURRENT_RUNNAME, '_9_customUMAPs_Nomura-scenicFOXN3_v3l.png'), plot = p_nomura2,
+               height=(3*PANEL_WIDTH-4)/NR_GENES*ZOOM_FACTOR, width=(3*PANEL_WIDTH-4)*ZOOM_FACTOR, units='mm', dpi=1200)    
+        
+                
+        }
+        
+
+        
     }    
     
 }

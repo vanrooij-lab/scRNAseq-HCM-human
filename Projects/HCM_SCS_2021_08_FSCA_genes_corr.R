@@ -1,4 +1,8 @@
 
+
+################################################################################
+# Setting up 
+
 library(dplyr)
 
 DATASET_NAME = 'ROOIJonly_RID2l_clExtended'
@@ -61,15 +65,20 @@ rownames(indexData_MW) = indexData_MW$Cell_newname
 ################################################################################
 # Insert data into clExtended
 
-current_analysis$ROOIJonly_RID2l_clExtended_FSCA = current_analysis$ROOIJonly_RID2l_clExtended
-current_analysis$ROOIJonly_RID2l_clExtended_FSCA[['FSCA']]=indexData_MW[colnames(current_analysis$ROOIJonly_RID2l_clExtended),]$FSC_A
+if (F) {
+    current_analysis$ROOIJonly_RID2l_clExtended_FSCA = current_analysis$ROOIJonly_RID2l_clExtended
+    current_analysis$ROOIJonly_RID2l_clExtended_FSCA[['FSCA']]=indexData_MW[colnames(current_analysis$ROOIJonly_RID2l_clExtended),]$FSC_A
+    
+    SaveH5Seurat(object = current_analysis$ROOIJonly_RID2l_clExtended_FSCA, filename = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_','ROOIJonly_RID2l_clExtended_FSCA','.h5seurat'))
+        # (Currently, this file is not used by other scripts)
+    
+    save(list = 'indexData_MW', file = paste0(base_dir,'Rdata/FSCA__indexData_MW.Rdata')) # indexData_MW, colnames match cell names
+        # load(file = paste0(base_dir,'Rdata/FSCA__indexData_MW.Rdata')) # indexData_MW
+        # e.g. use indexData_MW[colnames(current_analysis$ROOIJonly_RID2l_clExtended),]$FSC_A
 
-SaveH5Seurat(object = current_analysis$ROOIJonly_RID2l_clExtended_FSCA, filename = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_','ROOIJonly_RID2l_clExtended_FSCA','.h5seurat'))
-    # (Currently, this file is not used by other scripts)
+} 
 
-save(list = 'indexData_MW', file = paste0(base_dir,'Rdata/FSCA__indexData_MW.Rdata')) # indexData_MW, colnames match cell names
-    # load(file = paste0(base_dir,'Rdata/FSCA__indexData_MW.Rdata')) # indexData_MW
-    # e.g. use indexData_MW[colnames(current_analysis$ROOIJonly_RID2l_clExtended),]$FSC_A
+current_analysis$ROOIJonly_RID2l_clExtended_FSCA = LoadH5Seurat(file = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_','ROOIJonly_RID2l_clExtended_FSCA','.h5seurat'))
 
 ################################################################################
 # Project data on UMAP
@@ -142,8 +151,8 @@ tresholds_p4
 tresholds_p5=calc_limits(correlations_FSCA_per_patient_combined$P5_cor, 0.1)[2]
 tresholds_p5
 
-selected_genes=correlations_FSCA_per_patient_combined$P4_cor>.2&correlations_FSCA_per_patient_combined$P5_cor>.1
-selected_genes=correlations_FSCA_per_patient_combined$P4_cor>tresholds_p4&correlations_FSCA_per_patient_combined$P5_cor>tresholds_p5
+#selected_genes=correlations_FSCA_per_patient_combined$P4_cor>.2&correlations_FSCA_per_patient_combined$P5_cor>.1
+selected_genes=correlations_FSCA_per_patient_combined$P4_cor>tresholds_p4 & correlations_FSCA_per_patient_combined$P5_cor>tresholds_p5
 shorthand_cutname(rownames(correlations_FSCA_per_patient_combined[selected_genes,]))
 
 p=ggplot(correlations_FSCA_per_patient_combined, aes(x=P4_cor, y=P5_cor))+

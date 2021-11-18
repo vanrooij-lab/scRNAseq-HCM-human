@@ -132,7 +132,7 @@ giveMeRegulons_SeuratVersion = function(run_name, base_dir, current_matrix,
         calculate_p = T,
         outputDir = paste0(base_dir,'regulon/'),
         analysis_name = run_name, 
-        MYPADJUSTMETHOD = 'fdr', # Joep's choice, default is BH in my code
+        MYPADJUSTMETHOD = 'fdr', # note that fdr is synonymous with BH
         min_expression_fraction_genes = required_minCellFraction)
     
     # Next, we can assess which 'connectedness' cutoff we want.
@@ -685,6 +685,7 @@ if ('XXXXXXX' %in% desired_command_regulon) {
         # load(file = paste0(base_dir,'Rplots/',ANALYSIS_NAME,'_core_regulons_sorted.Rdata'))
     core_regulons_sorted_shortname = shorthand_cutname_table(core_regulons_sorted)
     save(list = 'core_regulons_sorted_shortname', file = paste0(base_dir,'Rplots/',ANALYSIS_NAME,'_core_regulons_sorted_shortname.Rdata'))
+    openxlsx::write.xlsx(x=core_regulons_sorted_shortname, file = paste0(base_dir,'Rplots/',ANALYSIS_NAME,'_core_regulons_sorted_shortname.xlsx'))
     
     # And export for HOMER
     dir.create(paste0(base_dir,'Homer/REGULONS/'),recursive = T, showWarnings = F)
