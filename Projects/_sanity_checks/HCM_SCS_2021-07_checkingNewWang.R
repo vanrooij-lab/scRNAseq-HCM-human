@@ -1,4 +1,6 @@
 
+################################################################################
+
 library(pheatmap)
 library(ggrepel)
 library(patchwork)
@@ -161,10 +163,12 @@ current_analysis$WANG_old_new_geneIntersect <- FindClusters(current_analysis$WAN
 
 SaveH5Seurat(object = current_analysis$WANG_old_new, overwrite = T,
             filename = paste0(base_dir,'Rdata/RHL_WANG_old_new.h5seurat'))
+            # current_analysis$WANG_old_new = LoadH5Seurat(file = paste0(base_dir,'Rdata/RHL_WANG_old_new.h5seurat'))
 
 SaveH5Seurat(object = current_analysis$WANG_old_new_geneIntersect, overwrite = T,
             filename = paste0(base_dir,'Rdata/RHL_WANG_old_new_geneIntersect.h5seurat'))
-    
+            # current_analysis$WANG_old_new_geneIntersect = LoadH5Seurat(file = paste0(base_dir,'Rdata/RHL_WANG_old_new_geneIntersect.h5seurat'))
+
 ################################################################################
 
 p= DimPlot(current_analysis$WANG_old_new_geneIntersect, group.by='version')+give_better_textsize_plot(8)+theme_void()
@@ -189,15 +193,29 @@ df_plot=data.frame(
 p1=ggplot(df_plot, aes(x=pc1, y=pc2, color=version))+
     theme_minimal()+theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),axis.text.x=element_blank(),axis.text.y=element_blank())+
     geom_point()+theme(legend.position='none')+xlab('PC1')+ylab('PC2')
+p1
 p2=ggplot(df_plot, aes(x=pc1, y=pc2, color=cellname_noON))+
     theme_minimal()+theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),axis.text.x=element_blank(),axis.text.y=element_blank())+
     geom_line()+theme(legend.position='none')+xlab('PC1')+ylab('PC2')
+p2
 p=(p1+p2+plot_layout(nrow = 1))
 p
 ggsave(filename = paste0(base_dir, 'Rplots/_0checks_HU_newoldcell_mixing_PCA-lines.pdf'), plot=p, width=100, height=50, units='mm')
 
 # Which genes are in PC1?
 View(current_analysis$WANG_old_new_geneIntersect@reductions$pca@feature.loadings)
+
+
+# Note that this plot has an extreme legend, so don't print that ..
+p=ggplot(df_plot)+   
+  theme_minimal()+theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),axis.text.x=element_blank(),axis.text.y=element_blank())+
+  geom_line(aes(x=pc1, y=pc2, color=cellname_noON), size=.1, alpha=.5)+
+  geom_point(aes(x=pc1, y=pc2, shape=version), color='black', size=.5, alpha=.5)+
+  theme(legend.position='none')+
+  give_better_textsize_plot(8)
+p
+ggsave(filename = paste0(base_dir, 'Rplots/_0checks_HU_newoldcell_mixing_PCA-lines-Combined.pdf'), plot=p, width=PANEL_WIDTH-4, height=PANEL_WIDTH-4, units='mm', device = cairo_pdf)    
+
 
 ####
 # What about correlations?

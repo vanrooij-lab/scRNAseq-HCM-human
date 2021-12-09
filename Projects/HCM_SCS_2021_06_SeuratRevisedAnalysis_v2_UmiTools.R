@@ -177,6 +177,8 @@ library(RColorBrewer)
 rainbow_colors = rev( brewer.pal(n = 11, name = "Spectral") )
 qual_col_pals = brewer.pal.info[brewer.pal.info$category == 'qual',]
 col_vector_60 = unlist(mapply(brewer.pal, qual_col_pals$maxcolors, rownames(qual_col_pals)))
+colors_distinguishable = c('#e6194B', '#3cb44b', '#ffe119', '#4363d8', '#f58231', '#911eb4', '#42d4f4', '#f032e6', '#bfef45', '#fabed4', '#469990', '#dcbeff', '#9A6324', '#fffac8', '#800000', '#aaffc3', '#808000', '#ffd8b1', '#000075', '#a9a9a9', '#ffffff', '#000000')
+colors_distinguishable_subset = c('#ffe119', '#4363d8', '#f58231', '#dcbeff', '#800000', '#000075', '#a9a9a9', '#ffffff', '#000000')
 
 # Again some markers
 markers=list()

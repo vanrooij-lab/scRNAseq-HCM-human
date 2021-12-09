@@ -196,6 +196,8 @@ upset_df_Rooij[upset_df_Rooij$R.P2&upset_df_Rooij$R.P4&(!upset_df_Rooij$R.P1)&(!
 
 myRegScores=list()
 for (CURRENT_PATIENT in ALL_PATIENTS) {
+    
+    # CURRENT_PATIENT = 'R.P1'
  
     # Gather some info about the reliability of the link between gene sets and their TF
     add.info.meta = read.csv(paste0(base_dir,'/SCENIC/',CURRENT_PATIENT,'/reg.csv'), head=F, nrows=3)
@@ -205,6 +207,7 @@ for (CURRENT_PATIENT in ALL_PATIENTS) {
     
     # Now summarize this to have NES scores available per regulon
     myRegScores[[CURRENT_PATIENT]] = aggregate(list(NES=add.info$NES), by = list(TF=add.info$TF), FUN=median)
+    # myRegScores[[CURRENT_PATIENT]] = aggregate(list(NES=add.info$NES), by = list(TF=add.info$TF), FUN=max)
     rownames(myRegScores[[CURRENT_PATIENT]]) = myRegScores[[CURRENT_PATIENT]]$TF
        
     print(paste0(CURRENT_PATIENT,' done ..'))
@@ -287,6 +290,7 @@ p
 if (!exists('NOSAVE')) { ggsave(filename = paste0(base_dir,'Rplots/',DATASET_NAME,'_7_RegulonsSCENIC_overlapHeatmap_NES.pdf'), 
         plot = p, width=15+ncol(upset_df_NES_Rooij_)*cellsize, height=15+nrow(upset_df_NES_Rooij_)*cellsize, units='mm', device = cairo_pdf) # 184.6/3*2-4
 }
+# ggsave(filename = paste0(base_dir,'Rplots/',DATASET_NAME,'_7_RegulonsSCENIC_overlapHeatmap_NES_testMaxNES.pdf'), plot = p, width=15+ncol(upset_df_NES_Rooij_)*cellsize, height=15+nrow(upset_df_NES_Rooij_)*cellsize, units='mm', device = cairo_pdf)
 
 # Now again Rooij-specific, but only regulons in >1 patient, and beautified names
 eff_rows = nrow(upset_df_NES_Rooij_ordered_[current_selection,]); eff_cols=ncol(upset_df_NES_Rooij_ordered_[current_selection,])
@@ -456,6 +460,7 @@ SCENIC_regulons_core_genes_sel = SCENIC_regulons_core_genes[sapply(SCENIC_regulo
 length(SCENIC_regulons_core_genes_sel)
 
 save(list='SCENIC_regulons_core_genes_sel', file=paste0(base_dir, 'Rdata/SCENIC_regulons_core_genes_sel.Rdata'))
+    # load(file=paste0(base_dir, 'Rdata/SCENIC_regulons_core_genes_sel.Rdata')) # SCENIC_regulons_core_genes_sel
 
 
 ################################################################################

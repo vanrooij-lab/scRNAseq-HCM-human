@@ -30,6 +30,8 @@ library(clustree)
 library(pheatmap)
 #library(scales)
 
+library(wesanderson) # only for some custom plots
+
 ####################################################################################################
 
 # For future reference: using SC3
@@ -229,6 +231,22 @@ p=DimPlot(current_analysis$ROOIJonly_RID2l_clExtended, cols = rep(col_vector_60,
 # Save files
 ggsave(plot = p, filename = paste0(base_dir,'Rplots/','ANALYSIS_NAME_clExtended','_2_umapLabeled_by_','idents','.pdf'), height=5.5, width=5.5, units='cm')
 
+# Second version (note sth similar is also made in the "mySeuratCommonPlots" function
+p=DimPlot(current_analysis$ROOIJonly_RID2l_clExtended, cols = rep(col_vector_60,2), label = T, repel = T, label.size = 6/.pt, pt.size = .1, label.box=T)+
+                give_better_textsize_plot(8)+theme_void()+ggtitle(element_blank())+theme(legend.position = 'none')
+p        
+# original size was (172/3-4) x (172/3-4)
+ggsave(plot = p, filename = paste0(base_dir,'Rplots/','ROOIJonly_RID2l_clExtended','_2_umapLabeled_by_','Ident','_morecustomized-Small.pdf'), 
+       height=172/3*(2/3)-4, width=172/3*(2/3)-4, units='mm', device = cairo_pdf)
+
+# Also create customized patient distribution
+# another_palette = wesanderson::wes_palette(name = 'BottleRocket2')
+p=DimPlot(current_analysis$ROOIJonly_RID2l_clExtended, cols = colors_distinguishable[], label = F, repel = T, label.size = 7, group.by = 'annotation_patient_fct', pt.size = .1)+
+    give_better_textsize_plot(6)+theme_void()+ggtitle(element_blank())  #+theme(legend.position = 'none')
+# p
+# Save files
+ggsave(plot = p, filename = paste0(base_dir,'Rplots/','ANALYSIS_NAME_clExtended','_2_umapLabeled_by_','annotation_patient_fct-vCustom','.pdf'), width=(172/3)-4, height=.75*(172/3-4), units='mm', device = cairo_pdf)
+
 ################################################################################
 # New custom plot with patient - cluster distr.
 
@@ -236,7 +254,7 @@ ggsave(plot = p, filename = paste0(base_dir,'Rplots/','ANALYSIS_NAME_clExtended'
 # mymaxy=1.5*max(table(Idents(mySeuratObject)))
 mySeuratObject = current_analysis[[ANALYSIS_NAME_clExtended]]
 p=ggplot(data.frame( cluster = Idents(mySeuratObject),
-                Donor = mySeuratObject$annotation_patient_fct))+
+                Donor = gsub('R\\.','',mySeuratObject$annotation_patient_str)))+
     geom_bar(aes(x=cluster, fill=Donor))+theme_bw()+
     xlab('Cluster')+ylab('Number of cells')+
     give_better_textsize_plot(8)+
@@ -245,8 +263,10 @@ p=ggplot(data.frame( cluster = Idents(mySeuratObject),
     #theme(legend.position=c(.99,.99), legend.justification = c(1,1), legend.key.size = unit(3, "mm"))
     # ylim(c(0,mymaxy)); p
 # p
-ggsave(filename = paste0(base_dir,'Rplots/',run_name,'_5_Barplot_PatientCluster_ClExt_distr_cstm.pdf'), 
+ggsave(filename = paste0(base_dir,'Rplots/',ANALYSIS_NAME_clExtended,'_5_Barplot_PatientCluster_ClExt_distr_cstm.pdf'), 
     plot = p, height=PANEL_HEIGHT, width=PANEL_WIDTH-4, units='mm', device = cairo_pdf)
+ggsave(filename = paste0(base_dir,'Rplots/',ANALYSIS_NAME_clExtended,'_5_Barplot_PatientCluster_ClExt_distr_cstm-Small.pdf'), 
+    plot = p, height=PANEL_HEIGHT*.8, width=PANEL_WIDTH*.9-4, units='mm', device = cairo_pdf)
 
 
 ####################################################################################################
@@ -321,7 +341,7 @@ ggsave(plot=p, filename = paste0(base_dir,'Rplots/',ANALYSIS_NAME,'_7_GenesOfInt
                 height=60, width=60, units='mm')
 
 
-# some fibroblast genes
+# Some fibroblast genes
 fibro_markers = c('VIM','POSTN','IFITM3', 'COL1A1')
 for (CURRENT_GENE in fibro_markers) {
   # CURRENT_GENE='IFITM3'

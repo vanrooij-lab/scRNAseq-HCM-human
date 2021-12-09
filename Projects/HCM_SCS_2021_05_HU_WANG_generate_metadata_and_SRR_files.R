@@ -282,6 +282,7 @@ save(list = c('metadata_Wang_full_table_selection'),file = paste0(base_dir,'Rdat
 
 # Also save the full table
 save(list = c('metadata_Wang_full_table'),file = paste0(base_dir,'Rdata/metadata_Wang_full_table.Rdata'))
+# load(paste0(base_dir,'Rdata/metadata_Wang_full_table.Rdata')) # metadata_Wang_full_table
 
 
 ################################################################################

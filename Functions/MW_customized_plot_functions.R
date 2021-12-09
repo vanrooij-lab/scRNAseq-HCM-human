@@ -78,7 +78,8 @@ shorthand_plotViolinBox_custom = function(myseuratobjectlist, analysis_name, cat
         ggtitle(if(is.null(custom_title)){gene_of_interest}else{custom_title})+theme_bw()+
         theme(legend.position='none')+
         theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
-        xlab(element_blank())+ylab(if(is.null(custom_ylab)){'UMI count'}else{custom_ylab})+give_better_textsize_plot(myfontsize)
+        xlab(if(is.null(cat_name=='category')){element_blank()}else{cat_name})+
+        ylab(if(is.null(custom_ylab)){'UMI count'}else{custom_ylab})+give_better_textsize_plot(myfontsize)
     # p
     
     if (!is.null(custom_ylim)) {p=p+ylim(custom_ylim)}
@@ -139,6 +140,8 @@ shorthand_seurat_custom_expr = function(seuratObject, gene_of_interest, textsize
       if (any(is.na(gene_of_interest_fullname))) {warning('Not all genes found uniquely, filtering those out ..')}
       gene_of_interest_fullname = gene_of_interest_fullname[!is.na(gene_of_interest_fullname)]
     }
+    
+    if (length(gene_of_interest_fullname)==0) { return(NA) }
     
     # retrieve current expression
     current_expr = as.matrix(seuratObject@assays$RNA@data[gene_of_interest_fullname,])
@@ -226,7 +229,7 @@ shorthand_seurat_fullgenename_faster = function(seuratObject, gene_names, return
 # current_analysis$ROOIJonly_RID2l$dummyXX = round(runif(length(current_analysis$ROOIJonly_RID2l$annotation_paper_fct))*2)
 #
 # shorthand_custom_boxplot(seuratObject_list, gene_lists, seuratObjectNameToTake, group.by='annotation_paper_fct', topX=10, mylimits=.01)
-shorthand_custom_boxplot = function(seuratObject_list, gene_lists, seuratObjectNameToTake, group.by='annotation_paper_fct', topX=10, mylimits=.01) {
+shorthand_custom_boxplot = function(seuratObject_list, gene_lists, seuratObjectNameToTake, group.by='annotation_paper_fct', topX=10, mylimits=.01, show=F) {
     
     for (current_list_name in names(gene_lists)) {
       
@@ -323,6 +326,9 @@ shorthand_custom_boxplot = function(seuratObject_list, gene_lists, seuratObjectN
         openxlsx::write.xlsx(x = df, file=paste0(base_dir, 'Rplots/', seuratObjectNameToTake, '_9_customBoxplotGenes-data_', current_list_name,'.xlsx'), overwrite = T)
         
     }
+  
+    if (show) {return(p)}
+  
 }
 
 ##########

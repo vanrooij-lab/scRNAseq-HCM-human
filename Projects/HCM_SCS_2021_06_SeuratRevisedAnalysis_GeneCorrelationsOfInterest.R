@@ -585,7 +585,7 @@ if (F) {
                 xlab('donor')
             # p
             ggsave(filename = paste0(base_dir,'Rplots/customALL',SP_SWITCH,'_6_TableSignCorrelations-style2_',CURRENT_GENE,'_Corr',negpos,'_.pdf'), 
-                             plot = p, height=min(172,3*nrow_effective+20), width=2/3*172-4, units = 'mm', device=cairo_pdf) # 185/4 || 46*2 || ncol_effective*7.5
+                             plot = p, height=min(172,3*nrow_effective+30), width=2/3*172-4, units = 'mm', device=cairo_pdf) # 185/4 || 46*2 || ncol_effective*7.5
             # Now with legend
             p=p+theme(legend.position='bottom') # p
             ggsave(filename = paste0(base_dir,'Rplots/customALL',SP_SWITCH,'_6_TableSignCorrelations-style2_LEGEND_',CURRENT_GENE,'_.pdf'), 

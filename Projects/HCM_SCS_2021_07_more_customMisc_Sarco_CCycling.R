@@ -1,7 +1,11 @@
 
+################################################################################
+
 library(scales)
 library(patchwork)
 
+
+ANALYSIS_NAME = 'ROOIJonly_RID2l'
 
 ################################################################################
 
@@ -79,10 +83,28 @@ p
 ggsave(filename = paste0(base_dir,'Rplots/',ANALYSIS_NAME,'_9_custom_CellCycle_G2M-phase.pdf'), 
         plot = p, width=30, height=30, units='mm') # 184.6/3*2-4
 
+##########################################################################################
+# Let's check some sex genes
 
+sex_list1 = c('ASCL2', 'EGR', 'GABPA',  'RXRa', 'ZF')
+sex_list2 = c('XIST','VAMP7', 'KDM6A')
 
+p_list = lapply(sex_list2, function(g) {
+    shorthand_seurat_custom_expr(seuratObject = current_analysis[[ANALYSIS_NAME]], 
+                                                    gene_of_interest = g, textsize=8, pointsize=2,  # 'KLF/SP',
+                                                    custom_title = g, mymargin = .5, zscore = T) })
 
-#####
+wrap_plots( p_list )
+
+sex_list2_full = shorthand_seurat_fullgenename_faster(current_analysis[[ANALYSIS_NAME]], sex_list2)
+VlnPlot(current_analysis[[ANALYSIS_NAME]], features = sex_list2_full, group.by = 'annotation_patient_fct')
+
+# we also know this informatoin, so let's just show where F/M are on UMAP
+current_analysis[[ANALYSIS_NAME]]$SEX = rep('M', length(current_analysis[[ANALYSIS_NAME]]$annotation_patient_str))
+current_analysis[[ANALYSIS_NAME]]$SEX[current_analysis[[ANALYSIS_NAME]]$annotation_patient_str %in% c('R.P1','R.P3')] = 'F'
+DimPlot( current_analysis[[ANALYSIS_NAME]] , group.by = 'SEX')
+
+##########################################################################################
 
 # Quickly checking the ZBED1 genes
 # See SCENIC_regulons_core_genes$`ZEB1(+)`

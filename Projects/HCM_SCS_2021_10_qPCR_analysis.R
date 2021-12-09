@@ -122,8 +122,8 @@ corr_matrix =
     as.data.frame(sapply(gene_idxs, function(idx1) {
         sapply(gene_idxs, function(idx2) {
              # idx1=1; idx2=2
-              x=qPCR_dataFrame[[QPCRSET]][,gene_names_all][idx1]
-              y=qPCR_dataFrame[[QPCRSET]][,gene_names_all][idx2]
+              x=qPCR_dataFrame[[QPCRSET]][qPCR_dataFrame[[QPCRSET]]$metadata_type=='HCM'&(!(qPCR_dataFrame[[QPCRSET]]$metadata_annotation %in% blacklist)),gene_names_all][idx1]
+              y=qPCR_dataFrame[[QPCRSET]][qPCR_dataFrame[[QPCRSET]]$metadata_type=='HCM'&(!(qPCR_dataFrame[[QPCRSET]]$metadata_annotation %in% blacklist)),gene_names_all][idx2]
               the_cor = cor(x[(!is.na(x))&(!is.na(y))], y[(!is.na(x))&(!is.na(y))])
               return(the_cor)
               })}))
@@ -131,8 +131,8 @@ p_matrix =
     as.data.frame(sapply(gene_idxs, function(idx1) {
         sapply(gene_idxs, function(idx2) {
              # idx1=1; idx2=2
-              x=qPCR_dataFrame[[QPCRSET]][,gene_names_all][idx1]
-              y=qPCR_dataFrame[[QPCRSET]][,gene_names_all][idx2]
+              x=qPCR_dataFrame[[QPCRSET]][qPCR_dataFrame[[QPCRSET]]$metadata_type=='HCM'&(!(qPCR_dataFrame[[QPCRSET]]$metadata_annotation %in% blacklist)),gene_names_all][idx1]
+              y=qPCR_dataFrame[[QPCRSET]][qPCR_dataFrame[[QPCRSET]]$metadata_type=='HCM'&(!(qPCR_dataFrame[[QPCRSET]]$metadata_annotation %in% blacklist)),gene_names_all][idx2]
               cor.test_out = cor.test(x[(!is.na(x))&(!is.na(y))], y[(!is.na(x))&(!is.na(y))])
               return(cor.test_out$p.value)
               })}))
@@ -146,7 +146,7 @@ rownames(corr_matrix) = gene_names_all
 # Not necessary to exclude double pairing when using percentages
 
 p_values_adjusted = p.adjust(as.vector(as.matrix(p_matrix[corr_matrix<.9999999])))
-fdr_values = p.adjust(as.vector(as.matrix(p_matrix[corr_matrix<.9999999])), method='fdr')
+fdr_values        = p.adjust(as.vector(as.matrix(p_matrix[corr_matrix<.9999999])), method='fdr')
 sum(fdr_values<.05)
 sum(fdr_values<.05)/length(fdr_values)
 paste0('Percentage fdr<.05: ',round(sum(fdr_values<.05)/length(fdr_values)*100,0),'%')
@@ -157,13 +157,22 @@ paste0('Percentage fdr<.05: ',round(sum(fdr_values_Rpos<.05)/length(fdr_values_R
 sum(corr_matrix[corr_matrix<.9999999]>0)/length(corr_matrix[corr_matrix<.9999999])
 paste0('Percentage R>0: ',round(sum(corr_matrix[corr_matrix<.9999999]>0)/length(corr_matrix[corr_matrix<.9999999])*100,0),'%')
 
+# Sanity check with scatters
+MYL_corrs_check = corr_matrix$MYL2
+names(MYL_corrs_check) = colnames(corr_matrix) 
+MYL_corrs_check
+#ggplot(data.frame(x=qPCR_dataFrame[[QPCRSET]]$MYL2, y=qPCR_dataFrame[[QPCRSET]]$TPM1), aes(x=x, y=y))+
+#    geom_point()
+
 # ====
 # Heatmaps
 
-p = pheatmap(corr_matrix, treeheight_row = 0, treeheight_col = 0, fontsize = 8, 
-             cellwidth = 10, cellheight = 10, border_color=NA)
+my_color_gradient = colorRampPalette(rainbow_colors)(201)
 
-ggsave(filename = paste0(base_dir,'Rplots/qPCR_heatmap_all17genes.pdf'), 
+p = pheatmap(corr_matrix, treeheight_row = 0, treeheight_col = 0, fontsize = 8, 
+             cellwidth = 10, cellheight = 10, border_color=NA, color=my_color_gradient, breaks=seq(-1,1,.01))
+
+ggsave(filename = paste0(base_dir,'Rplots/qPCR_heatmap_all17genes_HCMsamples.pdf'), 
         plot = p, width=172/3*2-4, height=172/3*2-4, units='mm', device = cairo_pdf) # 184.6/3*2-4
         # 20*10/.pt
 
@@ -175,7 +184,7 @@ rainbow_colors
 p = pheatmap(corr_matrix, treeheight_row = 0, treeheight_col = 0, fontsize = 5, 
              cellwidth = 5, cellheight = 5, border_color=NA, legend_breaks = seq(-1,1,.5), breaks=myBreakList, color=myColors)
              # 7/.pt # cell height in mm
-ggsave(filename = paste0(base_dir,'Rplots/qPCR_heatmap_all17genes-smallCustomCols.pdf'), 
+ggsave(filename = paste0(base_dir,'Rplots/qPCR_heatmap_all17genes_HCMsamples-smallCustomCols.pdf'), 
         plot = p, width=172/3-4, height=172/3-4, units='mm', device = cairo_pdf) # 184.6/3*2-4
 
 ggplot(data.frame(correlation=corr_matrix[corr_matrix<1]),aes(x=correlation))+
