@@ -339,6 +339,33 @@ if (F) {
 }    
 
 ################################################################################
+# Additional custom export to generate supplementary databases with all this
+# data in a more convenient way
+
+Volcano_df_collection_combined = 
+    lapply(names(Volcano_df_collection), function(g) {
+        
+        table_HCM = Volcano_df_collection[[g]]$ROOIJonly_RID2l
+        table_Ctrl1 = Volcano_df_collection[[g]]$HUonly_RID2l
+        table_Ctrl2 = Volcano_df_collection[[g]]$TEICHMANN.SP.only_RID2l
+        
+        names(table_HCM)=gsub('^R','HCM',names(table_HCM))
+        names(table_Ctrl1)=gsub('^H','Ctrl1',names(table_Ctrl1))
+        names(table_Ctrl2)=gsub('^T','Ctrl2',names(table_Ctrl2))
+        
+        full_table_set_ = c(table_HCM, table_Ctrl1, table_Ctrl2)
+        full_table_set = lapply(full_table_set_, function(t) {t[order(t$corr, decreasing = T),]})
+        
+        return(full_table_set) } )
+names(Volcano_df_collection_combined) = names(Volcano_df_collection)
+
+# Export correlation coefficients to xls for each gene
+for (genename in names(Volcano_df_collection_combined)) {
+    print(paste0('Writing ', genename))
+    openxlsx::write.xlsx(x = Volcano_df_collection_combined[[genename]], file = paste0(base_dir,'Rplots/ALL.SP_volcano_and_corr_',genename,'_.xlsx'), overwrite=T)
+}
+
+################################################################################
 # More customized versions of Volcano plots in Rooij data for NPPA and XIRP2
 # label:volcanoRooijGOI
 

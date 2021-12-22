@@ -193,6 +193,12 @@ upset_df_Rooij[upset_df_Rooij$R.P2&upset_df_Rooij$R.P4&(!upset_df_Rooij$R.P1)&(!
 
 ################################################################################
 # Now retreive the NES scores
+#
+# lets_export=1
+
+if (exists('lets_export')) {
+    all_collected_add.info = list()
+}
 
 myRegScores=list()
 for (CURRENT_PATIENT in ALL_PATIENTS) {
@@ -210,8 +216,20 @@ for (CURRENT_PATIENT in ALL_PATIENTS) {
     # myRegScores[[CURRENT_PATIENT]] = aggregate(list(NES=add.info$NES), by = list(TF=add.info$TF), FUN=max)
     rownames(myRegScores[[CURRENT_PATIENT]]) = myRegScores[[CURRENT_PATIENT]]$TF
        
+    # If desired, also gather export data
+    if (exists('lets_export')) {
+        all_collected_add.info[[paste0(CURRENT_PATIENT, '_add.info')]] = add.info
+    }
+    
     print(paste0(CURRENT_PATIENT,' done ..'))
     
+}
+
+if (exists('lets_export')) {
+    big_data_export_structure = c(scenic_regulons_collected_all_patients, all_collected_add.info)
+    openxlsx::write.xlsx(x= big_data_export_structure, file = paste0(base_dir,'Rplots/','ALL.SPcustom','_SCENIC_all_regulons_with_data.xlsx'), overwrite = T)
+    rm('big_data_export_structure')
+    rm('all_collected_add.info')
 }
 
 # Slightly more sophisticated "upset_df"
@@ -302,6 +320,11 @@ psel
 if (!exists('NOSAVE')) { ggsave(filename = paste0(base_dir,'Rplots/',DATASET_NAME,'_7_RegulonsSCENIC_overlapHeatmap_NES_selMoreThan1Pat.pdf'), 
         plot = psel, width=15+eff_cols*cellsize, height=15+eff_rows*cellsize, units='mm', device = cairo_pdf) # 184.6/3*2-4
 }
+
+################################################################################
+# Now let's export this data for reference
+
+View(upset_df_NES_)
 
 ################################################################################
 # Let's quickly check presence of regulons in how # patients per dataset

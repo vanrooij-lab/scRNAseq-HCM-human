@@ -560,9 +560,163 @@ shorthand_custom_compositeplot = function(seuratObject_list, gene_lists, seuratO
     
     
 
+##########
 
-
-
+# Another summary plot tool
+# Produces a heatmap that shows average expression per <CLASS1> and <CLASS2>
+# For multiple genes of interest
+# Also allows for annotation of the genes of interest
+# cols = genes of interest
+# rows = conditions1 x conditions2
+shorthand_heatmap_feature_aggr = function(current_analysis, analysis, feature_list, 
+                                          feature_list_annotation, group.by1, group.by2, fontsize=10,
+                                          manual_zlims = NULL, only_return_max=F, savepath=NULL) {
     
-
+    # It seems Seurat does something weird when requesting using the
+    # current_analysis[[analysis]][["clusters_custom"]]
+    # syntax (returns df)
+    # So this is workaround
+    df_groups_meta = data.frame(group.by1=current_analysis[[analysis]][[group.by1]],group.by2=current_analysis[[analysis]][[group.by2]])
+    
+    # Convert to df
+    df_features_meta =
+        data.frame( feature_annot=feature_list_annotation, feature=feature_list )
+    
+    all_features = shorthand_seurat_fullgenename_faster(seuratObject = current_analysis[[analysis]], gene_names = df_features_meta$feature, return_NA = T)
+    
+    # Create summary expression matrix
+    print(paste0('Creating summary expression matrix -- ', date()))
+    df_expr_list =
+        lapply(all_features, function(g) {
+            print(paste0('Working on gene ',g,' -- ', date()))
+            if (is.na(g)) {
+                # Create 
+                dummy = df_groups_meta
+                dummy$expr = NA
+                expr1_aggr = aggregate(dummy$expr, df_groups_meta, mean)
+                expr1_aggr$Z = NA
+                expr1_aggr$f = NA
+                print(paste0('Gene ',g,' done -- ', date()))
+                return(expr1_aggr)
+            } else {
+                # collect data
+                expr1 = as.vector(current_analysis[[analysis]]@assays$RNA@data[g, ])
+                # mean(current_analysis[[analysis]]@assays$RNA@counts[g, ])
+                
+                # Calculate fraction of cells in which it is expressed
+                fraction_aggr = aggregate(1*(expr1>0), df_groups_meta, mean)
+                
+                # aggregate data
+                expr1_aggr = aggregate(expr1, df_groups_meta, mean)
+                
+                # determine Z-score of aggr
+                expr1_aggr$Z = scale(expr1_aggr$x)
+                expr1_aggr$f = fraction_aggr$x
+                print(paste0('Gene ',g,' done -- ', date()))
+                return(expr1_aggr)
+            }
+        })
+    # df_expr = Reduce(rbind, df_expr_list)
+    print(paste0('Done -- ', date()))
+    
+    # Create normalized matrix (Z), and non-normalized matrix (x)
+    matrix_expr_Z = sapply(df_expr_list, function(df){df$Z})
+    matrix_expr_x = sapply(df_expr_list, function(df){df$x}) 
+    matrix_expr_f = sapply(df_expr_list, function(df){df$f})
+    
+    colnames(matrix_expr_Z) = paste0(df_features_meta$feature, '_', df_features_meta$feature_annot)
+    rownames(matrix_expr_Z) = paste0(df_expr_list[[1]][[group.by1]], '_', df_expr_list[[1]][[group.by2]])
+    colnames(matrix_expr_x) = paste0(df_features_meta$feature, '_', df_features_meta$feature_annot)
+    rownames(matrix_expr_x) = paste0(df_expr_list[[1]][[group.by1]], '_', df_expr_list[[1]][[group.by2]])
+    colnames(matrix_expr_f) = paste0(df_features_meta$feature, '_', df_features_meta$feature_annot)
+    rownames(matrix_expr_f) = paste0(df_expr_list[[1]][[group.by1]], '_', df_expr_list[[1]][[group.by2]])
+    
+    annotation_cols = data.frame(annot = df_features_meta$feature_annot)
+    rownames(annotation_cols) = paste0(df_features_meta$feature, '_', df_features_meta$feature_annot)
+    
+    annotation_rows = data.frame(g1=df_expr_list[[1]][[group.by1]], g2=df_expr_list[[1]][[group.by2]])
+    rownames(annotation_rows) = paste0(df_expr_list[[1]][[group.by1]], '_', df_expr_list[[1]][[group.by2]])
+    names(annotation_rows) = c(group.by1, group.by2)
+    
+    # collapse group 2
+    matrix_expr_Z_g2collapse =
+      apply(matrix_expr_Z, 2, function(x) {df_agr=aggregate(x, list(annotation_rows[[group.by2]]), mean); df_agr$x})
+    matrix_expr_x_g2collapse =
+      apply(matrix_expr_x, 2, function(x) {df_agr=aggregate(x, list(annotation_rows[[group.by2]]), mean); df_agr$x})
+    matrix_expr_f_g2collapse =
+      apply(matrix_expr_f, 2, function(x) {df_agr=aggregate(x, list(annotation_rows[[group.by2]]), mean); df_agr$x})
+    
+    str_annot = aggregate(matrix_expr_Z[,1], list(annotation_rows[[group.by2]]), mean)$Group.1
+    
+    rownames(matrix_expr_Z_g2collapse) = str_annot
+    rownames(matrix_expr_x_g2collapse) = str_annot
+    rownames(matrix_expr_f_g2collapse) = str_annot
+    
+    annotation_rows_g2collapse = data.frame(annot=str_annot)
+    rownames(annotation_rows_g2collapse) = str_annot
+    names(annotation_rows_g2collapse) = group.by2
+    print(paste0('Done -- ', date()))
+    
+    # can be convenient to know maximum of full matrix
+    if (only_return_max) {
+      print('Returning max values and exiting function.')
+      return(list(
+        max_val           = max(matrix_expr_x, na.rm=T),
+        max_val_collapsed = max(matrix_expr_x_g2collapse, na.rm=T)
+      ))
+    }
+    
+    print('Creating heatmap 1')
+    # Determine color scale
+    if (!is.null(manual_zlims)) {max_val = manual_zlims[1]} else {max_val = max(matrix_expr_x, na.rm=T)}
+    mybreaks  = seq(0,max_val,max_val/100)
+    # my_colors = viridis_pal()(100)
+    
+    # Z-score matrix
+    p1_Z=pheatmap(matrix_expr_Z, annotation_row = annotation_rows, annotation_col = annotation_cols, 
+                  cluster_cols = F, cluster_rows = F, fontsize = fontsize)
+    # Expression matrix
+    p1_x=pheatmap(matrix_expr_x, annotation_row = annotation_rows, annotation_col = annotation_cols, 
+                  cluster_cols = F, cluster_rows = F, fontsize = fontsize, breaks = mybreaks)
+    # Fraction of cells detected matrix
+    p1_f=pheatmap(matrix_expr_f, annotation_row = annotation_rows, annotation_col = annotation_cols, 
+                  cluster_cols = F, cluster_rows = F, fontsize = fontsize, breaks = mybreaks)
+    
+    # return(p)
+    print(paste0('Done -- ', date()))
+    
+    print('Creating heatmap 2')
+    if (!is.null(manual_zlims)) {max_val = manual_zlims[2]} else {max_val = max(matrix_expr_x_g2collapse, na.rm=T)}
+    mybreaks  = seq(0,max_val,max_val/100)
+    
+    p2_Z=pheatmap(matrix_expr_Z_g2collapse, annotation_row = annotation_rows_g2collapse, annotation_col = annotation_cols, 
+                  cluster_cols = F, cluster_rows = F, fontsize = fontsize)
+    p2_x=pheatmap(matrix_expr_x_g2collapse, annotation_row = annotation_rows_g2collapse, annotation_col = annotation_cols, 
+                  cluster_cols = F, cluster_rows = F, fontsize = fontsize, breaks = mybreaks)
+    p2_f=pheatmap(matrix_expr_f_g2collapse, annotation_row = annotation_rows_g2collapse, annotation_col = annotation_cols, 
+                  cluster_cols = F, cluster_rows = F, fontsize = fontsize, breaks = mybreaks)
+    
+    print(date())
+    print(paste0('Done -- ', date()))
+    
+    
+    # Save the data if a subdir is given
+    if (!is.null(savepath)) {
+      print(paste0('Saving data -- ', date()))
+      
+      # To do , redundant, but determine max values again
+      max_val           = max(matrix_expr_x, na.rm=T)
+      max_val_collapsed = max(matrix_expr_x_g2collapse, na.rm=T)
+        
+      data_LR_expression =
+        list(matrix_expr_x=matrix_expr_x, matrix_expr_Z=matrix_expr_Z, matrix_expr_f=matrix_expr_f, annotation_rows=annotation_rows, annotation_cols=annotation_cols,
+              matrix_expr_Z_g2collapse=matrix_expr_Z_g2collapse, matrix_expr_x_g2collapse=matrix_expr_x_g2collapse, matrix_expr_f_g2collapse=matrix_expr_f_g2collapse, annotation_rows_g2collapse=annotation_rows_g2collapse,
+             max_val=max_val, max_val_collapsed=max_val_collapsed)
+      save(list='data_LR_expression', file = savepath)
+      print('Saved to data_LR_expression.')
+    }
+    
+    return(list(p1_x=p1_x, p2_x=p2_x, p1_Z=p1_Z, p2_Z=p2_Z, p1_f = p1_f, p2_f = p2_f))
+    
+}
 

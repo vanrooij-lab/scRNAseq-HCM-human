@@ -160,6 +160,8 @@ library(ggrepel)
 
 library(reshape2) 
 
+library(pheatmap)
+
 # also required:
 # package manager: mutoss, openxlsx
 # biocmanager: biomart, multtest, limma, GOstats, org.Mm.eg.db, org.Hs.eg.db
@@ -206,7 +208,7 @@ HCM_SCS_ids =
         JE06='JE6_AHFL77BGX5_S7_cat', 
         JE07='JE7_AHFL7NBGX5_S16_cat', 
         JE08='JE8_AHFL7NBGX5_S17_cat', 
-        MW05='HUB-MW-005_AH32W2BGX9_S5_cat', 
+        MW05='HUB-MW-005_AH32W2BGX9_S5_cat', # MW 5-8 are all patient 3
         MW06='HUB-MW-006_AH32W2BGX9_S6_cat', 
         MW07='HUB-MW-007_HC3GFBGX9_S6_cat', 
         MW08='HUB-MW-008_HC3GFBGX9_S7_cat')
@@ -1236,11 +1238,25 @@ if ('more_custom_plots' %in% desired_command) {
     name_change = c("vRooij"="HCM", "Hu"="Ctrl1", "Teichmann"="Ctrl2")
     current_analysis[[CURRENT_RUNNAME]]$annotation_paper_beatified = factor(
         name_change[current_analysis[[CURRENT_RUNNAME]]$annotation_paper_str], levels=c('HCM','Ctrl1','Ctrl2'))
+    # Custom labeling also for patient
+    current_analysis$ALL.SP_RID2l_clExtended$annotation_patient_str_beauty = gsub("^R\\.", 'HCM\\.',current_analysis$ALL.SP_RID2l_clExtended$annotation_patient_str)
+    current_analysis$ALL.SP_RID2l_clExtended$annotation_patient_str_beauty = gsub("^H\\.", 'Ctrl1\\.',current_analysis$ALL.SP_RID2l_clExtended$annotation_patient_str_beauty)
+    current_analysis$ALL.SP_RID2l_clExtended$annotation_patient_str_beauty = gsub("^T\\.", 'Ctrl2\\.',current_analysis$ALL.SP_RID2l_clExtended$annotation_patient_str_beauty)
     # Create custom order for annotation
     current_analysis[[CURRENT_RUNNAME]]$annotation_paper_fct = 
         factor(current_analysis[[CURRENT_RUNNAME]]$annotation_paper_str, levels=c("vRooij", "Hu", "Teichmann"))
     
     # --- end of load / set up data
+    
+    # Give overview of number of cells (2nd time I do this -- bit redundant -- though here .SP. dataset properly processed)
+    table_per_paper = data.frame(table(current_analysis$ALL.SP_RID2l_clExtended$annotation_paper_beatified))
+    table_per_patient = data.frame(table(current_analysis$ALL.SP_RID2l_clExtended$annotation_patient_str_beauty))
+    colnames(table_per_paper) = c('Source', 'Cell_count')
+    colnames(table_per_patient) = c('Donor', 'Cell_count')
+    openxlsx::write.xlsx(x = list(cellCounts_source=table_per_paper, 
+                                  cellCounts_patients=table_per_patient) ,
+                         file = paste0(base_dir,'Rplots/QC_general_statistics_cellcounts_alldata_v2.xlsx'), overwrite = T)
+    
     
     # Original plots, with a few extra tweaks
     mySeuratCommonPlots(current_analysis[[CURRENT_RUNNAME]], CURRENT_RUNNAME, add_custom_fields = 'annotation_paper_beatified')
@@ -1635,6 +1651,11 @@ if (F) {
     # load(file = paste0(base_dir,'Rdata/RHL_whole_analysis.Rdata'))
     
 }
+
+################################################################################
+# Create overview of cell numbers
+
+# ALL.SP_RID2l
 
 ################################################################################
 # Load a dataset manually

@@ -66,8 +66,10 @@ rownames(indexData_MW) = indexData_MW$Cell_newname
 # Insert data into clExtended
 
 if (F) {
+    
     current_analysis$ROOIJonly_RID2l_clExtended_FSCA = current_analysis$ROOIJonly_RID2l_clExtended
     current_analysis$ROOIJonly_RID2l_clExtended_FSCA[['FSCA']]=indexData_MW[colnames(current_analysis$ROOIJonly_RID2l_clExtended),]$FSC_A
+    current_analysis$ROOIJonly_RID2l_clExtended_FSCA[['DAPI']]=indexData_MW[colnames(current_analysis$ROOIJonly_RID2l_clExtended),]$BV421_A
     
     SaveH5Seurat(object = current_analysis$ROOIJonly_RID2l_clExtended_FSCA, filename = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_','ROOIJonly_RID2l_clExtended_FSCA','.h5seurat'))
         # (Currently, this file is not used by other scripts)
@@ -195,6 +197,8 @@ ggsave(plot = p,filename = paste0(base_dir, 'Rplots/ROOIJonly_RID2l_clExtended_8
 save(list = 'correlations_FSCA_per_patient_combined', file = paste0(base_dir,'Rdata/FSCA__correlations_FSCA_per_patient_combined.Rdata')) # correlations_FSCA_per_patient_combined
 save(list = 'correlations_FSCA_per_patient_list', file = paste0(base_dir,'Rdata/FSCA__correlations_FSCA_per_patient_list.Rdata')) # correlations_FSCA_per_patient_list
 
+# Export data for supp database
+openxlsx::write.xlsx(x = correlations_FSCA_per_patient_combined, file = paste0(base_dir, 'Rplots/ROOIJonly_RID2l_FSCA_correlations_FSCA_per_patient_combined.xlsx'))
 
 
 # Export list for analyis

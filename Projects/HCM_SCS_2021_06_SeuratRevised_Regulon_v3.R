@@ -710,6 +710,7 @@ if ('XXXXXXX' %in% desired_command_regulon) {
 # Small overview of patient-specific memberships
 
 if (F) {
+    
     custom_regs_contributing_patients = lapply(shared_regulon_origins, function(x) {sapply(strsplit(x, '\\.'),function(x){x[[2]]})})
     
     custom_regs_contributing_patients_heatmap =
