@@ -8,7 +8,7 @@ library(pheatmap)
 ################################################################################
 
 qPCR_Data_Maya =
-    openxlsx::read.xlsx('/Users/m.wehrens/Data/_2019_02_HCM_SCS/2021_HPC_analysis.3/qPCR/qPCR Raw_shared regulon 2_topgenes_MWe.xlsx', sheet = 'relevant_data_CT')
+    openxlsx::read.xlsx('/Users/m.wehrens/Data/_2019_02_HCM_SCS/2021_HPC_analysis.3b/qPCR/qPCR Raw_shared regulon 2_topgenes_MWe.xlsx', sheet = 'relevant_data_CT')
 
 # Little preprocessing
 qPCR_Data_Maya$metadata_type = NA
@@ -17,6 +17,7 @@ qPCR_Data_Maya$metadata_type[!grepl('Control', qPCR_Data_Maya$metadata_annotatio
 
 gene_names_noMYL2 = colnames(qPCR_Data_Maya)[!grepl('^metadata|^MYL2$',colnames(qPCR_Data_Maya))]
 gene_names_all = colnames(qPCR_Data_Maya)[!grepl('^metadata',colnames(qPCR_Data_Maya))]
+print(paste0('For reference, genes: ',toString(sort(gene_names_all))))
 
 # additional table with 2^-dCT
 qPCR_Data_Maya_2dCT = qPCR_Data_Maya
@@ -74,13 +75,15 @@ p_list =
 p=wrap_plots(p_list, nrow = 2)
 p
 
-#ggsave(filename = paste0(base_dir,'Rplots/qPCR_scatters_MYL2.pdf'), 
-#        plot = p, width=172-4, height=PANEL_HEIGHT*2, units='mm', device = cairo_pdf) # 184.6/3*2-4
-ggsave(filename = paste0(base_dir,'Rplots/qPCR_scatters_MYL2_',gsub('Δ','d',my_unit),'.pdf'), 
-        plot = p, width=172-4, height=76, units='mm', device = cairo_pdf) # 184.6/3*2-4
-
-ggsave(filename = paste0(base_dir,'Rplots/qPCR_scatters_MYL2_',gsub('Δ','d',my_unit),'_style2.pdf'), 
-        plot = p, width=172-4, height=(172-4)/8*2+15, units='mm', device = cairo_pdf) # 184.6/3*2-4
+if (!exists('nosave')) {
+  #ggsave(filename = paste0(base_dir,'Rplots/qPCR_scatters_MYL2.pdf'), 
+  #        plot = p, width=172-4, height=PANEL_HEIGHT*2, units='mm', device = cairo_pdf) # 184.6/3*2-4
+  ggsave(filename = paste0(base_dir,'Rplots/qPCR_scatters_MYL2_',gsub('Δ','d',my_unit),'.pdf'), 
+          plot = p, width=172-4, height=76, units='mm', device = cairo_pdf) # 184.6/3*2-4
+  
+  ggsave(filename = paste0(base_dir,'Rplots/qPCR_scatters_MYL2_',gsub('Δ','d',my_unit),'_style2.pdf'), 
+          plot = p, width=172-4, height=(172-4)/8*2+15, units='mm', device = cairo_pdf) # 184.6/3*2-4
+}
 
 # Show sample sizes
 sample_sizes = sapply(sort(gene_names_noMYL2), function(current_gene) {
@@ -101,6 +104,8 @@ View(data.frame(colnames(sample_sizes), sample_sizes[1,]))
 # n_ACTA1 = 42, n_ACTC1 = 74, n_CKM = 71, n_COX6A2 = 77, n_CRYAB = 80, n_CSRP3 = 73, n_GAPDH = 71, n_HSPB1 = 70, n_MB = 75, n_MYL3 = 68, n_MYL9 = 83, n_SLC25A3 = 68, n_SLC25A4 = 74, n_TNNC1 = 75, n_TPM1 = 78, n_UBC = 61
 min(sample_sizes[1,])
 max(sample_sizes[1,])
+
+paste0( paste0(colnames(sample_sizes), ', ', sample_sizes[2,],'; ') , collapse = '')
 
 # Test code
 
@@ -152,10 +157,12 @@ sum(fdr_values<.05)/length(fdr_values)
 paste0('Percentage fdr<.05: ',round(sum(fdr_values<.05)/length(fdr_values)*100,0),'%')
 
 fdr_values_Rpos = p.adjust(as.vector(as.matrix(p_matrix[(corr_matrix<.9999999)&(corr_matrix>0)])), method='fdr')
-paste0('Percentage fdr<.05: ',round(sum(fdr_values_Rpos<.05)/length(fdr_values_Rpos)*100,0),'%')
+paste0('Of R>0, percentage fdr<.05: ',round(sum(fdr_values_Rpos<.05)/length(fdr_values_Rpos)*100,0),'%')
 
 sum(corr_matrix[corr_matrix<.9999999]>0)/length(corr_matrix[corr_matrix<.9999999])
 paste0('Percentage R>0: ',round(sum(corr_matrix[corr_matrix<.9999999]>0)/length(corr_matrix[corr_matrix<.9999999])*100,0),'%')
+
+# Maybe it makes more sense to check what the odds are these values are >0
 
 # Sanity check with scatters
 MYL_corrs_check = corr_matrix$MYL2
@@ -172,9 +179,11 @@ my_color_gradient = colorRampPalette(rainbow_colors)(201)
 p = pheatmap(corr_matrix, treeheight_row = 0, treeheight_col = 0, fontsize = 8, 
              cellwidth = 10, cellheight = 10, border_color=NA, color=my_color_gradient, breaks=seq(-1,1,.01))
 
-ggsave(filename = paste0(base_dir,'Rplots/qPCR_heatmap_all17genes_HCMsamples.pdf'), 
-        plot = p, width=172/3*2-4, height=172/3*2-4, units='mm', device = cairo_pdf) # 184.6/3*2-4
+if (!exists('nosave')) {
+  ggsave(filename = paste0(base_dir,'Rplots/qPCR_heatmap_all17genes_HCMsamples.pdf'), 
+          plot = p, width=172/3*2-4, height=172/3*2-4, units='mm', device = cairo_pdf) # 184.6/3*2-4
         # 20*10/.pt
+}
 
 # smaller size
 myBreakList=seq(-1,1,.01)
@@ -184,8 +193,10 @@ rainbow_colors
 p = pheatmap(corr_matrix, treeheight_row = 0, treeheight_col = 0, fontsize = 5, 
              cellwidth = 5, cellheight = 5, border_color=NA, legend_breaks = seq(-1,1,.5), breaks=myBreakList, color=myColors)
              # 7/.pt # cell height in mm
-ggsave(filename = paste0(base_dir,'Rplots/qPCR_heatmap_all17genes_HCMsamples-smallCustomCols.pdf'), 
-        plot = p, width=172/3-4, height=172/3-4, units='mm', device = cairo_pdf) # 184.6/3*2-4
+if (!exists('nosave')) {
+  ggsave(filename = paste0(base_dir,'Rplots/qPCR_heatmap_all17genes_HCMsamples-smallCustomCols.pdf'), 
+          plot = p, width=172/3-4, height=172/3-4, units='mm', device = cairo_pdf) # 184.6/3*2-4
+}
 
 ggplot(data.frame(correlation=corr_matrix[corr_matrix<1]),aes(x=correlation))+
   geom_histogram()+theme_bw()
@@ -234,9 +245,10 @@ p=ggplot(qPCR_Data_Maya_rawCT, aes(x=GAPDH, y=RPL32, color=metadata_type))+
     geom_point()+theme_bw()+theme(legend.position='none')+give_better_textsize_plot(12)+xlab('GAPDH (CT)')+ylab('RPL32 (CT)')
 p
 
-ggsave(filename = paste0(base_dir,'Rplots/qPCR_misc_GAPDH-vs-RPL32.pdf'), 
-        plot = p, width=172/3-4, height=172/3-4, units='mm', device = cairo_pdf) # 184.6/3*2-4
-
+if (!exists('nosave')) {
+  ggsave(filename = paste0(base_dir,'Rplots/qPCR_misc_GAPDH-vs-RPL32.pdf'), 
+          plot = p, width=172/3-4, height=172/3-4, units='mm', device = cairo_pdf) # 184.6/3*2-4
+}
 
 p1=ggplot(qPCR_Data_Maya_rawCT, aes(x=metadata_type,y=MYL2, color=metadata_type))+
     geom_jitter()+theme_bw()+theme(legend.position='none')+xlab(element_blank())+give_better_textsize_plot(12)+ylab('MYL2 (CT)')
@@ -248,8 +260,9 @@ p3=ggplot(qPCR_Data_Maya_rawCT, aes(x=metadata_type,y=CRYAB, color=metadata_type
 p=p1+p2+p3
 p
 
-ggsave(filename = paste0(base_dir,'Rplots/qPCR_misc_raw-MYL2-ACTA1-CRYAB.pdf'), 
-        plot = p, width=172*2/3-4, height=172/3-4, units='mm', device = cairo_pdf) # 184.6/3*2-4
-
+if (!exists('nosave')) {
+  ggsave(filename = paste0(base_dir,'Rplots/qPCR_misc_raw-MYL2-ACTA1-CRYAB.pdf'), 
+          plot = p, width=172*2/3-4, height=172/3-4, units='mm', device = cairo_pdf) # 184.6/3*2-4
+}
 
 

@@ -5,10 +5,30 @@ library(scales)
 library(patchwork)
 
 
-ANALYSIS_NAME = 'ROOIJonly_RID2l'
+
 
 ################################################################################
 
+ANALYSIS_NAME = 'ROOIJonly.sp.bt_RID2l'
+
+if (!exists('current_analysis')) {current_analysis = list()}
+current_analysis[[ANALYSIS_NAME]] =
+        LoadH5Seurat(file = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_',ANALYSIS_NAME,'.h5seurat'))
+
+################################################################################
+
+# Some cyclin genes
+current_genes = rownames(current_analysis[[ANALYSIS_NAME]])
+cellcycle_list2 = current_genes[grepl(':CCN', current_genes)]
+
+p_list = lapply(cellcycle_list2, function(g) {
+    shorthand_seurat_custom_expr(seuratObject = current_analysis[[ANALYSIS_NAME]], 
+                                                    gene_of_interest = g, textsize=8, pointsize=2,  # 'KLF/SP',
+                                                    custom_title = g, mymargin = .5, zscore = T) })
+
+wrap_plots( p_list )
+
+################################################################################
 
 sarcomere_GO_table_ = read.table('/Users/m.wehrens/Data/_2019_02_HCM_SCS/misc_analyses/GO-sarcomere_associated_genes.txt', sep = '\t')
 names(sarcomere_GO_table_)=c('bioentity_label','GO','organism')
@@ -114,6 +134,28 @@ shorthand_seurat_custom_expr(seuratObject = current_analysis[[ANALYSIS_NAME]],
                                                     custom_title = 'ZBED1 related', mymargin = .5, zscore = T)
 # Difficult to see here:
 VlnPlot(object = current_analysis[[ANALYSIS_NAME]], features = shorthand_seurat_fullgenename_faster(current_analysis[[ANALYSIS_NAME]], gene_list_ZBED1))
+
+##########################################################################################
+
+# Separate genes of a SCENIC regulon
+
+# SCENIC regulons
+# load(paste0(base_dir, 'Rdata/SCENIC_regulons_core_genes_sel.Rdata')) # SCENIC_regulons_core_genes_sel
+load(paste0(base_dir, 'Rdata/SCENIC_reg_top_genes_sorted_full.Rdata')) # SCENIC_reg_top_genes_sorted_full
+
+TOTAL_GENES=4
+gene_list_NFE2L1_top10 = SCENIC_reg_top_genes_sorted_full$NFE2L1[1:TOTAL_GENES]
+plist=lapply(1:TOTAL_GENES, function(idx) {
+    shorthand_seurat_custom_expr(seuratObject = current_analysis[[ANALYSIS_NAME]], 
+                                                    gene_of_interest = gene_list_NFE2L1_top10[idx], textsize=8, pointsize=.25, 
+                                                    custom_title = gene_list_NFE2L1_top10[idx], mymargin = .5, zscore = T)
+})
+p=wrap_plots(plist)
+
+ggsave(filename = paste0(base_dir,'Rplots/',ANALYSIS_NAME,'_9_custom_SCENIC_','NFE2L1','_members.pdf'), 
+        plot = p, width=40, height=40, units='mm', device = cairo_pdf) # 184.6/3*2-4
+
+
 
 
 

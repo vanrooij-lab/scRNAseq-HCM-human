@@ -40,36 +40,63 @@ library(wesanderson) # only for some custom plots
 
 ####################################################################################################
 
-DATASET_NAME='ROOIJonly_RID2l'
+DATASET_NAME='ROOIJonly.sp.bt_RID2l'
 ANALYSIS_NAME=DATASET_NAME
+
+ANALYSIS_NAME_clExtended = paste0(DATASET_NAME, '_clExtended')
 
 # load the file
 if (!exists('current_analysis')) {current_analysis = list()}
 current_analysis[[DATASET_NAME]] =
     LoadH5Seurat(file = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_',DATASET_NAME,'.h5seurat'))
 
-# load the clExtended manually, if desired
+# load the clExtended manually, if desired (ie parts were already done)
 if (F) {
-  ANALYSIS_NAME_clExtended = 'ROOIJonly_RID2l_clExtended'
+  
   current_analysis[[ANALYSIS_NAME_clExtended]] =
     LoadH5Seurat(file = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_',ANALYSIS_NAME_clExtended,'.h5seurat'))
 }
 
 ####################################################################################################
+# Now show some general stats
+
+total_UMI_medians_per_patient = list(); total_UMI_means_per_patient = list(); total_UMI_count_per_patient=list()
+for (pt in sort(unique(current_analysis[[DATASET_NAME]]$annotation_patient_str))) {
+
+  cells=current_analysis[[DATASET_NAME]]$annotation_patient_str==pt
+  
+  total_UMI_medians_per_patient[[pt]] = 
+    median(colSums(current_analysis[[DATASET_NAME]]@assays$RNA@counts[,cells])) # median total UMI count
+  
+  total_UMI_means_per_patient[[pt]] = 
+    mean(colSums(current_analysis[[DATASET_NAME]]@assays$RNA@counts[,cells])) # median total UMI count
+  
+  total_UMI_count_per_patient[[pt]] = 
+    sum(current_analysis[[DATASET_NAME]]@assays$RNA@counts[,cells]) # median total UMI count
+  
+}
+round(unlist(total_UMI_medians_per_patient))
+round(unlist(total_UMI_means_per_patient))
+round(unlist(total_UMI_count_per_patient))
+
+
+
+####################################################################################################
 # Create different number of clusters
 
 # clustree is a simple visualization tool, which requires different levels of clustering to be present
-current_analysis$ROOIJonly_RID2l_clExtended=FindClusters(current_analysis$ROOIJonly_RID2l, resolution = seq(.1,1,.1))
+current_analysis[[ANALYSIS_NAME_clExtended]]=FindClusters(current_analysis[[DATASET_NAME]], resolution = seq(.1,1,.1))
 
 # Illustration of different clusterings
-p=    DimPlot(current_analysis$ROOIJonly_RID2l_clExtended, group.by = 'RNA_snn_res.0.1')+
-      DimPlot(current_analysis$ROOIJonly_RID2l_clExtended, group.by = 'RNA_snn_res.0.4')+
-      DimPlot(current_analysis$ROOIJonly_RID2l_clExtended, group.by = 'RNA_snn_res.1')
+p=    DimPlot(current_analysis[[ANALYSIS_NAME_clExtended]], group.by = 'RNA_snn_res.0.1')+
+      DimPlot(current_analysis[[ANALYSIS_NAME_clExtended]], group.by = 'RNA_snn_res.0.4')+
+      DimPlot(current_analysis[[ANALYSIS_NAME_clExtended]], group.by = 'RNA_snn_res.1')
+# p
 ggsave(plot=p, filename = paste0(base_dir,'Rplots/',ANALYSIS_NAME,'_7_Clustering_multiLevels.pdf'), 
                 height=50, width=200, units='mm')
 
 # Visualize hierarchy using clustree
-clustree_out = clustree(current_analysis$ROOIJonly_RID2l_clExtended)
+clustree_out = clustree(current_analysis[[ANALYSIS_NAME_clExtended]])
 ggsave(plot=clustree_out, filename = paste0(base_dir,'Rplots/',ANALYSIS_NAME,'_7_Clustree_analysis.pdf'), 
                 height=250, width=200, units='mm')
 
@@ -81,27 +108,28 @@ if (!exists('DE_cluster')) {DE_cluster = list()}
 
 # Check overlap @0.4
 # (Previously: do for max. resolution)
-DimPlot(current_analysis$ROOIJonly_RID2l_clExtended, group.by = 'RNA_snn_res.0.4')
-DE_cluster$ROOIJonly_RID2l_clExtended_scanning =
-    diff_express_clusters(mySeuratObject = current_analysis$ROOIJonly_RID2l_clExtended, mc.cores = MYMCCORES, custom_ident = 'RNA_snn_res.0.4')
+DimPlot(current_analysis[[ANALYSIS_NAME_clExtended]], group.by = 'RNA_snn_res.0.4')
+if (!exists('DE_cluster')) {DE_cluster = list()}
+DE_cluster[[ANALYSIS_NAME_clExtended]]_scanning =
+    diff_express_clusters(mySeuratObject = current_analysis[[ANALYSIS_NAME_clExtended]], mc.cores = MYMCCORES, custom_ident = 'RNA_snn_res.0.4')
 
 # Then look at the overlap of clusters
 
 # Create pairs to compare
-df_compare = tidyr::expand_grid(x=names(DE_cluster$ROOIJonly_RID2l_clExtended_scanning), y=names(DE_cluster$ROOIJonly_RID2l_clExtended_scanning))
+df_compare = tidyr::expand_grid(x=names(DE_cluster[[ANALYSIS_NAME_clExtended]]_scanning), y=names(DE_cluster[[ANALYSIS_NAME_clExtended]]_scanning))
 
 # Calculate overlaps
 df_compare$overlap = sapply(1:dim(df_compare)[1], function(X) {
-    df1=DE_cluster$ROOIJonly_RID2l_clExtended_scanning[[     df_compare$x[[X]]     ]]
-    df2=DE_cluster$ROOIJonly_RID2l_clExtended_scanning[[     df_compare$y[[X]]     ]]
+    df1=DE_cluster[[ANALYSIS_NAME_clExtended]]_scanning[[     df_compare$x[[X]]     ]]
+    df2=DE_cluster[[ANALYSIS_NAME_clExtended]]_scanning[[     df_compare$y[[X]]     ]]
     topX_1=rownames(df1[order(df1$avg_log2FC, decreasing = T),][1:min(dim(df1)[1],20),])
     topX_2=rownames(df2[order(df2$avg_log2FC, decreasing = T),][1:min(dim(df2)[1],20),])
     sum(topX_1 %in% topX_2) /
         min(length(topX_1), length(topX_2))
     })
 df_compare$overlap_N = sapply(1:dim(df_compare)[1], function(X) {
-    df1=DE_cluster$ROOIJonly_RID2l_clExtended_scanning[[     df_compare$x[[X]]     ]]
-    df2=DE_cluster$ROOIJonly_RID2l_clExtended_scanning[[     df_compare$y[[X]]     ]]
+    df1=DE_cluster[[ANALYSIS_NAME_clExtended]]_scanning[[     df_compare$x[[X]]     ]]
+    df2=DE_cluster[[ANALYSIS_NAME_clExtended]]_scanning[[     df_compare$y[[X]]     ]]
     topX_1=rownames(df1[order(df1$avg_log2FC, decreasing = T),][1:min(dim(df1)[1],20),])
     topX_2=rownames(df2[order(df2$avg_log2FC, decreasing = T),][1:min(dim(df2)[1],20),])
     sum(topX_1 %in% topX_2)
@@ -127,56 +155,58 @@ pheatmap(matrix_compare, cluster_cols = hclust_out, cluster_rows = hclust_out, a
 # Previously, we did re-assign them, but for now, I think 0.4 will be OK
 if (F) {
   reassignment_lookup = cutree_out
-  current_analysis$ROOIJonly_RID2l_clExtended[['clusters_custom']]=factor(cutree_out[current_analysis$ROOIJonly_RID2l_clExtended$RNA_snn_res.1], 
+  current_analysis[[ANALYSIS_NAME_clExtended]][['clusters_custom']]=factor(cutree_out[current_analysis[[ANALYSIS_NAME_clExtended]]$RNA_snn_res.1], 
       levels=1:max(reassignment_lookup))
 }
-new_cls=as.numeric(current_analysis$ROOIJonly_RID2l_clExtended$RNA_snn_res.0.4)
-current_analysis$ROOIJonly_RID2l_clExtended[['clusters_custom']]=factor(new_cls, levels=min(new_cls):max(new_cls))
+new_cls=as.numeric(current_analysis[[ANALYSIS_NAME_clExtended]]$RNA_snn_res.0.4)
+current_analysis[[ANALYSIS_NAME_clExtended]][['clusters_custom']]=factor(new_cls, levels=min(new_cls):max(new_cls))
 
 
 # Show it
-DimPlot(current_analysis$ROOIJonly_RID2l_clExtended, group.by = 'clusters_custom', label =  T, label.box = T)
+DimPlot(current_analysis[[ANALYSIS_NAME_clExtended]], group.by = 'clusters_custom', label =  T, label.box = T)
 
 # Some additional info
-current_analysis$ROOIJonly_RID2l_clExtended$nCount.nMT.log10 = log10(.1+current_analysis$ROOIJonly_RID2l_clExtended$nCount.nMT)
-FeaturePlot(current_analysis$ROOIJonly_RID2l_clExtended, features = 'nCount.nMT.log10', cols = rainbow_colors)
-DimPlot(current_analysis$ROOIJonly_RID2l_clExtended, group.by = 'clusters_custom')
+current_analysis[[ANALYSIS_NAME_clExtended]]$nCount.nMT.log10 = log10(.1+current_analysis[[ANALYSIS_NAME_clExtended]]$nCount.nMT)
+FeaturePlot(current_analysis[[ANALYSIS_NAME_clExtended]], features = 'nCount.nMT.log10', cols = rainbow_colors)
+DimPlot(current_analysis[[ANALYSIS_NAME_clExtended]], group.by = 'clusters_custom')
 
 
 ####################################################################################################
 
 # Now run diff. expr.
 # First set identities to the custom ones
-Idents(current_analysis$ROOIJonly_RID2l_clExtended) <- current_analysis$ROOIJonly_RID2l_clExtended$clusters_custom
-DimPlot(current_analysis$ROOIJonly_RID2l_clExtended)
-DE_cluster$ROOIJonly_RID2l_clExtended =
-    diff_express_clusters(mySeuratObject = current_analysis$ROOIJonly_RID2l_clExtended, mc.cores = MYMCCORES)
+Idents(current_analysis[[ANALYSIS_NAME_clExtended]]) <- current_analysis[[ANALYSIS_NAME_clExtended]]$clusters_custom
+DimPlot(current_analysis[[ANALYSIS_NAME_clExtended]])
+DE_cluster[[ANALYSIS_NAME_clExtended]] =
+    diff_express_clusters(mySeuratObject = current_analysis[[ANALYSIS_NAME_clExtended]], mc.cores = MYMCCORES)
 
 # Export results
-DE_out_ROOIJonly_RID2l_clExtended = diff_express_clusters_save_results(
-  all_markers = DE_cluster$ROOIJonly_RID2l_clExtended, run_name = 'ROOIJonly_RID2l_clExtended', base_dir = base_dir, topX = 30, extendedOutput = T, FC_cutoff = 1.1, pval_cutoff = .05)
+DE_out_ROOIJonly_RID2l.sp.bt_clExtended = diff_express_clusters_save_results(
+  all_markers = DE_cluster[[ANALYSIS_NAME_clExtended]], run_name = ANALYSIS_NAME_clExtended, base_dir = base_dir, topX = 30, extendedOutput = T, FC_cutoff = 1.1, pval_cutoff = .05)
 
 # Create convenient parameters for later use/export below
-table_topDE = DE_out_ROOIJonly_RID2l_clExtended$topHitsPerCluster
-enriched_genes_lists_clusters_ROOIJ = DE_out_ROOIJonly_RID2l_clExtended$enriched_genes_lists
+table_topDE = DE_out_ROOIJonly_RID2l.sp.bt_clExtended$topHitsPerCluster
+enriched_genes_lists_clusters_ROOIJ = DE_out_ROOIJonly_RID2l.sp.bt_clExtended$enriched_genes_lists
 
 ####################################################################################################
 # Now save important data for later use
 
 # Save Seurat analysis
-SaveH5Seurat(current_analysis$ROOIJonly_RID2l_clExtended, file = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_','ROOIJonly_RID2l_clExtended','.h5seurat'), overwrite = T)
+SaveH5Seurat(current_analysis[[ANALYSIS_NAME_clExtended]], file = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_',ANALYSIS_NAME_clExtended,'.h5seurat'), overwrite = T)
   # if (!exists('current_analysis')) {current_analysis = list()}
-  # current_analysis$ROOIJonly_RID2l_clExtended = LoadH5Seurat(file = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_','ROOIJonly_RID2l_clExtended','.h5seurat'))
+  # current_analysis[[ANALYSIS_NAME_clExtended]] = LoadH5Seurat(file = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_',ANALYSIS_NAME_clExtended,'.h5seurat'))
 
 # Save differential expression results
-save(list='DE_cluster', file = paste0(base_dir,'Rdata/DE_cluster__ROOIJonly_RID2l_clExtended.Rdata'))
-  # load(paste0(base_dir,'Rdata/DE_cluster__ROOIJonly_RID2l_clExtended.Rdata')) # DE_cluster
-save(list='enriched_genes_lists_clusters_ROOIJ', file = paste0(base_dir,'Rdata/enriched_genes_lists_clusters_ROOIJ__ROOIJonly_RID2l_clExtended.Rdata'))
-  # load(paste0(base_dir,'Rdata/enriched_genes_lists_clusters_ROOIJ__ROOIJonly_RID2l_clExtended.Rdata')) # enriched_genes_lists_clusters_ROOIJ
+
+# ROOIJonly.sp.bt_RID2l_clExtended
+save(list='DE_cluster', file = paste0(base_dir,'Rdata/DE_cluster__',ANALYSIS_NAME_clExtended,'.Rdata'))
+  # load(paste0(base_dir,'Rdata/DE_cluster__',ANALYSIS_NAME_clExtended,'.Rdata')) # DE_cluster
+save(list='enriched_genes_lists_clusters_ROOIJ', file = paste0(base_dir,'Rdata/enriched_genes_lists_clusters_ROOIJ__',ANALYSIS_NAME_clExtended,'.Rdata'))
+  # load(file = paste0(base_dir,'Rdata/enriched_genes_lists_clusters_ROOIJ__ROOIJonly_RID2l.sp.bt_clExtended.Rdata')) # enriched_genes_lists_clusters_ROOIJ
 
 
 # sanity check, sorted correctly ..
-# rownames(DE_cluster$ROOIJonly_RID2l_clExtended$`2`[order(DE_cluster$ROOIJonly_RID2l_clExtended$`2`$avg_log2FC, decreasing = T),])[1:143]==enriched_genes_lists_clusters_ROOIJ$'2'
+# rownames(DE_cluster[[ANALYSIS_NAME_clExtended]]$`2`[order(DE_cluster[[ANALYSIS_NAME_clExtended]]$`2`$avg_log2FC, decreasing = T),])[1:143]==enriched_genes_lists_clusters_ROOIJ$'2'
 
 
 ####################################################################################################
@@ -187,10 +217,10 @@ save(list='enriched_genes_lists_clusters_ROOIJ', file = paste0(base_dir,'Rdata/e
 # Run cluster plotting script again
 # Note: I used other scripts for the publication figures
 
-ANALYSIS_NAME_clExtended='ROOIJonly_RID2l_clExtended'
+ANALYSIS_NAME_clExtended=ANALYSIS_NAME_clExtended
 NR_GENES_PER_CLUSTER=4
 # Retrieve 4 top genes
-gene_symbol_table_clExt=diff_express_clusters_save_results(DE_cluster$ROOIJonly_RID2l_clExtended, run_name=ANALYSIS_NAME_clExtended, base_dir, 
+gene_symbol_table_clExt=diff_express_clusters_save_results(DE_cluster[[ANALYSIS_NAME_clExtended]], run_name=ANALYSIS_NAME_clExtended, base_dir, 
     topX=NR_GENES_PER_CLUSTER, easy_names=T, save=F) 
 list_p=list()
 for (cluster_idx in 1:dim(gene_symbol_table_clExt)[2]) {
@@ -209,7 +239,7 @@ for (cluster_idx in 1:dim(gene_symbol_table_clExt)[2]) {
     
     ggsave(plot=list_p[[cluster_idx]], filename = paste0(base_dir,'Rplots/',ANALYSIS_NAME_clExtended,'_7_clExt_ClusterMarkers_cl_',cluster_idx,'.pdf'), 
                 height=18*3, width=18, units='mm', device = cairo_pdf)
-    #VlnPlot(current_analysis$ROOIJonly_RID2l, features = shorthand_seurat_fullgenename(current_genes))
+    #VlnPlot(current_analysis[[ANALYSIS_NAME]], features = shorthand_seurat_fullgenename(current_genes))
 
 }
 # Save one additional plot with a legend to use for figures
@@ -225,27 +255,27 @@ VlnPlot(current_analysis[[ANALYSIS_NAME_clExtended]], features = 'ENSG0000018684
 ################################################################################
 # Print new umap
 
-p=DimPlot(current_analysis$ROOIJonly_RID2l_clExtended, cols = rep(col_vector_60,2), label = T, repel = T, label.size = 7)+
+p=DimPlot(current_analysis[[ANALYSIS_NAME_clExtended]], cols = rep(col_vector_60,2), label = T, repel = T, label.size = 7)+
     theme_void()+ggtitle(element_blank())+theme(legend.position = 'none')
 # p
 # Save files
-ggsave(plot = p, filename = paste0(base_dir,'Rplots/','ANALYSIS_NAME_clExtended','_2_umapLabeled_by_','idents','.pdf'), height=5.5, width=5.5, units='cm')
+ggsave(plot = p, filename = paste0(base_dir,'Rplots/',ANALYSIS_NAME_clExtended,'_2_umapLabeled_by_','idents','.pdf'), height=5.5, width=5.5, units='cm')
 
 # Second version (note sth similar is also made in the "mySeuratCommonPlots" function
-p=DimPlot(current_analysis$ROOIJonly_RID2l_clExtended, cols = rep(col_vector_60,2), label = T, repel = T, label.size = 6/.pt, pt.size = .1, label.box=T)+
+p=DimPlot(current_analysis[[ANALYSIS_NAME_clExtended]], cols = rep(col_vector_60,2), label = T, repel = T, label.size = 6/.pt, pt.size = .1, label.box=T)+
                 give_better_textsize_plot(8)+theme_void()+ggtitle(element_blank())+theme(legend.position = 'none')
 p        
 # original size was (172/3-4) x (172/3-4)
-ggsave(plot = p, filename = paste0(base_dir,'Rplots/','ROOIJonly_RID2l_clExtended','_2_umapLabeled_by_','Ident','_morecustomized-Small.pdf'), 
+ggsave(plot = p, filename = paste0(base_dir,'Rplots/',ANALYSIS_NAME_clExtended,'_2_umapLabeled_by_','Ident','_morecustomized-Small.pdf'), 
        height=172/3*(2/3)-4, width=172/3*(2/3)-4, units='mm', device = cairo_pdf)
 
 # Also create customized patient distribution
 # another_palette = wesanderson::wes_palette(name = 'BottleRocket2')
-p=DimPlot(current_analysis$ROOIJonly_RID2l_clExtended, cols = colors_distinguishable[], label = F, repel = T, label.size = 7, group.by = 'annotation_patient_fct', pt.size = .1)+
+p=DimPlot(current_analysis[[ANALYSIS_NAME_clExtended]], cols = colors_distinguishable[], label = F, repel = T, label.size = 7, group.by = 'annotation_patient_fct', pt.size = .1)+
     give_better_textsize_plot(6)+theme_void()+ggtitle(element_blank())  #+theme(legend.position = 'none')
 # p
 # Save files
-ggsave(plot = p, filename = paste0(base_dir,'Rplots/','ANALYSIS_NAME_clExtended','_2_umapLabeled_by_','annotation_patient_fct-vCustom','.pdf'), width=(172/3)-4, height=.75*(172/3-4), units='mm', device = cairo_pdf)
+ggsave(plot = p, filename = paste0(base_dir,'Rplots/',ANALYSIS_NAME_clExtended,'_2_umapLabeled_by_','annotation_patient_fct-vCustom','.pdf'), width=(172/3)-4, height=.75*(172/3-4), units='mm', device = cairo_pdf)
 
 ################################################################################
 # New custom plot with patient - cluster distr.
@@ -386,18 +416,18 @@ if (F) {
         # old code
         # Extra marker plots
         #genes_of_interest=c('NPPA', 'FHL1', 'XIRP2', 'NEAT1', 'FHL2', 'CMYA5', 'NPPB', 'PCDH7', 'MYOM1', 'MALAT1', 'CKM', 'XIRP2')
-        #genes_of_interest_fullname=rownames(current_analysis$ROOIJonly_RID2l)[grepl(paste0(paste0(':',genes_of_interest,'$'),collapse = '|'),rownames(current_analysis$ROOIJonly_RID2l))]
-        #FeaturePlot(current_analysis$ROOIJonly_RID2l, genes_of_interest_fullname, cols=rainbow_colors)
+        #genes_of_interest_fullname=rownames(current_analysis[[ANALYSIS_NAME]])[grepl(paste0(paste0(':',genes_of_interest,'$'),collapse = '|'),rownames(current_analysis[[ANALYSIS_NAME]]))]
+        #FeaturePlot(current_analysis[[ANALYSIS_NAME]], genes_of_interest_fullname, cols=rainbow_colors)
         
         
         
         # run_name='ROOIJonly_RID2l'
         #current_analysis[[ANALYSIS_NAME]]
-        #gene_symbol_table=DE_cluster$ROOIJonly_RID2l
+        #gene_symbol_table=DE_cluster[[ANALYSIS_NAME]]
         ANALYSIS_NAME='ROOIJonly_RID2l'
         load('/Users/m.wehrens/Data/_2019_02_HCM_SCS/2021_HPC_analysis.3/Rdata/DE_cluster_ROOIJonly_RID2l.Rdata')
         NR_GENES_PER_CLUSTER=4
-        gene_symbol_table=diff_express_clusters_save_results(DE_cluster$ROOIJonly_RID2l, run_name, base_dir, topX=NR_GENES_PER_CLUSTER, easy_names=T, save=F) 
+        gene_symbol_table=diff_express_clusters_save_results(DE_cluster[[ANALYSIS_NAME]], run_name, base_dir, topX=NR_GENES_PER_CLUSTER, easy_names=T, save=F) 
         list_p=list()
         for (cluster_idx in 1:dim(gene_symbol_table)[2]) {
         
@@ -415,7 +445,7 @@ if (F) {
             
             ggsave(plot=list_p[[cluster_idx]], filename = paste0(base_dir,'Rplots/',ANALYSIS_NAME,'_7_ClusterMarkers_cl_',cluster_idx,'.pdf'), 
                         height=40, width=16, units='mm')
-            #VlnPlot(current_analysis$ROOIJonly_RID2l, features = shorthand_seurat_fullgenename(current_genes))
+            #VlnPlot(current_analysis[[ANALYSIS_NAME]], features = shorthand_seurat_fullgenename(current_genes))
         
         }
         # Save one additional plot with a legend to use for figures
@@ -441,38 +471,39 @@ if (F) {
         ################################################################################
         # What's the nature of those outlier cells
         
-        FeaturePlot(current_analysis$ROOIJonly_RID2l, features = 'percent.mt', cols=rainbow_colors)
-        FeaturePlot(current_analysis$ROOIJonly_RID2l, features = 'nFeature.nMT', cols=rainbow_colors)
-        FeaturePlot(current_analysis$ROOIJonly_RID2l, features = 'nCount.nMT', cols=rainbow_colors)
+        FeaturePlot(current_analysis[[ANALYSIS_NAME]], features = 'percent.mt', cols=rainbow_colors)
+        FeaturePlot(current_analysis[[ANALYSIS_NAME]], features = 'nFeature.nMT', cols=rainbow_colors)
+        FeaturePlot(current_analysis[[ANALYSIS_NAME]], features = 'nCount.nMT', cols=rainbow_colors)
         
         ################################################################################
         
-        current_analysis$ROOIJonly_RID2l = RunTSNE(current_analysis$ROOIJonly_RID2l)
-        DimPlot(current_analysis$ROOIJonly_RID2l, reduction = 'tsne')
+        current_analysis[[DATASET_NAME]]= RunTSNE(current_analysis[[ANALYSIS_NAME]])
+        DimPlot(current_analysis[[ANALYSIS_NAME]], reduction = 'tsne')
         
-        FeaturePlot(current_analysis$ROOIJonly_RID2l, reduction = 'tsne', features = shorthand_seurat_fullgenename('TTN'), cols=rainbow_colors)
+        FeaturePlot(current_analysis[[ANALYSIS_NAME]], reduction = 'tsne', features = shorthand_seurat_fullgenename('TTN'), cols=rainbow_colors)
         
         ################################################################################
         # What is we focus on the main cluster?
         
-        DimPlot(current_analysis$ROOIJonly_RID2l)
-        current_analysis$ROOIJonly_RID2l_sub = 
-            subset(current_analysis$ROOIJonly_RID2l, cells=colnames(current_analysis$ROOIJonly_RID2l)[Idents(current_analysis$ROOIJonly_RID2l)!=3])
+        DimPlot(current_analysis[[ANALYSIS_NAME]])
+        ANALYSIS_NAME_SUB = paste0(ANALYSIS_NAME, '_sub')
+        current_analysis[[ANALYSIS_NAME_SUB]] = 
+            subset(current_analysis[[ANALYSIS_NAME]], cells=colnames(current_analysis[[ANALYSIS_NAME]])[Idents(current_analysis[[ANALYSIS_NAME]])!=3])
         
-        current_analysis$ROOIJonly_RID2l_sub <- ScaleData(current_analysis$ROOIJonly_RID2l_sub , verbose = FALSE, do.scale = F, do.center = F)
-        current_analysis$ROOIJonly_RID2l_sub <- RunPCA(current_analysis$ROOIJonly_RID2l_sub , npcs = 30, verbose = FALSE)
-        current_analysis$ROOIJonly_RID2l_sub <- RunUMAP(current_analysis$ROOIJonly_RID2l_sub, reduction = "pca", dims = 1:20)
-        current_analysis$ROOIJonly_RID2l_sub <- FindNeighbors(current_analysis$ROOIJonly_RID2l_sub, reduction = "pca", dims = 1:30)
-        current_analysis$ROOIJonly_RID2l_sub = FindClusters(current_analysis$ROOIJonly_RID2l_sub)
-        #current_analysis$ROOIJonly_RID2l_sub = FindClusters(current_analysis$ROOIJonly_RID2l_sub, resolution = .2)
-        current_analysis$ROOIJonly_RID2l_sub = FindClusters(current_analysis$ROOIJonly_RID2l_sub)
+        current_analysis[[ANALYSIS_NAME_SUB]] <- ScaleData(current_analysis[[ANALYSIS_NAME_SUB]] , verbose = FALSE, do.scale = F, do.center = F)
+        current_analysis[[ANALYSIS_NAME_SUB]] <- RunPCA(current_analysis[[ANALYSIS_NAME_SUB]] , npcs = 30, verbose = FALSE)
+        current_analysis[[ANALYSIS_NAME_SUB]] <- RunUMAP(current_analysis[[ANALYSIS_NAME_SUB]], reduction = "pca", dims = 1:20)
+        current_analysis[[ANALYSIS_NAME_SUB]] <- FindNeighbors(current_analysis[[ANALYSIS_NAME_SUB]], reduction = "pca", dims = 1:30)
+        current_analysis[[ANALYSIS_NAME_SUB]] = FindClusters(current_analysis[[ANALYSIS_NAME_SUB]])
+        #current_analysis[[ANALYSIS_NAME_SUB]] = FindClusters(current_analysis[[ANALYSIS_NAME_SUB]], resolution = .2)
+        current_analysis[[ANALYSIS_NAME_SUB]] = FindClusters(current_analysis[[ANALYSIS_NAME_SUB]])
         
-        DimPlot(current_analysis$ROOIJonly_RID2l_sub)
+        DimPlot(current_analysis[[ANALYSIS_NAME_SUB]])
         
-        FeaturePlot(current_analysis$ROOIJonly_RID2l_sub, features = shorthand_seurat_fullgenename('TTN'), cols=rainbow_colors)
+        FeaturePlot(current_analysis[[ANALYSIS_NAME_SUB]], features = shorthand_seurat_fullgenename('TTN'), cols=rainbow_colors)
         
         df_clustersDE_subclust =
-            diff_express_clusters(mySeuratObject = current_analysis$ROOIJonly_RID2l_sub, mc.cores = MYMCCORES)
+            diff_express_clusters(mySeuratObject = current_analysis[[ANALYSIS_NAME_SUB]], mc.cores = MYMCCORES)
         diff_express_clusters_save_results(all_markers = df_clustersDE_subclust, run_name = 'ROOIJsubclust', base_dir = base_dir, topX = 30)
         
         
@@ -485,65 +516,70 @@ if (F) {
         # library(reticulate)
         # use_python('/Users/m.wehrens/anaconda3/bin/python')
         
+        ANALYSIS_NAME_CLUSTERPLAYING = paste0(ANALYSIS_NAME, '_clusterPlaying')
+        
         # Leidenalg doesn't seem to be working
-        current_analysis$ROOIJonly_RID2l_clusterPlaying = 
-            FindClusters(current_analysis$ROOIJonly_RID2l, algorithm = 4, resolution = .6)
-        DimPlot(current_analysis$ROOIJonly_RID2l_clusterPlaying)
+        current_analysis[[ANALYSIS_NAME_CLUSTERPLAYING]] = 
+            FindClusters(current_analysis[[ANALYSIS_NAME]], algorithm = 4, resolution = .6)
+        DimPlot(current_analysis[[ANALYSIS_NAME_CLUSTERPLAYING]])
         df_clustersDE_leiden =
-            diff_express_clusters(mySeuratObject = current_analysis$ROOIJonly_RID2l_clusterPlaying, mc.cores = MYMCCORES)
+            diff_express_clusters(mySeuratObject = current_analysis[[ANALYSIS_NAME_CLUSTERPLAYING]], mc.cores = MYMCCORES)
         diff_express_clusters_save_results(all_markers = df_clustersDE_leiden, run_name = 'ROOIJalgLeiden', base_dir = base_dir, topX = 30)
         
         # Algorithm 3
-        current_analysis$ROOIJonly_RID2l_clusterPlaying = 
-            FindClusters(current_analysis$ROOIJonly_RID2l, algorithm = 3)
-        DimPlot(current_analysis$ROOIJonly_RID2l_clusterPlaying)
+        current_analysis[[ANALYSIS_NAME_CLUSTERPLAYING]] = 
+            FindClusters(current_analysis[[ANALYSIS_NAME]], algorithm = 3)
+        DimPlot(current_analysis[[ANALYSIS_NAME_CLUSTERPLAYING]])
         df_clustersDE_alg3 =
-            diff_express_clusters(mySeuratObject = current_analysis$ROOIJonly_RID2l_clusterPlaying, mc.cores = MYMCCORES)
+            diff_express_clusters(mySeuratObject = current_analysis[[ANALYSIS_NAME_CLUSTERPLAYING]], mc.cores = MYMCCORES)
         diff_express_clusters_save_results(all_markers = df_clustersDE_alg3, run_name = 'ROOIJalg3', base_dir = base_dir, topX = 30)
         # View(df_clustersDE_alg3)
         
         # Algorithm 2
-        current_analysis$ROOIJonly_RID2l_clusterPlaying = 
-            FindClusters(current_analysis$ROOIJonly_RID2l, algorithm = 2)
-        DimPlot(current_analysis$ROOIJonly_RID2l_clusterPlaying)
+        current_analysis[[ANALYSIS_NAME_CLUSTERPLAYING]] = 
+            FindClusters(current_analysis[[ANALYSIS_NAME]], algorithm = 2)
+        DimPlot(current_analysis[[ANALYSIS_NAME_CLUSTERPLAYING]])
         df_clustersDE_alg2 =
-            diff_express_clusters(mySeuratObject = current_analysis$ROOIJonly_RID2l_clusterPlaying, mc.cores = MYMCCORES)
+            diff_express_clusters(mySeuratObject = current_analysis[[ANALYSIS_NAME_CLUSTERPLAYING]], mc.cores = MYMCCORES)
         diff_express_clusters_save_results(all_markers = df_clustersDE_alg2, run_name = 'ROOIJalg2', base_dir = base_dir, topX = 30)
         
         # Algorithm 1, resolution tweaked
-        current_analysis$ROOIJonly_RID2l_clusterPlaying = 
-            FindClusters(current_analysis$ROOIJonly_RID2l, resolution = 1)
-        DimPlot(current_analysis$ROOIJonly_RID2l_clusterPlaying)
+        current_analysis[[ANALYSIS_NAME_CLUSTERPLAYING]] = 
+            FindClusters(current_analysis[[ANALYSIS_NAME]], resolution = 1)
+        DimPlot(current_analysis[[ANALYSIS_NAME_CLUSTERPLAYING]])
         df_clustersDE_alg1_res1 =
-            diff_express_clusters(mySeuratObject = current_analysis$ROOIJonly_RID2l_clusterPlaying, mc.cores = MYMCCORES)
+            diff_express_clusters(mySeuratObject = current_analysis[[ANALYSIS_NAME_CLUSTERPLAYING]], mc.cores = MYMCCORES)
         diff_express_clusters_save_results(all_markers = df_clustersDE_alg1_res1, run_name = 'ROOIJalg1_res1', base_dir = base_dir, topX = 30)
         
         # Comparison previous
-        DimPlot(current_analysis$ROOIJonly_RID2l)
+        DimPlot(current_analysis[[ANALYSIS_NAME]])
             # Conclusion --> resolution 1 is better, since .5 assigns far-away cells to "left" cluster
         
         # TTN expression for reference (in earlier analysis, TTN turned up as important feature)
-        FeaturePlot(current_analysis$ROOIJonly_RID2l_clusterPlaying, features = shorthand_seurat_fullgenename(gene_names = 'TTN', seuratObject = current_analysis$ROOIJonly_RID2l_clusterPlaying), cols=rainbow_colors)
+        FeaturePlot(current_analysis[[ANALYSIS_NAME_CLUSTERPLAYING]], features = shorthand_seurat_fullgenename(gene_names = 'TTN', seuratObject = current_analysis[[ANALYSIS_NAME_CLUSTERPLAYING]]), cols=rainbow_colors)
         
         # Algorithm 1, resolution tweaked
-        current_analysis$ROOIJonly_RID2l_cluster_0.4 = 
-            FindClusters(current_analysis$ROOIJonly_RID2l, resolution = .4)
-        DimPlot(current_analysis$ROOIJonly_RID2l_cluster_0.4)
-        DE_cluster$ROOIJonly_RID2l_cluster_0.4 =
-            diff_express_clusters(mySeuratObject = current_analysis$ROOIJonly_RID2l_cluster_0.4, mc.cores = MYMCCORES)
+        ANALYSIS_NAME_CL_04= paste0(ANALYSIS_NAME_CL, '_0.4')
+        current_analysis[[ANALYSIS_NAME_CL_04]] = 
+            FindClusters(current_analysis[[ANALYSIS_NAME]], resolution = .4)
+        DimPlot(current_analysis[[ANALYSIS_NAME_CL_04]])
+        DE_cluster[[ANALYSIS_NAME_CL_04]] =
+            diff_express_clusters(mySeuratObject = current_analysis[[ANALYSIS_NAME_CL_04]], mc.cores = MYMCCORES)
         diff_express_clusters_save_results(all_markers = DE_cluster$df_clustersDE_alg1_res04, run_name = 'ROOIJalg1_res04', base_dir = base_dir, topX = 30)
         
         
         ################################################################################
         # What happens if we focus on the large main cluster?
         
-        current_analysis$ROOIJonly_RID2l_sub_0.4 =         
-            FindClusters(current_analysis$ROOIJonly_RID2l_sub, resolution = .4)
-        DimPlot(current_analysis$ROOIJonly_RID2l_sub_0.4)
+        ANALYSIS_NAME_SUB_04= paste0(ANALYSIS_NAME_SUB, '_0.4')
+        
+        current_analysis[[ANALYSIS_NAME_SUB_04]] =         
+            FindClusters(current_analysis[[ANALYSIS_NAME_SUB]], resolution = .4)
+        DimPlot(current_analysis[[ANALYSIS_NAME_SUB_04]])
         df_clustersDE_alg1_sub_res04 =
-            diff_express_clusters(mySeuratObject = current_analysis$ROOIJonly_RID2l_sub_0.4, mc.cores = MYMCCORES)
+            diff_express_clusters(mySeuratObject = current_analysis[[ANALYSIS_NAME_SUB_04]], mc.cores = MYMCCORES)
         diff_express_clusters_save_results(all_markers = df_clustersDE_alg1_sub_res04, run_name = 'ROOIJalg1_sub_res04', base_dir = base_dir, topX = 30)
-        FeaturePlot(current_analysis$ROOIJonly_RID2l_sub_0.4, features = shorthand_seurat_fullgenename(gene_names = 'TTN', seuratObject = current_analysis$ROOIJonly_RID2l_clusterPlaying), cols=rainbow_colors)
+        FeaturePlot(current_analysis[[ANALYSIS_NAME_SUB_04]], features = shorthand_seurat_fullgenename(gene_names = 'TTN', seuratObject = current_analysis[[ANALYSIS_NAME_CLUSTERPLAYING]]), cols=rainbow_colors)
 
 
 }

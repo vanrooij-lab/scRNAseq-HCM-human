@@ -7,7 +7,7 @@
 
 # To start these jobs
 if [[ "" == "never" ]]; then
-  cd /hpc/hub_oudenaarden/mwehrens/data/HCM_SCS_RHL.3/LISA
+  cd /hpc/hub_oudenaarden/mwehrens/data/HCM_SCS_RHL.3b/LISA
   for cl_idx in {1..6}; do
     Down=''
     sbatch --job-name=LISA_${cl_idx}${Down} -c 1 --time=1-00:00:00 --mem=32G --export=ALL,cl_idx="${cl_idx}" --output=slurm-%x.%j.out /hpc/hub_oudenaarden/mwehrens/scripts/SCS_HCM_analysis/HCM_SCS_2021_08_LISA.sh
@@ -34,7 +34,7 @@ fi
 ################################################################################
 # Running for Clusters
 
-cd /hpc/hub_oudenaarden/mwehrens/data/HCM_SCS_RHL.3/LISA
+cd /hpc/hub_oudenaarden/mwehrens/data/HCM_SCS_RHL.3b/LISA
 
 # activate correct environment
 # Note, use "conda env list" to see all env
@@ -50,11 +50,17 @@ conda activate LISA
 echo "Starting LISA .."
 echo "Start @ $(date)"
 
-lisa oneshot hg38 clusters/ClusterHits${Down}_ROOIJonly_RID2l_clExtended_table_cl${cl_idx}.txt \
+lisa oneshot hg38 ClusterHits${Down}_ROOIJonly.sp.bt_RID2l_clExtended_table_cl${cl_idx}.txt \
     --rp_map enhanced_10K -o clusters/oneshot_${Down}cl.${cl_idx}_out --save_metadata --background_strategy provided \
-    --background_list clusters/ROOIJonly_RID2l_clExtended_background_table_symbol_0.05.txt
+    --background_list ROOIJonly.sp.bt_RID2l_HOMER_backgroundGenes_0.05.txt
     #--rp_map enhanced_10K -o clusters/strictbg_oneshot_${Down}cl.${cl_idx}_out --save_metadata --background_strategy provided \
     #--background_list clusters/ROOIJonly_RID2l_clExtended_background_table_symbol_strict_0.2.txt
+
+#lisa oneshot hg38 clusters/ClusterHits${Down}_ROOIJonly_RID2l_clExtended_table_cl${cl_idx}.txt \
+#    --rp_map enhanced_10K -o clusters/oneshot_${Down}cl.${cl_idx}_out --save_metadata --background_strategy provided \
+#    --background_list clusters/ROOIJonly_RID2l_clExtended_background_table_symbol_0.05.txt
+#    #--rp_map enhanced_10K -o clusters/strictbg_oneshot_${Down}cl.${cl_idx}_out --save_metadata --background_strategy provided \
+#    #--background_list clusters/ROOIJonly_RID2l_clExtended_background_table_symbol_strict_0.2.txt
     
 echo "LISA cluster analysis done .."
 echo "End @ $(date)"

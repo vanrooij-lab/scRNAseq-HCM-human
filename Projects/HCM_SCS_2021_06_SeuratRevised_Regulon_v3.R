@@ -3,14 +3,6 @@
 # separately to each donor/patient.
 
 # OK, convenient to again use the already made Seurat objects,
-# this time, I will use the ones that aren't corrected, since
-# the regulon analysis was appied per patient earlier,
-# and i can split it out again
-
-# For reference, this was what we got from the previous analysis:
-# load('/Users/m.wehrens/Data/_2019_02_HCM_SCS/2021_HPC_analysis/Previous_analysis_for_reference/JoepAnalysis_Regulons.Rdata')
-# See regulons_README_objects_saved
-# See exporatory analyses for comparison earlier and current data analyses
 
 # Note, for HPC custom analyses, this script can be sourced as
 # desired_command_regulon='dummy'; source('/hpc/hub_oudenaarden/mwehrens/scripts/SCS_HCM_analysis/HCM_SCS_2021_06_SeuratRevised_Regulon_v3.R')
@@ -252,7 +244,7 @@ remove_data_regulon_object = function(reg_object) {
 }
 
 
-regulon_overlap_heatmap = function(pooled_regulons, base_dir, run_name, MYTREECUTTINGHEIGHT=2, myfontsize=8, makeallheatmaps=T, cutree_k=NULL) {
+regulon_overlap_heatmap = function(pooled_regulons, base_dir, run_name, MYTREECUTTINGHEIGHT=2, myfontsize=8, makeallheatmaps=T, cutree_k=NULL, saveplots=T) {
     
     # Create pairs to compare
     df_compare = tidyr::expand_grid(x=names(pooled_regulons), y=names(pooled_regulons))
@@ -267,7 +259,7 @@ regulon_overlap_heatmap = function(pooled_regulons, base_dir, run_name, MYTREECU
     matrix_compare <- reshape2::acast(df_compare, x~y, value.var="overlap")
     
     # Show heatmap
-    if (makeallheatmaps) {
+    if (makeallheatmaps & saveplots) {
         p0=pheatmap(matrix_compare, clustering_method = 'ward.D2')
         p0
         #ggsave(filename = paste0(base_dir,'Rplots/',run_name,'_7_Regulons_noCats.png'), plot = p0, width=nrow(matrix_compare)*.4, height=nrow(matrix_compare)*.4, units='cm')
@@ -283,12 +275,16 @@ regulon_overlap_heatmap = function(pooled_regulons, base_dir, run_name, MYTREECU
     
     # Plot dendrogram
     p=ggdendrogram(hclust_out)+give_better_textsize_plot(6)+theme_bw()+scale_y_continuous(minor_breaks = seq(0, max(hclust_out$height), .1)) # p
-    ggsave(plot = p, filename = paste0(base_dir,'Rplots/',run_name,'_7_Regulons_Dendrogram_',run_name,'.png'), width = 80, height=80, units='mm')
+    if (saveplots) {
+        ggsave(plot = p, filename = paste0(base_dir,'Rplots/',run_name,'_7_Regulons_Dendrogram_',run_name,'.png'), width = 80, height=80, units='mm')
+    }
     
     # 
     pcjd_out = plot_clust_join_density(hclust_out)
     p=pcjd_out$p2+theme_bw()+give_better_textsize_plot(8)
-    ggsave(plot = p, filename = paste0(base_dir,'Rplots/',run_name,'_7_Regulons_DendrogramCutoffAnalysis_',run_name,'.png'), width = 80, height=80, units='mm')
+    if (saveplots) {
+        ggsave(plot = p, filename = paste0(base_dir,'Rplots/',run_name,'_7_Regulons_DendrogramCutoffAnalysis_',run_name,'.png'), width = 80, height=80, units='mm')
+    }
     
     # Now again use gap-stat to test proper # of "core" regulons
     # That didn't work so well; line is monotically increasing, but by eye there
@@ -323,11 +319,13 @@ regulon_overlap_heatmap = function(pooled_regulons, base_dir, run_name, MYTREECU
         fontsize = myfontsize, fontsize_col = myfontsize, fontsize_row = myfontsize, treeheight_row = 0)
         #annotation_colors = list(colors=col_Dark2[1:max(cutree_out)])))
     print(p)
-    ggsave(filename = paste0(base_dir,'Rplots/',run_name,'_7_Regulons.pdf'), 
-        plot = p, width=184.6*2/3-4, height=184.6*2/3-4, units='mm')
-    
-    ggsave(filename = paste0(base_dir,'Rplots/',run_name,'_7_Regulons-L.pdf'), 
-        plot = p, width=length(pooled_regulons)*2.5, height=length(pooled_regulons)*2.5, units='mm', limitsize = F)
+    if (saveplots) {
+        ggsave(filename = paste0(base_dir,'Rplots/',run_name,'_7_Regulons.pdf'), 
+            plot = p, width=184.6*2/3-4, height=184.6*2/3-4, units='mm')
+        
+        ggsave(filename = paste0(base_dir,'Rplots/',run_name,'_7_Regulons-L.pdf'), 
+            plot = p, width=length(pooled_regulons)*2.5, height=length(pooled_regulons)*2.5, units='mm', limitsize = F)
+    }
     
     # Version 1b: no annotation, clustered but no tree shown
     if (makeallheatmaps) {
@@ -336,12 +334,14 @@ regulon_overlap_heatmap = function(pooled_regulons, base_dir, run_name, MYTREECU
             fontsize = myfontsize, fontsize_col = myfontsize, fontsize_row = myfontsize, treeheight_row = 0, treeheight_col = 0, legend = F, limits=c(0,1), border_color = NA)
             #annotation_colors = list(colors=col_Dark2[1:max(cutree_out)])))
         print(p)
-        ggsave(filename = paste0(base_dir,'Rplots/',run_name,'_7_Regulons-v1b-L.pdf'), 
-            plot = p, width=length(pooled_regulons)*myfontsize/.pt*1.1+15, height=length(pooled_regulons)*myfontsize/.pt*1.1+15, units='mm', limitsize = F)
+        if (saveplots) {
+            ggsave(filename = paste0(base_dir,'Rplots/',run_name,'_7_Regulons-v1b-L.pdf'), 
+                plot = p, width=length(pooled_regulons)*myfontsize/.pt*1.1+15, height=length(pooled_regulons)*myfontsize/.pt*1.1+15, units='mm', limitsize = F)
+        }
     }
     
     # Version 2 (smaller)
-    if (makeallheatmaps) {
+    if (makeallheatmaps & saveplots) {
         p=pheatmap(matrix_compare, cluster_rows = hclust_out,cluster_cols = hclust_out, 
             annotation_col = cutree_df, annotation_row = cutree_df, annotation_colors = annotation_colors, 
             fontsize = 5, fontsize_col = 5, fontsize_row = 5, treeheight_col = 0, legend=F, annotation_legend=F)
@@ -356,7 +356,7 @@ regulon_overlap_heatmap = function(pooled_regulons, base_dir, run_name, MYTREECU
             plot = p, width=184.6/2-4, height=184.6/2-4, units='mm')
     }
     
-    return(list(cutree_df=cutree_df))
+    return(list(cutree_df=cutree_df, df_compare=df_compare))
     
     #View(df_compare)
     #ggplot(df_compare)+
@@ -481,15 +481,29 @@ if ('run_regulon_step1' %in% desired_command_regulon) {
 # ANALYSIS_NAME='original_HCM_SCS_data'
 # ANALYSIS_NAME = 'original_HCM_SCS_data_sel'
 
-K_PER_DATASET = c(ROOIJonly_RID2l=6)
-CUTS_PER_DATASET = c(ROOIJonly_RID2l=3.5,TEICHMANNonly_RID2l=3.423,HUonly_RID2l=3, TEICHMANN.SP.only_RID2l=3)
+# ANALYSIS_NAME = 'ROOIJonly.sp.bt_RID2l'
+
+K_PER_DATASET = c(ROOIJonly_RID2l=6, ROOIJonly.sp.bt_RID2l=6)
+CUTS_PER_DATASET = c(ROOIJonly_RID2l=3.5,TEICHMANNonly_RID2l=3.423,HUonly_RID2l=3, TEICHMANN.SP.only_RID2l=3, ROOIJonly.sp.bt_RID2l=3.5)
     # TODO (remove this) TEICHMANNonly_RID2l and HUonly_RID2l not calibrated yet
 
 MIN_GENES=100
 
 if ('XXXXXXX' %in% desired_command_regulon) {
     
-    load(file = paste0(base_dir,'Rdata/',ANALYSIS_NAME,'_regulons_per_patient.Rdata'))
+    load(file = paste0(base_dir,'Rdata/',ANALYSIS_NAME,'_regulons_per_patient.Rdata')) # collected_regulon_objects
+    
+    # Statistics of input/output to report in paper
+    #
+    # Sizes of the selected correlation matrices
+    sizes_corr_matrices = sapply(collected_regulon_objects$ROOIJonly.sp.bt_RID2l, function(X) {length(X$rownames_cor_out_selected_2)})
+    sizes_corr_matrices[sort(names(sizes_corr_matrices))]
+    # Number of analyzed genes
+    nr_input_genes = sapply(collected_regulon_objects$ROOIJonly.sp.bt_RID2l, function(X) { dim(X$expression_matrix_original)[1]} )
+    nr_input_genes[sort(names(nr_input_genes))]
+    # Number of regulons identified per patient
+    regs_per_patient = sapply(collected_regulon_objects$ROOIJonly.sp.bt_RID2l[sort(names(collected_regulon_objects$ROOIJonly.sp.bt_RID2l))], function(X) {length(X$the_regulons)})
+    toString(regs_per_patient)
     
     # Create a structure that holds the gene names that were assigned to regulons
     # Make it "flat" for patients, i.e. it will have entries R.P1.R.2 = Rooij patient 1 regulon 2.
@@ -518,7 +532,7 @@ if ('XXXXXXX' %in% desired_command_regulon) {
         #    MYTREECUTTINGHEIGHT = CUTS_PER_DATASET[ANALYSIS_NAME], myfontsize = 3)
 
     save(list='overlap_output', file = paste0(base_dir,'Rdata/',ANALYSIS_NAME,'_regulons_per_patient_overlapData.Rdata'))
-    
+        
 }    
 
 ################################################################################
@@ -526,9 +540,11 @@ if ('XXXXXXX' %in% desired_command_regulon) {
 
 if ('XXXXXXX' %in% desired_command_regulon) {
     
-    for (ANALYSIS_NAME in c('HUonly_RID2l', 'TEICHMANNonly_RID2l','ROOIJonly_RID2l')) {
+    for (ANALYSIS_NAME in c('HUonly.sp.bt_RID2l', 'TEICHMANNonly.sp.bt_RID2l','ROOIJonly.sp.bt_RID2l')) {
     
-        load(file = paste0(base_dir,'Rdata/',ANALYSIS_NAME,'_regulons_per_patient.Rdata'))
+        # ANALYSIS_NAME='ROOIJonly.sp.bt_RID2l'
+        
+        load(file = paste0(base_dir,'Rdata/',ANALYSIS_NAME,'_regulons_per_patient.Rdata')) # collected_regulon_objects
         
         donors=names(collected_regulon_objects[[ANALYSIS_NAME]])
         
@@ -553,7 +569,7 @@ if ('XXXXXXX' %in% desired_command_regulon) {
 ################################################################################
 # Analyze overlap in regulons between the different patients
 
-# ANALYSIS_NAME = "ROOIJonly_RID2l"
+# ANALYSIS_NAME = "ROOIJonly.sp.bt_RID2l"
 # ANALYSIS_NAME = "HUonly_RID2l"
 # ANALYSIS_NAME = "TEICHMANNonly_RID2l"
 # ANALYSIS_NAME = "TEICHMANN.SP.only_RID2l"
@@ -711,18 +727,41 @@ if ('XXXXXXX' %in% desired_command_regulon) {
 
 if (F) {
     
-    custom_regs_contributing_patients = lapply(shared_regulon_origins, function(x) {sapply(strsplit(x, '\\.'),function(x){x[[2]]})})
+    GROUP_TO_IGNORE = 6 # ignore because these regulons don't show overlap, but are just grouped together..
+    
+    custom_regs_contributing_patients = lapply(shared_regulon_origins[-GROUP_TO_IGNORE], function(x) {sapply(strsplit(x, '\\.'),function(x){x[[2]]})})
     
     custom_regs_contributing_patients_heatmap =
         sapply(custom_regs_contributing_patients, function(x) {out=rep(F, 5); names(out)=paste0('P',1:5); out[x]=T; return(out)})
-    colnames(custom_regs_contributing_patients_heatmap) = paste0('M',1:length(shared_regulon_origins))
+    colnames(custom_regs_contributing_patients_heatmap) = paste0('M',(1:length(shared_regulon_origins))[-GROUP_TO_IGNORE])
     
     p=pheatmap(t(custom_regs_contributing_patients_heatmap*1), cluster_rows = F, cluster_cols = F, color = c('#FFFFFF','#000000'), legend = F, fontsize = 8)
+    
+    #p
     
     ggsave(filename = paste0(base_dir,'Rplots/',ANALYSIS_NAME,'_7_Regulons_ContributionsPatients.pdf'), 
             plot = p, width=172/3/2-4, height=172/3/2-4, units='mm', device = cairo_pdf) # 184.6/3*2-4
 }
     
+################################################################################
+# Determine median within-module gene member overlap
+
+if (F) {
+    median_overlap_within_regulon_groups = 
+        sapply(shared_regulon_origins, function(X) {
+            # X = shared_regulon_origins[[1]]
+            # gather per patient, to avoid artificial non-overlap
+            current_cluster = pooled_regulons[X]
+            current_pool = lapply(1:5, function(pt) {Reduce(c, current_cluster[grepl(paste0('R.P',pt),names(current_cluster))])})
+            names(current_pool) = paste0('p',1:5)
+            current_pool=current_pool[!sapply(current_pool, is.null)]
+            roh_out = regulon_overlap_heatmap(pooled_regulons = current_pool, base_dir = base_dir, run_name = 'xxx', saveplots = F, makeallheatmaps = F)
+            median(roh_out$df_compare$overlap[roh_out$df_compare$x!=roh_out$df_compare$y])
+        })
+    names(median_overlap_within_regulon_groups) = paste0('Module',1:length(median_overlap_within_regulon_groups))
+    round(median_overlap_within_regulon_groups*100)
+    toString(paste0(round(median_overlap_within_regulon_groups*100),'%'))
+}
 
 ################################################################################
 
@@ -735,9 +774,11 @@ if (F) {
     # core_regulons_sorted_shortname
     
     plotlist=lapply(1:length(core_regulons_sorted_shortname),
-        function(X) {shorthand_seurat_custom_expr(seuratObject = current_analysis[[ANALYSIS_NAME]], 
-                                                    gene_of_interest = core_regulons_sorted_shortname[[X]], textsize=6, pointsize=.5, 
-                                                    custom_title = names(core_regulons_sorted_shortname)[X], mymargin = .5)})
+        function(X) {
+                            custom_title = gsub('s\\.R\\.', 'Module_', names(core_regulons_sorted_shortname)[X])
+                            shorthand_seurat_custom_expr(seuratObject = current_analysis[[ANALYSIS_NAME]], 
+                            gene_of_interest = core_regulons_sorted_shortname[[X]], textsize=6, pointsize=.5, 
+                            custom_title = custom_title, mymargin = .5)})
     p=wrap_plots(plotlist, nrow = 2)
     # p
     ggsave(filename = paste0(base_dir,'Rplots/',ANALYSIS_NAME,'_7_Regulons_UMAP_compositeExpr.pdf'), 

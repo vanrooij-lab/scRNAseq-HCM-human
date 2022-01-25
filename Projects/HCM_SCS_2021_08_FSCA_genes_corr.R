@@ -5,12 +5,17 @@
 
 library(dplyr)
 
-DATASET_NAME = 'ROOIJonly_RID2l_clExtended'
-TRIAGE_DATASET_NAME='ROOIJonly_TRIAGE_clExt'
+# DATASET_NAME = 'ROOIJonly_RID2l_clExtended'
+DATASET_NAME = 'ROOIJonly.sp.bt_RID2l_clExtended'
+DATASET_NAME_FSCA = paste0(DATASET_NAME, '_FSCA')
+TRIAGE_DATASET_NAME='ROOIJonly_TRIAGE'
 
 if (!exists('current_analysis')) {current_analysis = list()}
 current_analysis[[DATASET_NAME]] =
     LoadH5Seurat(file = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_',DATASET_NAME,'.h5seurat'))
+
+# Note afterwards -- TRIAGE wasn't intensely used for analysis
+# Triage parts can be skipped in this script
 current_analysis[[TRIAGE_DATASET_NAME]] =
     LoadH5Seurat(file = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_',TRIAGE_DATASET_NAME,'.h5seurat'))
 
@@ -18,7 +23,7 @@ current_analysis[[TRIAGE_DATASET_NAME]] =
 
 
 # Also required: ---->
-load(paste0(base_dir,'Rplots/ROOIJonly_RID2l_core_regulons_sorted.Rdata'))
+load(paste0(base_dir,'Rdata/ROOIJonly.sp.bt_RID2l_clExtended_core_regulons_sorted.Rdata'))
     # core_regulons_sorted
     # core_regulons
 
@@ -62,37 +67,40 @@ indexData_MW$Cell_newname =
     )
 rownames(indexData_MW) = indexData_MW$Cell_newname
 
+save(list = 'indexData_MW', file = paste0(base_dir,'Rdata/FSCA__indexData_MW.Rdata')) # indexData_MW, colnames match cell names
+        # load(file = paste0(base_dir,'Rdata/FSCA__indexData_MW.Rdata')) # indexData_MW
+        # e.g. use indexData_MW[colnames(current_analysis[[DATASET_NAME]]),]$FSC_A
+
 ################################################################################
 # Insert data into clExtended
 
 if (F) {
     
-    current_analysis$ROOIJonly_RID2l_clExtended_FSCA = current_analysis$ROOIJonly_RID2l_clExtended
-    current_analysis$ROOIJonly_RID2l_clExtended_FSCA[['FSCA']]=indexData_MW[colnames(current_analysis$ROOIJonly_RID2l_clExtended),]$FSC_A
-    current_analysis$ROOIJonly_RID2l_clExtended_FSCA[['DAPI']]=indexData_MW[colnames(current_analysis$ROOIJonly_RID2l_clExtended),]$BV421_A
+    current_analysis[[DATASET_NAME_FSCA]] = current_analysis[[DATASET_NAME]]
+    current_analysis[[DATASET_NAME_FSCA]][['FSCA']]=indexData_MW[colnames(current_analysis[[DATASET_NAME]]),]$FSC_A
+    current_analysis[[DATASET_NAME_FSCA]][['DAPI']]=indexData_MW[colnames(current_analysis[[DATASET_NAME]]),]$BV421_A
     
-    SaveH5Seurat(object = current_analysis$ROOIJonly_RID2l_clExtended_FSCA, filename = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_','ROOIJonly_RID2l_clExtended_FSCA','.h5seurat'))
+    SaveH5Seurat(object = current_analysis[[DATASET_NAME_FSCA]], filename = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_',DATASET_NAME_FSCA,'.h5seurat'))
         # (Currently, this file is not used by other scripts)
     
-    save(list = 'indexData_MW', file = paste0(base_dir,'Rdata/FSCA__indexData_MW.Rdata')) # indexData_MW, colnames match cell names
-        # load(file = paste0(base_dir,'Rdata/FSCA__indexData_MW.Rdata')) # indexData_MW
-        # e.g. use indexData_MW[colnames(current_analysis$ROOIJonly_RID2l_clExtended),]$FSC_A
-
 } 
 
-current_analysis$ROOIJonly_RID2l_clExtended_FSCA = LoadH5Seurat(file = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_','ROOIJonly_RID2l_clExtended_FSCA','.h5seurat'))
+# to load
+if (F) {
+    current_analysis[[DATASET_NAME_FSCA]] = LoadH5Seurat(file = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_',DATASET_NAME_FSCA,'.h5seurat'))
+}
 
 ################################################################################
 # Project data on UMAP
 
-FeaturePlot(object = current_analysis$ROOIJonly_RID2l_clExtended_FSCA, features = 'FSCA', cols = rainbow_colors, pt.size = 2)
-DimPlot(object = current_analysis$ROOIJonly_RID2l_clExtended_FSCA, group.by='annotation_patient_fct')
-VlnPlot(object = current_analysis$ROOIJonly_RID2l_clExtended_FSCA, features = 'FSCA')#, cols = rainbow_colors, pt.size = 2)
+FeaturePlot(object = current_analysis[[DATASET_NAME_FSCA]], features = 'FSCA', cols = rainbow_colors, pt.size = 2)
+DimPlot(object = current_analysis[[DATASET_NAME_FSCA]], group.by='annotation_patient_fct')
+VlnPlot(object = current_analysis[[DATASET_NAME_FSCA]], features = 'FSCA')#, cols = rainbow_colors, pt.size = 2)
 
-# Triage clusters
-current_analysis$ROOIJonly_TRIAGE_clExt[['FSCA']]=indexData_MW[colnames(current_analysis$ROOIJonly_RID2l_clExtended),]$FSC_A
-FeaturePlot(object = current_analysis$ROOIJonly_TRIAGE_clExt, features = 'FSCA', cols = rainbow_colors, pt.size = 2)
-VlnPlot(object = current_analysis$ROOIJonly_TRIAGE_clExt, features = 'FSCA')#, cols = rainbow_colors, pt.size = 2)
+# # Triage clusters
+# current_analysis$ROOIJonly_TRIAGE_clExt[['FSCA']]=indexData_MW[colnames(current_analysis[[DATASET_NAME]]),]$FSC_A
+# FeaturePlot(object = current_analysis$ROOIJonly_TRIAGE_clExt, features = 'FSCA', cols = rainbow_colors, pt.size = 2)
+# VlnPlot(object = current_analysis$ROOIJonly_TRIAGE_clExt, features = 'FSCA')#, cols = rainbow_colors, pt.size = 2)
 
 ################################################################################
 
@@ -102,8 +110,8 @@ GENE_MIN_PERCENTAGE=.1
 GENE_MIN_PERCENTAGE=.33
 
 # First subset on where we have data for
-selected_cells = colnames(current_analysis$ROOIJonly_RID2l_clExtended)[colnames(current_analysis$ROOIJonly_RID2l_clExtended) %in% indexData_MW$Cell_newname]
-current_analysis$ROOIJonly_RID2l_FSCA = subset(current_analysis$ROOIJonly_RID2l_clExtended, cells = selected_cells)
+selected_cells = colnames(current_analysis[[DATASET_NAME]])[colnames(current_analysis[[DATASET_NAME]]) %in% indexData_MW$Cell_newname]
+current_analysis$ROOIJonly_RID2l_FSCA = subset(current_analysis[[DATASET_NAME]], cells = selected_cells)
 # Re-arrange df such that cell order matches (redundant because already in right order, but to make sure..)
 rownames(indexData_MW) = indexData_MW$Cell_newname
 indexData_MW=indexData_MW[selected_cells,]
@@ -169,27 +177,30 @@ p=ggplot(correlations_FSCA_per_patient_combined, aes(x=P4_cor, y=P5_cor))+
     xlab('Gene-cell size correlation patient 4')+ylab('Gene-cell size correlation patient 5')
     #geom_smooth(method = 'lm')+ylim(c(-.5,.5))+xlim(c(-.5,.5))
 p
-ggsave(plot = p,filename = paste0(base_dir, 'Rplots/ROOIJonly_RID2l_clExtended_8_FSCA_corrs_Both-10pct.pdf'), 
+ggsave(plot = p,filename = paste0(base_dir, 'Rplots/',DATASET_NAME,'_8_FSCA_corrs_Both-10pct.pdf'), 
        width = 172/3-4, height= 172/3-4, units='mm', device = cairo_pdf)
-ggsave(plot = p,filename = paste0(base_dir, 'Rplots/ROOIJonly_RID2l_clExtended_8_FSCA_corrs_Both-10pct_L.pdf'), 
+ggsave(plot = p,filename = paste0(base_dir, 'Rplots/',DATASET_NAME,'_8_FSCA_corrs_Both-10pct_L.pdf'), 
        width = 172/2-4, height= 172/2-4, units='mm', device = cairo_pdf)
 
 # With fitted line
+correlations_FSCA_per_patient_combined$gene_symbol_italic = paste0('italic(',correlations_FSCA_per_patient_combined$gene_symbol,')')
 p=ggplot(correlations_FSCA_per_patient_combined, aes(x=P4_cor, y=P5_cor))+
     geom_point(size=.5, shape=1, color='grey')+
     geom_point(size=.5, shape=1, data=correlations_FSCA_per_patient_combined[selected_genes,], color='red')+
     geom_text_repel(data=correlations_FSCA_per_patient_combined[selected_genes,], color='red',
-                    mapping=aes(label=gene_symbol), 
-                    max.overlaps = Inf, min.segment.length = 0, force = 4, size=6/.pt, segment.size=.25)+
+                    mapping=aes(label=gene_symbol_italic), 
+                    max.overlaps = Inf, min.segment.length = 0, force = 4, size=6/.pt, segment.size=.25, parse = T)+
     theme_bw()+give_better_textsize_plot(8)+
     xlim(c(min(correlations_FSCA_per_patient_combined$P4_cor)*1.01,max(correlations_FSCA_per_patient_combined$P4_cor)*1.01))+
     ylim(c(min(correlations_FSCA_per_patient_combined$P5_cor)*1.01,max(correlations_FSCA_per_patient_combined$P5_cor)*1.01))+
     xlab('Gene-cell size correlation patient 4')+ylab('Gene-cell size correlation patient 5')+
-    geom_smooth(method = 'lm', size=.25)#+ylim(c(-.5,.5))+xlim(c(-.5,.5))
+    geom_smooth(method = 'lm', size=.25)+
+    ggtitle(' ') # This is a little "hack" to make sure this panel has equal size as other titled panels
+    #+ylim(c(-.5,.5))+xlim(c(-.5,.5))
 p
-ggsave(plot = p,filename = paste0(base_dir, 'Rplots/ROOIJonly_RID2l_clExtended_8_FSCA_corrs_Both-10pct_withFit.pdf'), 
+ggsave(plot = p,filename = paste0(base_dir, 'Rplots/',DATASET_NAME,'_8_FSCA_corrs_Both-10pct_withFit.pdf'), 
        width = 172/3-4, height= 172/3-4, units='mm', device = cairo_pdf)
-ggsave(plot = p,filename = paste0(base_dir, 'Rplots/ROOIJonly_RID2l_clExtended_8_FSCA_corrs_Both-10pct_L_withFit.pdf'), 
+ggsave(plot = p,filename = paste0(base_dir, 'Rplots/',DATASET_NAME,'_8_FSCA_corrs_Both-10pct_L_withFit.pdf'), 
        width = 172/2-4, height= 172/2-4, units='mm', device = cairo_pdf)
 
 
@@ -213,7 +224,7 @@ selected_genes_extended = correlations_FSCA_per_patient_combined$P4_cor>treshold
 ################################################################################
 # Now show some regulons
 load(file=paste0(base_dir, 'Rdata/SCENIC_regulons_core_genes_sel.Rdata'))
-load(file=paste0(base_dir, 'Rplots/ROOIJonly_RID2l_core_regulons_sorted_shortname.Rdata'))
+load(file=paste0(base_dir, 'Rplots/ROOIJonly.sp.bt_RID2l_core_regulons_sorted_shortname.Rdata'))
 # If already generated, load data generated above
 if (F) {
     load(file = paste0(base_dir,'Rdata/FSCA__correlations_FSCA_per_patient_combined.Rdata')) # correlations_FSCA_per_patient_combined
@@ -233,6 +244,7 @@ for (reg_set_name in names(REGULON_SETS)) {
     for (reg_name in names(current_regulon_set)) {
         
         # reg_name = 'ATF4(+)'
+        # reg_name = "s.R.2"
         
         current_highlight_genes = current_regulon_set[[reg_name]]
         
@@ -266,14 +278,18 @@ for (reg_set_name in names(REGULON_SETS)) {
     if (reg_set_name=='custom') {
         p=wrap_plots(list_p, ncol=1)&theme(plot.margin = margin(t = 1, r = 1, b = 1, l = 1, unit = "mm"))
         #p
-        ggsave(plot = p,filename = paste0(base_dir, 'Rplots/ROOIJonly_RID2l_clExtended_8_FSCA_corrs_',reg_set_name,'_RegulonsHighlighted.pdf'), 
-               width = (172/6)-4, height= (172*5/6)-4, units='mm', device = cairo_pdf)
+        if (!exists('nosave')) {
+            ggsave(plot = p,filename = paste0(base_dir, 'Rplots/',DATASET_NAME,'_8_FSCA_corrs_',reg_set_name,'_RegulonsHighlighted.pdf'), 
+                   width = (172/6)-4, height= (172*5/6)-4, units='mm', device = cairo_pdf)
+        }
     }
     if (reg_set_name=='SCENIC') {
         p=wrap_plots(list_p, ncol=5)&theme(plot.margin = margin(t = 1, r = 1, b = 1, l = 1, unit = "mm"))
         #p
-        ggsave(plot = p,filename = paste0(base_dir, 'Rplots/ROOIJonly_RID2l_clExtended_8_FSCA_corrs_',reg_set_name,'_RegulonsHighlighted.pdf'), 
-               width = (172*5/6)-4, height= (172*5/6)-4, units='mm', device = cairo_pdf)
+        if (!exists('nosave')) {
+            ggsave(plot = p,filename = paste0(base_dir, 'Rplots/',DATASET_NAME,'_8_FSCA_corrs_',reg_set_name,'_RegulonsHighlighted.pdf'), 
+                   width = (172*5/6)-4, height= (172*5/6)-4, units='mm', device = cairo_pdf)
+        }
     } 
     
 }
@@ -284,7 +300,10 @@ REG_SETS =c('SCENIC', 'custom')
 wil_out=list(); tt_out = list()
 pval_overview_df = data.frame(patient=character(), test=character(), regulon=character(), pval=numeric())
 for (idx in 1:2) {
-    REG_NAME = REG_NAMES[idx]
+    
+    # idx=2
+    
+    REG_NAME = gsub('\\(\\+\\)','',REG_NAMES[idx])
     REG_SET = REG_SETS[idx]
         
     current_highlight_genes = REGULON_SETS[[REG_SET]][[REG_NAME]]
@@ -298,19 +317,24 @@ for (idx in 1:2) {
         geom_density_2d(data=correlations_FSCA_per_patient_combined %>% subset(regulon_membership=='yes'), color='red', size=.1, bins=3)+
         geom_point(size=.5, shape=1, data=correlations_FSCA_per_patient_combined[correlations_FSCA_per_patient_combined$gene_symbol %in% current_highlight_genes,], color='red')+
         geom_text_repel(data=correlations_FSCA_per_patient_combined[correlations_FSCA_per_patient_combined$gene_symbol %in% current_highlight_genes[1:min(20,length(current_highlight_genes))],], color='black',
-                        mapping=aes(label=gene_symbol), 
-                        max.overlaps = Inf, min.segment.length = 0, force = 6, size=4/.pt, segment.size=.25)+
+                        mapping=aes(label=gene_symbol_italic), 
+                        max.overlaps = Inf, min.segment.length = 0, force = 6, size=4/.pt, segment.size=.25, parse=T)+
         theme_bw()+give_better_textsize_plot(8)+
         xlim(c(min(correlations_FSCA_per_patient_combined$P4_cor)*1.01,max(correlations_FSCA_per_patient_combined$P4_cor)*1.01))+
         ylim(c(min(correlations_FSCA_per_patient_combined$P5_cor)*1.01,max(correlations_FSCA_per_patient_combined$P5_cor)*1.01))+
-        xlab('Gene-cell size correlation patient 4')+ylab('Gene-cell size correlation patient 5')+ggtitle(paste0('Regulated by ',gsub('\\(\\+\\)','',REG_NAME)))
+        xlab('Gene-cell size correlation patient 4')+ylab('Gene-cell size correlation patient 5')+
+        ggtitle(paste0(
+            gsub( 's\\.R\\.','Module ', gsub('\\(\\+\\)','',REG_NAME) )
+            ,' genes highlighted'))
         #geom_smooth(method = 'lm', size=.25)#+ylim(c(-.5,.5))+xlim(c(-.5,.5))
     p
     
-    ggsave(plot = p,filename = paste0(base_dir, 'Rplots/ROOIJonly_RID2l_clExtended_8_FSCA_corrs_Reg',REG_NAME,'_withFit.pdf'), 
-           width = 172/3-4, height= 172/3-4, units='mm', device = cairo_pdf)
-    ggsave(plot = p,filename = paste0(base_dir, 'Rplots/ROOIJonly_RID2l_clExtended_8_FSCA_corrs_Reg',REG_NAME,'_L_withFit.pdf'), 
-           width = 172/2-4, height= 172/2-4, units='mm', device = cairo_pdf)
+    if (!exists('nosave')) {
+        ggsave(plot = p,filename = paste0(base_dir, 'Rplots/',DATASET_NAME,'_8_FSCA_corrs_Reg',REG_NAME,'_withFit.pdf'), 
+               width = 172/3-4, height= 172/3-4, units='mm', device = cairo_pdf)
+        ggsave(plot = p,filename = paste0(base_dir, 'Rplots/',DATASET_NAME,'_8_FSCA_corrs_Reg',REG_NAME,'_L_withFit.pdf'), 
+               width = 172/2-4, height= 172/2-4, units='mm', device = cairo_pdf)
+    }
  
     print(paste0('Wilcox test P4 --', REG_NAME))
     wil_out[[REG_NAME]][['P4']] = wilcox.test(correlations_FSCA_per_patient_combined[correlations_FSCA_per_patient_combined$regulon_membership=='no',]$P4_cor, correlations_FSCA_per_patient_combined[correlations_FSCA_per_patient_combined$regulon_membership=='yes',]$P4_cor)
@@ -338,7 +362,7 @@ ggplot(correlations_FSCA_per_patient_combined)+
 
 # Also export lists
 gene_list_FSCA_extended = shorthand_cutname( rownames(correlations_FSCA_per_patient_combined[selected_genes_extended,]) )
-write.table(x = gene_list_FSCA_extended, file = paste0(base_dir,'Rdata/','ROOIJonly_RID2l_clExtended','__gene_list_FSCA_extended.txt'), quote = F, row.names = F, col.names = F)
+write.table(x = gene_list_FSCA_extended, file = paste0(base_dir,'Rdata/',DATASET_NAME,'__gene_list_FSCA_extended.txt'), quote = F, row.names = F, col.names = F)
 
 
 ################################################################################
@@ -374,9 +398,9 @@ p=ggplot(correlations_FSCA_per_patient_combined, aes(x=P4_cor, y=P5_cor))+
     #                 max.overlaps = Inf, min.segment.length = 0, force = 4, size=4/.pt, segment.size=.1)+
     theme_bw()+give_better_textsize_plot(8)+xlab('Gene-cell size correlation patient 4')+ylab('Gene-cell size correlation patient 5')
 p
-ggsave(plot = p,filename = paste0(base_dir, 'Rplots/ROOIJonly_RID2l_clExtended_8_FSCA_corrs_reg2.pdf'), 
+ggsave(plot = p,filename = paste0(base_dir, 'Rplots/',DATASET_NAME,'_8_FSCA_corrs_reg2.pdf'), 
        width = 172/3-4, height= 172/3-4, units='mm')
-ggsave(plot = p,filename = paste0(base_dir, 'Rplots/ROOIJonly_RID2l_clExtended_8_FSCA_corrs_reg2_L.pdf'), 
+ggsave(plot = p,filename = paste0(base_dir, 'Rplots/',DATASET_NAME,'_8_FSCA_corrs_reg2_L.pdf'), 
        width = 172/2-4, height= 172/2-4, units='mm')
     
 

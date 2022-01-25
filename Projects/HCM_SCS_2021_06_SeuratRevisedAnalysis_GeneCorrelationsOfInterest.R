@@ -32,12 +32,14 @@ library(pheatmap)
 
 # Set some info
 
-#OBJECTS_TO_ANALYZE = c('ROOIJonly_RID2l', 'ROOIJonly_default_Int1c','HUonly_RID2l', 'HUonly_default_Int1c')
+#OBJECTS_TO_ANALYZE = c('ROOIJonly_RID2l', 'ROOIJonly_default_Int1c','HUonly.sp.bt_RID2l', 'HUonly.sp.bt_default_Int1c')
 #INTEGRATED_OR_NOT = c('no'              , 'yes'                     ,'no'                 , 'yes')
 #names(INTEGRATED_OR_NOT)=OBJECTS_TO_ANALYZE
 
-OBJECTS_TO_ANALYZE = c('ROOIJonly_RID2l','HUonly_RID2l', 'TEICHMANNonly_RID2l', 'TEICHMANN.SP.only_RID2l')
-INTEGRATED_OR_NOT = c('no'              , 'no'                     ,'no'      , 'no' )
+ROOIJ_ANALYSIS = 'ROOIJonly.sp.bt_RID2l'
+
+OBJECTS_TO_ANALYZE = c(ROOIJ_ANALYSIS, 'HUonly.sp.bt_RID2l', 'TEICHMANNonly.sp.bt_RID2l')#, 'TEICHMANN.SP.only_RID2l')
+INTEGRATED_OR_NOT = c('no'              , 'no'                     ,'no' )#     , 'no' )
 names(INTEGRATED_OR_NOT)=OBJECTS_TO_ANALYZE
     # Note:
     # For the integrated dataset
@@ -80,9 +82,10 @@ if (T) {
     
     OBJECTS_TO_ANALYZE=OBJECTS_TO_ANALYZE # defined above; this is just a reminder
     GENES_OF_INTEREST_ = c('TTN','NPPA','CMYA5','XIRP2')
+    # GENES_OF_INTEREST_ = c('NPPA','XIRP2') # 'TTN','CMYA5'
     
     # let's assume the genes of interest are among the features in each dataset 
-    GENES_OF_INTEREST = shorthand_seurat_fullgenename(seuratObject = current_analysis$ROOIJonly_RID2l, gene_names = GENES_OF_INTEREST_)
+    GENES_OF_INTEREST = shorthand_seurat_fullgenename(seuratObject = current_analysis[[ROOIJ_ANALYSIS]], gene_names = GENES_OF_INTEREST_)
     
     Volcano_df_collection=list()
     
@@ -94,9 +97,9 @@ if (T) {
         for (analysis_name in OBJECTS_TO_ANALYZE) {
             
             # analysis_name='ROOIJonly_RID2l'; gene_name=shorthand_seurat_fullgenename('TTN')
-            # analysis_name='ROOIJonly_RID2l'; gene_name=shorthand_seurat_fullgenename(current_analysis$ROOIJonly_RID2l, 'NPPA')
+            # analysis_name='ROOIJonly_RID2l'; gene_name=shorthand_seurat_fullgenename(current_analysis[[ROOIJ_ANALYSIS]], 'NPPA')
             # analysis_name='ROOIJonly_RID2l'; gene_name=shorthand_seurat_fullgenename('CMYA5')
-            # analysis_name='TEICHMANNonly_RID2l'; gene_name='TTN'
+            # analysis_name='TEICHMANNonly.sp.bt_RID2l'; gene_name='TTN'
             
             # Depending on whether we want to look at integrated data or not, Seurat has stored the
             # expression matrix of interest in a different spot
@@ -198,10 +201,9 @@ if (T) {
 #
 # Run this part to load the data for plotting purposes
 
-SAVEPLOT=F
+SAVEPLOT=F # SAVEPLOT=T
 
-SP_SWITCH = '.SP.'
-OBJECTS_TO_ANALYZE = c("ROOIJonly_RID2l",     "HUonly_RID2l",        paste0("TEICHMANN",SP_SWITCH,"only_RID2l"))
+OBJECTS_TO_ANALYZE = c("ROOIJonly.sp.bt_RID2l",     "HUonly.sp.bt_RID2l",        paste0("TEICHMANNonly.sp.bt_RID2l"))
 
 if (F) {
     
@@ -222,8 +224,8 @@ if (F) {
     
         # CURRENT_DATASET = 'ROOIJonly_RID2l'; CURRENT_GENE = 'ENSG00000155657:TTN'
         # CURRENT_DATASET = 'ROOIJonly_RID2l'; CURRENT_GENE = 'ENSG00000175206:NPPA'
-        # CURRENT_DATASET = 'TEICHMANNonly_RID2l'
-        # CURRENT_DATASET = 'HUonly_RID2l'
+        # CURRENT_DATASET = 'TEICHMANNonly.sp.bt_RID2l'
+        # CURRENT_DATASET = 'HUonly.sp.bt_RID2l'
         
         # Volcano_df_collection[[CURRENT_GENE]][[CURRENT_DATASET]]
         
@@ -342,28 +344,32 @@ if (F) {
 # Additional custom export to generate supplementary databases with all this
 # data in a more convenient way
 
-Volcano_df_collection_combined = 
-    lapply(names(Volcano_df_collection), function(g) {
-        
-        table_HCM = Volcano_df_collection[[g]]$ROOIJonly_RID2l
-        table_Ctrl1 = Volcano_df_collection[[g]]$HUonly_RID2l
-        table_Ctrl2 = Volcano_df_collection[[g]]$TEICHMANN.SP.only_RID2l
-        
-        names(table_HCM)=gsub('^R','HCM',names(table_HCM))
-        names(table_Ctrl1)=gsub('^H','Ctrl1',names(table_Ctrl1))
-        names(table_Ctrl2)=gsub('^T','Ctrl2',names(table_Ctrl2))
-        
-        full_table_set_ = c(table_HCM, table_Ctrl1, table_Ctrl2)
-        full_table_set = lapply(full_table_set_, function(t) {t[order(t$corr, decreasing = T),]})
-        
-        return(full_table_set) } )
-names(Volcano_df_collection_combined) = names(Volcano_df_collection)
+if (F) {
+    
+    Volcano_df_collection_combined = 
+        lapply(names(Volcano_df_collection), function(g) {
+            
+            table_HCM = Volcano_df_collection[[g]]$ROOIJonly.sp.bt_RID2l
+            table_Ctrl1 = Volcano_df_collection[[g]]$HUonly.sp.bt_RID2l
+            table_Ctrl2 = Volcano_df_collection[[g]]$TEICHMANNonly.sp.bt_RID2l
+            
+            names(table_HCM)=gsub('^R','HCM',names(table_HCM))
+            names(table_Ctrl1)=gsub('^H','Ctrl1',names(table_Ctrl1))
+            names(table_Ctrl2)=gsub('^T','Ctrl2',names(table_Ctrl2))
+            
+            full_table_set_ = c(table_HCM, table_Ctrl1, table_Ctrl2)
+            full_table_set = lapply(full_table_set_, function(t) {t[order(t$corr, decreasing = T),]})
+            
+            return(full_table_set) } )
+    names(Volcano_df_collection_combined) = names(Volcano_df_collection)
+    
+    # Export correlation coefficients to xls for each gene
+    for (genename in names(Volcano_df_collection_combined)) {
+        print(paste0('Writing ', genename))
+        openxlsx::write.xlsx(x = Volcano_df_collection_combined[[genename]], file = paste0(base_dir,'Rplots/ALL.SP_volcano_and_corr_',genename,'_.xlsx'), overwrite=T)
+    }
 
-# Export correlation coefficients to xls for each gene
-for (genename in names(Volcano_df_collection_combined)) {
-    print(paste0('Writing ', genename))
-    openxlsx::write.xlsx(x = Volcano_df_collection_combined[[genename]], file = paste0(base_dir,'Rplots/ALL.SP_volcano_and_corr_',genename,'_.xlsx'), overwrite=T)
-}
+} 
 
 ################################################################################
 # More customized versions of Volcano plots in Rooij data for NPPA and XIRP2
@@ -371,43 +377,48 @@ for (genename in names(Volcano_df_collection_combined)) {
 
 # c('ENSG00000155657:TTN', 'ENSG00000175206:NPPA', "ENSG00000163092:XIRP2", "ENSG00000164309:CMYA5")
 
-# Make a plot
-TOPX=10
-gene_name = 'ENSG00000175206:NPPA'
-gene_name = 'ENSG00000163092:XIRP2'
-analysis_name='ROOIJonly_RID2l'
-current_patient='Rpooled'
-
-for (idx in 1:2) {
+if (F) {
     
-    gene_name = c('ENSG00000175206:NPPA', 'ENSG00000163092:XIRP2')[idx]
-    current_force = c(1000, 100)[idx]
+    # Make a plot
+    TOPX=10
+    gene_name = 'ENSG00000175206:NPPA'
+    gene_name = 'ENSG00000163092:XIRP2'
+    analysis_name='ROOIJonly.sp.bt_RID2l'
+    current_patient='Rpooled'
     
-    temp_vdf = Volcano_df_collection[[gene_name]][[analysis_name]][[current_patient]]
-    temp_vdf = temp_vdf[order(temp_vdf$corr, decreasing = T),]
-    custom_top_genes = c(temp_vdf$gene_name_short[2:(TOPX+1)],
-        temp_vdf$gene_name_short[(dim(temp_vdf)[1]):(dim(temp_vdf)[1]-TOPX)])
-    p=plot_volcano3(my_corrs_df_current = Volcano_df_collection[[gene_name]][[analysis_name]][[current_patient]],mycex=3,
-                NRLABELED=10,mypvaltreshold=0.01,manual_gene_name = shorthand_cutname(gene_name),
-                  #mypointsize=.1, mylinesize=.1, mytextsize=8, mylabelsize = 5, custom_highlight_group = custom_top_genes, myforce = 33, mydirection = 'y')+ 
-                  mypointsize=.1, mylinesize=.1, mytextsize=8, mylabelsize = 5, custom_highlight_group = custom_top_genes, myforce = current_force, mydirection = 'both')+ 
-                    ggtitle(paste0('Correlation with ',shorthand_cutname(gene_name)))+xlim(-.8,.8)
-                    # ggtitle(paste0('Correlations with ',gene_name,'\n(',analysis_name,'); ',current_patient,''))
-    p
-    # Save & export it
-    ggsave(filename = paste0(base_dir,'Rplots/',analysis_name,'_6_Volcano_',gene_name,'_',current_patient,'-customStyle3.pdf'), 
-        plot = p, height=PANEL_WIDTH-4, width=PANEL_WIDTH-4, units = 'mm', device = cairo_pdf)
-}
+    for (idx in 1:2) {
+    
+        # idx=1
+            
+        gene_name = c('ENSG00000175206:NPPA', 'ENSG00000163092:XIRP2')[idx]
+        current_force = c(1000, 100)[idx]
+        
+        temp_vdf = Volcano_df_collection[[gene_name]][[analysis_name]][[current_patient]]
+        temp_vdf = temp_vdf[order(temp_vdf$corr, decreasing = T),]
+        custom_top_genes = c(temp_vdf$gene_name_short[2:(TOPX+1)],
+            temp_vdf$gene_name_short[(dim(temp_vdf)[1]):(dim(temp_vdf)[1]-TOPX)])
+        p=plot_volcano3(my_corrs_df_current = Volcano_df_collection[[gene_name]][[analysis_name]][[current_patient]],mycex=3,
+                    NRLABELED=10,mypvaltreshold=0.01,manual_gene_name = shorthand_cutname(gene_name),
+                      #mypointsize=.1, mylinesize=.1, mytextsize=8, mylabelsize = 5, custom_highlight_group = custom_top_genes, myforce = 33, mydirection = 'y')+ 
+                      mypointsize=.1, mylinesize=.1, mytextsize=8, mylabelsize = 5, custom_highlight_group = custom_top_genes, myforce = current_force, mydirection = 'both')+ 
+                        ggtitle(paste0('Correlation with ',shorthand_cutname(gene_name)))+xlim(-.8,.8)
+                        # ggtitle(paste0('Correlations with ',gene_name,'\n(',analysis_name,'); ',current_patient,''))
+        p
+        # Save & export it
+        ggsave(filename = paste0(base_dir,'Rplots/',analysis_name,'_6_Volcano_',gene_name,'_',current_patient,'-customStyle3.pdf'), 
+            plot = p, height=PANEL_WIDTH-4, width=PANEL_WIDTH-4, units = 'mm', device = cairo_pdf)
+    }
 
+}    
+    
 ################################################################################
 # Another overview plot; expand on what we did above
 # This throws all datasets together
 
-SP_SWITCH = '.SP.'
-OBJECTS_TO_ANALYZE = c("ROOIJonly_RID2l",     "HUonly_RID2l",        paste0("TEICHMANN",SP_SWITCH,"only_RID2l"))
+OBJECTS_TO_ANALYZE = c("ROOIJonly.sp.bt_RID2l",     "HUonly.sp.bt_RID2l",   "TEICHMANNonly.sp.bt_RID2l")
 
 CUSTOM_PATIENT_ORDER = c('R.P1', 'R.P2', 'R.P3', 'R.P4', 'R.P5', 'H.N1', 'H.N2', 'H.N3', 'H.N4', 'H.N5', 'H.N13', 'H.N14', 'T.D1', 'T.D2', 'T.D3', 'T.D4', 'T.D5', 'T.D6', 'T.D7', 'T.D11', 'T.H2', 'T.H3', 'T.H4', 'T.H5', 'T.H6', 'T.H7')
-REFERENCE_DATASET = 'ROOIJonly_RID2l'
+REFERENCE_DATASET = 'ROOIJonly.sp.bt_RID2l'
 
 # Similar to above, but slightly adjusted
 
@@ -430,7 +441,7 @@ if (F) {
         #shared_genes = shared_genes[!(CURRENT_GENE==shared_genes)]
         
         # Bind data
-        namesData=c("ROOIJonly_RID2l"="R",     "HUonly_RID2l"="H", "TEICHMANNonly_RID2l"="T", "TEICHMANN.SP.only_RID2l"="T")
+        namesData=c("ROOIJonly.sp.bt_RID2l"="R",     "HUonly.sp.bt_RID2l"="H", "TEICHMANNonly.sp.bt_RID2l"="T")
         current_dfs_donorsNames_selGene_allData =
             # loops over datasets
             unlist(lapply(OBJECTS_TO_ANALYZE, function(current_dataset) {
@@ -636,11 +647,11 @@ if (F) {
                     axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
                 xlab('donor')
             # p
-            ggsave(filename = paste0(base_dir,'Rplots/','ROOIJonly_RID2l','_6_TableSignCorrelations-style2_',CURRENT_GENE,'_Corr',negpos,'_.pdf'), 
+            ggsave(filename = paste0(base_dir,'Rplots/','ROOIJonly.sp.bt_RID2l','_6_TableSignCorrelations-style2_',CURRENT_GENE,'_Corr',negpos,'_.pdf'), 
                              plot = p, height=min(172,3*nrow_effective+20), width=1/3*172-4, units = 'mm', device=cairo_pdf) # 185/4 || 46*2 || ncol_effective*7.5
             # Now with legend
             p=p+theme(legend.position='bottom') # p
-            ggsave(filename = paste0(base_dir,'Rplots/','ROOIJonly_RID2l','_6_TableSignCorrelations-style2_LEGEND_',CURRENT_GENE,'_.pdf'), 
+            ggsave(filename = paste0(base_dir,'Rplots/','ROOIJonly.sp.bt_RID2l','_6_TableSignCorrelations-style2_LEGEND_',CURRENT_GENE,'_.pdf'), 
                              plot = p, height=min(172,3.5*nrow_effective+5), width=2/3*172-4, units = 'mm', device=cairo_pdf) # 185/4 || 46*2 || ncol_effective*7.5
             
             
@@ -692,7 +703,7 @@ if (F) {
     all_correlations_df=data.frame(gene=numeric(),corr=numeric(),patient=character(),dataset=character())
     for (current_dataset in OBJECTS_TO_ANALYZE) {
     
-        # current_dataset='ROOIJonly_RID2l'; gene_name='TTN'; current_patient = 'R.P1'
+        # current_dataset='ROOIJonly.sp.bt_RID2l'; gene_name='TTN'; current_patient = 'R.P1'
         
         patients_current_dataset = names(Volcano_df_collection[[CURRENT_GENE]][[CURRENT_DATASET]])
         for (current_patient in patients_current_dataset) {
@@ -721,7 +732,7 @@ if (F) {
     mtx[is.na(mtx)]=0
     p=pheatmap(mtx, fontsize_row = 3)
     p
-    ggsave(filename = paste0(base_dir,'Rplots/combined_TTN_corrs.pdf'), plot = p, height=30, width=15, units='cm', device=cairo_pdf)
+    ggsave(filename = paste0(base_dir,'Rplots/combined_',current_gene,'_corrs_TEST.pdf'), plot = p, height=30, width=15, units='cm', device=cairo_pdf)
 }
 ################################################################################
 
@@ -730,23 +741,23 @@ if (F) {
 if (F) {
     
     # NPPA Venn
-    plot_Venn_MW_2lists_v3(Volcano_df_collection[['NPPA']][['ROOIJonly_RID2l']]$gene_name_short[2:31],
-                            Volcano_df_collection[['NPPA']][['ROOIJonly_default_Int1c']]$gene_name_short[2:31],
+    plot_Venn_MW_2lists_v3(Volcano_df_collection[['NPPA']][['ROOIJonly.sp.bt_RID2l']]$gene_name_short[2:31],
+                            Volcano_df_collection[['NPPA']][['ROOIJonly.sp.bt_default_Int1c']]$gene_name_short[2:31],
                             name1='Rooij, RID2',name2='Rooij, Int')
     
-    plot_Venn_MW_2lists_v3(Volcano_df_collection[['NPPA']][['ROOIJonly_default_Int1c']]$gene_name_short[2:31],
-                            Volcano_df_collection[['NPPA']][['HUonly_default_Int1c']]$gene_name_short[2:31],
+    plot_Venn_MW_2lists_v3(Volcano_df_collection[['NPPA']][['ROOIJonly.sp.bt_default_Int1c']]$gene_name_short[2:31],
+                            Volcano_df_collection[['NPPA']][['HUonly.sp.bt_default_Int1c']]$gene_name_short[2:31],
                             name1='Rooij, Int',name2='Hu, Int')
     
-    Volcano_df_collection[['NPPA']][['ROOIJonly_default_Int1c']]$gene_name_short[2:31][Volcano_df_collection[['ROOIJonly_default_Int1c']][['NPPA']]$gene_name_short[1:30] %in% Volcano_df_collection[['HUonly_default_Int1c']][['NPPA']]$gene_name_short[2:31]]
+    Volcano_df_collection[['NPPA']][['ROOIJonly.sp.bt_default_Int1c']]$gene_name_short[2:31][Volcano_df_collection[['ROOIJonly.sp.bt_default_Int1c']][['NPPA']]$gene_name_short[1:30] %in% Volcano_df_collection[['HUonly.sp.bt_default_Int1c']][['NPPA']]$gene_name_short[2:31]]
     
     # TTN Venn
-    plot_Venn_MW_2lists_v3(Volcano_df_collection[['TTN']][['ROOIJonly_RID2l']]$gene_name_short[2:31],
-                            Volcano_df_collection[['TTN']][['ROOIJonly_default_Int1c']]$gene_name_short[2:31],
+    plot_Venn_MW_2lists_v3(Volcano_df_collection[['TTN']][['ROOIJonly.sp.bt_RID2l']]$gene_name_short[2:31],
+                            Volcano_df_collection[['TTN']][['ROOIJonly.sp.bt_default_Int1c']]$gene_name_short[2:31],
                             name1='Rooij, RID2',name2='Rooij, Int')
     
-    plot_Venn_MW_2lists_v3(Volcano_df_collection[['TTN']][['ROOIJonly_default_Int1c']]$gene_name_short[2:31],
-                            Volcano_df_collection[['TTN']][['HUonly_default_Int1c']]$gene_name_short[2:31],
+    plot_Venn_MW_2lists_v3(Volcano_df_collection[['TTN']][['ROOIJonly.sp.bt_default_Int1c']]$gene_name_short[2:31],
+                            Volcano_df_collection[['TTN']][['HUonly.sp.bt_default_Int1c']]$gene_name_short[2:31],
                             name1='Rooij, Int',name2='Hu, Int')
 }
 

@@ -35,24 +35,31 @@ current_analysis[[DATASET_NAME]] =
     LoadH5Seurat(file = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_',DATASET_NAME,'.h5seurat'))
 
 # Load the FC-tables for pooled data
-load(paste0(base_dir, 'Rdata/DE_cluster__ALL.SP_RID2l_clExtended.Rdata')) # DE_cluster
-DE_cluster_ALL.SP_RID2l_clExtended = DE_cluster$ALL.SP_RID2l_clExtended
+load(paste0(base_dir, 'Rdata/DE_cluster__ALL.SP_btypSel_RID2l_clExtended.Rdata')) # DE_cluster
+# load(paste0(base_dir, 'Rdata/DE_cluster__ALL.SP_RID2l_clExtended.Rdata')) # DE_cluster
+DE_cluster_ALL.SP_btypSel_RID2l_clExtended = DE_cluster$ALL.SP_btypSel_RID2l_clExtended
     # Note that cluster 4 is the one which contains all our cells
 # load(paste0(base_dir, 'Rdata/enriched_genes_lists_clusters_ALL.SP__ALL.SP_RID2l_clExtended.Rdata'))
 
 # And now also for the HCM-specific clusters
-load(paste0(base_dir, 'Rdata/DE_cluster__ROOIJonly_RID2l_clExtended.Rdata')) # DE_cluster
+load(paste0(base_dir, 'Rdata/DE_cluster__ROOIJonly.sp.bt_RID2l_clExtended.Rdata')) # DE_cluster
 DE_cluster_ROOIJonly_RID2l_clExtended = DE_cluster$ROOIJonly_RID2l_clExtended
 
 # First gather the appropriate list of FC genes
 # View(DE_cluster$ALL.SP_RID2l_clExtended$`4`)
-FC_pooled_cluster_4 = DE_cluster_ALL.SP_RID2l_clExtended$`4` 
-FC_pooled_cluster_4$genename_short = shorthand_cutname( rownames(DE_cluster_ALL.SP_RID2l_clExtended$`4`) )
+FC_pooled_cluster_4 = DE_cluster_ALL.SP_btypSel_RID2l_clExtended$`4` 
+FC_pooled_cluster_4$genename_short = shorthand_cutname( rownames(DE_cluster_ALL.SP_btypSel_RID2l_clExtended$`4`) )
 FC_pooled_cluster_4_sel = FC_pooled_cluster_4[FC_pooled_cluster_4$p_val_adj<.05&FC_pooled_cluster_4$avg_log2FC>0,]
 
 # Now make an overview of ligands only
 FC_pooled_cluster_4_sel_ligands = FC_pooled_cluster_4_sel[FC_pooled_cluster_4_sel$genename_short %in% ligand_list,]
 FC_pooled_cluster_4_sel_ligands_ordered = FC_pooled_cluster_4_sel_ligands[order(FC_pooled_cluster_4_sel_ligands$avg_log2FC,decreasing = T),]
+FC_pooled_cluster_4_sel_ligands_ordered$avg_FC = 2^FC_pooled_cluster_4_sel_ligands_ordered$avg_log2FC
+
+# Save the ligand list
+if (!dir.exists( paste0(base_dir,'LR_analysis/'))) {dir.create( paste0(base_dir,'LR_analysis/'))}
+openxlsx::write.xlsx(x=FC_pooled_cluster_4_sel_ligands_ordered, file = paste0(base_dir,'LR_analysis/','DE_cluster_ALL.SP_btypSel_RID2l_clExtended__FC_pooled_cluster_4_sel_ligands_ordered.xlsx'), overwrite = T) 
+
 
 # Make list of top-10 ligands
 ligands_HCMenriched_top10 = FC_pooled_cluster_4_sel_ligands_ordered$genename_short[1:10]

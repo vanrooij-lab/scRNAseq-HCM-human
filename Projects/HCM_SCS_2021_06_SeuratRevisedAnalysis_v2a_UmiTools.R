@@ -1,6 +1,25 @@
 
 
-# V2b! (newest version)
+
+
+
+
+
+
+# old version
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -130,18 +149,18 @@ if (exists('config')) {
 # Local  use
 if (exists('LOCAL')) {
     script_dir = '/Users/m.wehrens/Documents/git_repos/SCS_More_analyses/'
-    base_dir = '/Users/m.wehrens/Data/_2019_02_HCM_SCS/2021_HPC_analysis.3b/'
+    base_dir = '/Users/m.wehrens/Data/_2019_02_HCM_SCS/2021_HPC_analysis.3/'
     
     data_dir1 = '/Users/m.wehrens/Data/_2019_02_HCM_SCS/2021_UmiTools_CountTables_Wang_HCMSCS/ROOIJ/' # NULL
     data_dir2 = '/Users/m.wehrens/Data/_2019_02_HCM_SCS/2021_UmiTools_CountTables_Wang_HCMSCS/HU/'
         # '/Users/m.wehrens/Data/_2019_02_HCM_SCS/2021_Wang_Counttables/'
 } else {
     script_dir = '/hpc/hub_oudenaarden/mwehrens/scripts/SCS_HCM_analysis/'
-    base_dir = '/hpc/hub_oudenaarden/mwehrens/data/HCM_SCS_RHL.3b/'
+    base_dir = '/hpc/hub_oudenaarden/mwehrens/data/HCM_SCS_RHL.3/'
     
-    data_dir1 = '/hpc/hub_oudenaarden/mwehrens/data/HCM_SCS_RHL.3b/counttables_tsv_exclmulti_filtered/'
+    data_dir1 = '/hpc/hub_oudenaarden/mwehrens/data/HCM_SCS_RHL.3/counttables_tsv_exclmulti_filtered/'
         # '/hpc/hub_oudenaarden/mwehrens/fastq/HCM_SCS/mapping.93.may25/'
-    data_dir2 = '/hpc/hub_oudenaarden/mwehrens/data/HCM_SCS_RHL.3b/counttables_tsv_exclmulti_filtered/'
+    data_dir2 = '/hpc/hub_oudenaarden/mwehrens/data/HCM_SCS_RHL.3/counttables_tsv_exclmulti_filtered/'
         # '/hpc/hub_oudenaarden/mwehrens/fastq/WANG4/mapping/counttables/'
 }
 
@@ -293,9 +312,7 @@ if ('loadraw' %in% desired_command) {
     # This is necessary when using Anna's count tables
     # SCS_df_list_data = lapply(SCS_df_list_data_raw, preprocess_convertAAnames_toSymbol, revert_to_hgnc=T, script_dir=script_dir)
     
-    if (!dir.exists(paste0(base_dir,'Rdata/SCS_df_list_data.Rdata'))) {dir.create(paste0(base_dir,'Rdata/'))} 
     save(list = c('SCS_df_list_data'),file = paste0(base_dir,'Rdata/SCS_df_list_data.Rdata'))
-        # load(file = paste0(base_dir,'Rdata/SCS_df_list_data.Rdata'))
 
 }
 
@@ -314,9 +331,8 @@ if ('generate_seurat' %in% desired_command) {
                 })
     names(RHL_SeuratObject_list) = names(SCS_df_list_data)
     object_size(RHL_SeuratObject_list) 
-    
     save(list = c('RHL_SeuratObject_list'),file = paste0(base_dir,'Rdata/RHL_SeuratObject_list.Rdata'))
-    # load(paste0(base_dir,'Rdata/RHL_SeuratObject_list.Rdata'))
+    # load(paste0(base_dir,'Rdata/RHL_object_list.Rdata'))
     
 }
 
@@ -353,43 +369,10 @@ if ('add_teichmann' %in% desired_command) {
         # all(ensembl_IDs_check == ensembl_IDs)
         # still nice to do sanity check
     
-    # Load our conversion table
-    load(file = paste0(base_dir,'Rdata/ens_to_sym_conv_table__','93','_v2.Rdata'))  # ens_to_sym_conv_table__XX_v2
-        # load(file = paste0("/hpc/hub_oudenaarden/mwehrens/data/HCM_SCS_RHL.3b/",'Rdata/ens_to_sym_conv_table__','93','_v2.Rdata'))  # ens_to_sym_conv_table__XX_v2
-    
-    # Additional checks & notes
-    # hcgn_names  = rownames(RHL_SeuratObject_list$TEICH)
-    # hcgn_names2 = names(ensembl_IDs)
-    
-    # hcgn_check2 = ens_to_sym_conv_table__XX_v2[ensembl_IDs]
-    # all(hcgn_names[hcgn_names!=''&hcgn_check2!='']==hcgn_check2[hcgn_names!=''&hcgn_check2!=''])
-    # check2_result_=hcgn_check2[hcgn_names!=hcgn_check2]
-    # check2_result_[check2_result_!='']
-    # 
-    # Naming is not entirely consistent
-    # Even though 23353 genes are correctly converted to hcgn symbol
-    # sum(hcgn_names==hcgn_check2)
-    # Issue is that 10166 genes do not get any annotation through the ens_to_sym_conv_table__XX_v2 table.
-    # sum(hcgn_check2=="") # 10166
-    # But on the other hand, some names are different in the Teichmann data vs. my conversion table, 
-    # but this is just a very tiny list (TBCE, LINC01238, PRSS50, ATXN7, TXNRD3NB, CCDC39, MATR3, POLR2J3, ABCF2, PINX1, LINC01505, IGF2, HSPA14, LINC00856, EMG1, DIABLO, LINC02203, CCL3L3, H2BFS)
-    # check2_result_[check2_result_!='']
-    # 
-    # Since we're using ens_to_sym_conv_table__XX_v2 to convert our own names, consistency can only be achieved
-    # by using our own conversion table. This means that we view ENS IDs as primary in determining the genes.
-    # We will store the teichmann hcgn annotation in a parameter
-    # BUT we can store also the teichmann conversion to add some missing hcgn names later to the total dataset
-    
-    # Save the Teichmann annotation separately
-    # Inversion of ensembl_IDs table
-    hcgn_conversion_Teichmann = names(ensembl_IDs)
-    names(hcgn_conversion_Teichmann) = ensembl_IDs
-    save(list = c('hcgn_conversion_Teichmann'),file = paste0(base_dir,'Rdata/hcgn_conversion_Teichmann.Rdata'))
-    
     # actually update names    
-    # hgnc_names_Teich=rownames(RHL_SeuratObject_list$TEICH@assays$RNA@data)
-    rownames(RHL_SeuratObject_list$TEICH@assays$RNA@data)   = paste0(ensembl_IDs_check,':',ens_to_sym_conv_table__XX_v2[ensembl_IDs_check])
-    rownames(RHL_SeuratObject_list$TEICH@assays$RNA@counts) = paste0(ensembl_IDs_check,':',ens_to_sym_conv_table__XX_v2[ensembl_IDs_check])
+    hgnc_names_Teich=rownames(RHL_SeuratObject_list$TEICH@assays$RNA@data)
+    rownames(RHL_SeuratObject_list$TEICH@assays$RNA@data) = paste0(ensembl_IDs_check,':',hgnc_names_Teich)
+    rownames(RHL_SeuratObject_list$TEICH@assays$RNA@counts) = paste0(ensembl_IDs_check,':',hgnc_names_Teich)
         # can now also be queried by
         # rownames(RHL_SeuratObject_list$TEICH)
         # 
@@ -427,9 +410,6 @@ if ('create_merged_seurat' %in% desired_command) {
         # object_size(WRL_object_big) 
         # save(list = c('WRL_object_big'),file = paste0(base_dir,'Rdata/WRL_object_big.Rdata'))
         # dim(WRL_object_big@assays$RNA@counts)
-    
-    # Sanity check re. gene names
-    # all(rownames(RHL_SeuratObject_list[[2]]) %in% rownames(RHL_SeuratObject_list$TEICH)) # TRUE
     
     # Merge Seurat list into one object
     RHL_SeuratObject_merged <- merge(RHL_SeuratObject_list[[1]], y = unlist(RHL_SeuratObject_list)[2:length(RHL_SeuratObject_list)], 
@@ -523,8 +503,7 @@ if ('create_merged_seurat' %in% desired_command) {
     # rownames(RHL_SeuratObject_merged)[grepl("^MT-",rownames(RHL_SeuratObject_merged))]
     RHL_SeuratObject_merged[["percent.mt"]] <- PercentageFeatureSet(RHL_SeuratObject_merged, pattern = ":MT-")
     
-    SaveH5Seurat(RHL_SeuratObject_merged,filename = paste0(base_dir,'Rdata/RHL_SeuratObject_merged.h5seurat'))
-    # save(list = c('RHL_SeuratObject_merged'),file = paste0(base_dir,'Rdata/RHL_SeuratObject_merged.Rdata'))
+    save(list = c('RHL_SeuratObject_merged'),file = paste0(base_dir,'Rdata/RHL_SeuratObject_merged.Rdata'))
     # load(paste0(base_dir,'Rdata/RHL_SeuratObject_merged.Rdata'))
     
 }
@@ -533,8 +512,7 @@ if ('create_merged_seurat' %in% desired_command) {
 
 if ('create_separate_raw' %in% desired_command) {
 
-    # load(file = paste0(base_dir,'Rdata/RHL_SeuratObject_merged.Rdata'))
-    RHL_SeuratObject_merged = LoadH5Seurat(file = paste0(base_dir,'Rdata/RHL_SeuratObject_merged.h5seurat'))
+    load(file = paste0(base_dir,'Rdata/RHL_SeuratObject_merged.Rdata'))
     
     # Create raw object for statistics
     RHL_SeuratObject_Rooij_raw = subset(RHL_SeuratObject_merged, annotation_paper_str=='vRooij')
@@ -626,8 +604,7 @@ ENSEMBL_VERSION_BIOTYPES=93
 
 if ('select_genes_cells' %in% desired_command) {
     
-    # load(paste0(base_dir,'Rdata/RHL_SeuratObject_merged.Rdata'))
-    RHL_SeuratObject_merged = LoadH5Seurat(file = paste0(base_dir,'Rdata/RHL_SeuratObject_merged.h5seurat'))
+    load(paste0(base_dir,'Rdata/RHL_SeuratObject_merged.Rdata'))
     
     # Let's remove mitochondrial and other undesired gene expression information
     
@@ -648,19 +625,6 @@ if ('select_genes_cells' %in% desired_command) {
         # genes_JE10_ens = sapply(str_split(string = rownames(RHL_SeuratObject_list$JE10), pattern = ':'), function(x) {x[[1]]})
         # gene_types_JE10_ens = gene_biotypes_XX[genes_JE10_ens]
         # unique(gene_types_JE10_ens); table(gene_types_JE10_ens)
-    
-        # XXXXX
-    
-        # Note that Rooij/Hu data only has protein_coding, lincRNA and antisense, while Teichmann has slightly more (due cellranger)
-            #     gene_types_TEICH_ens
-            #       antisense       IG_C_gene IG_C_pseudogene       IG_D_gene       IG_J_gene 
-            #            5497              14               9              37              18 
-            # IG_J_pseudogene       IG_V_gene IG_V_pseudogene         lincRNA  protein_coding 
-            #               3             144             188            7484           19912 
-            #       TR_C_gene       TR_D_gene       TR_J_gene TR_J_pseudogene       TR_V_gene 
-            #               6               4              79               4             106 
-            # TR_V_pseudogene 
-            #              33 
     
     if (DISCARD_GENE_OPTION) {
         # Cell Ranger biotypes
@@ -693,7 +657,7 @@ if ('select_genes_cells' %in% desired_command) {
             rownames(RHL_SeuratObject_merged)[!(rownames(RHL_SeuratObject_merged) %in% mito_genes)]
     }
     
-    # Then, subset the RNA assay 
+    # Then, subset the RNA assay (note: "noMito" is historic name, earlier only mito genes removed, now many more)
     RHL_SeuratObject_merged_noMito =
         subset(RHL_SeuratObject_merged, features= RHL_SeuratObject_merged@misc$desired_genes_excl_mito)
     # And add the desired stored information again
@@ -760,33 +724,8 @@ if ('select_genes_cells' %in% desired_command) {
                                   cellCounts_patients=cell_count_overview_table_patient) ,
                          file = paste0(base_dir,'Rplots/QC_general_statistics_cellcounts_alldata.xlsx'), overwrite = T)
     
-    # Now also update names that have lacking information
-    load(file = paste0(base_dir,'Rdata/hcgn_conversion_Teichmann.Rdata')) # hcgn_conversion_Teichmann
-    # determine names lacking info
-    full_names1 = rownames(RHL_SeuratObject_merged_noMito_sel@assays$RNA@counts)
-    ens_names = shorthand_cutname( rownames(RHL_SeuratObject_merged_noMito_sel@assays$RNA@counts) , PART1OR2 = 1)
-    hcgn_names = sapply(str_split(full_names1, pattern = ':'), function(Y) {Y[[2]]})
-    
-        # ens_names_data = shorthand_cutname( rownames(RHL_SeuratObject_merged_noMito_sel@assays$RNA@data) , PART1OR2 = 1)
-        # all(ens_names==ens_names_data) # TRUE
-        
-    # Now create updated names
-    newnames = hcgn_conversion_Teichmann[ens_names[hcgn_names=='']]
-    hcgn_names_updated = hcgn_names
-    hcgn_names_updated[hcgn_names==''] = newnames
-    full_newnames = paste0(ens_names, ':', hcgn_names_updated)
-        # check_df = data.frame(hcgn_names, hcgn_names_updated, full_newnames)
-        # check_df[1:100,]
-        # check_df[check_df$hcgn_names=='',][1:100,]
-        
-    # Actually update names
-    rownames(RHL_SeuratObject_merged_noMito_sel@assays$RNA@counts) = full_newnames
-    rownames(RHL_SeuratObject_merged_noMito_sel@assays$RNA@data) = full_newnames
-    # rownames(RHL_SeuratObject_merged_noMito_sel@assays$RNA@scale.data) = full_newnames
-        
     # Save it
-    SaveH5Seurat(RHL_SeuratObject_merged_noMito_sel, filename = paste0(base_dir,'Rdata/RHL_SeuratObject_merged_noMito_sel.Rdata'))
-    # save(list = c('RHL_SeuratObject_merged_noMito_sel'), file = paste0(base_dir,'Rdata/RHL_SeuratObject_merged_noMito_sel.Rdata'))
+    save(list = c('RHL_SeuratObject_merged_noMito_sel'), file = paste0(base_dir,'Rdata/RHL_SeuratObject_merged_noMito_sel.Rdata'))
     # load(file = paste0(base_dir,'Rdata/RHL_SeuratObject_merged_noMito_sel.Rdata'))
     
     # Remove old stuff
@@ -911,6 +850,54 @@ if ('runf_all_RID2l_VAR_cl' %in% desired_command) {
 }
 
 ################################################################################
+# Now perform above analysis on the separate datasets, 
+# once with RaceID2-like settings, and once with default settings
+
+if ('split_datasets' %in% desired_command) {
+    
+    # Load all the data
+    print('Loading')
+    load(file = paste0(base_dir,'Rdata/RHL_SeuratObject_merged_noMito_sel.Rdata'))
+    
+    # Create separate subsets
+    print('Splitting')
+    RHL_SeuratObject_nM_sel_HUonly = subset(RHL_SeuratObject_merged_noMito_sel, subset = annotation_paper_str == 'Hu')
+    RHL_SeuratObject_nM_sel_HUonly[['rnaMitoCounts']] <- subset(RHL_SeuratObject_nM_sel_HUonly[['rnaMitoCounts']], cells = colnames(RHL_SeuratObject_nM_sel_HUonly))
+    if (DISCARD_GENE_OPTION) { RHL_SeuratObject_nM_sel_HUonly[['rnaDiscardedCounts']] <- subset(RHL_SeuratObject_nM_sel_HUonly[['rnaDiscardedCounts']], cells = colnames(RHL_SeuratObject_nM_sel_HUonly)) }
+    
+    RHL_SeuratObject_nM_sel_TEICHMANNonly = subset(RHL_SeuratObject_merged_noMito_sel, subset = annotation_paper_str == 'Teichmann')
+    RHL_SeuratObject_nM_sel_TEICHMANNonly[['rnaMitoCounts']] <- subset(RHL_SeuratObject_nM_sel_TEICHMANNonly[['rnaMitoCounts']], cells = colnames(RHL_SeuratObject_nM_sel_TEICHMANNonly))
+    if (DISCARD_GENE_OPTION) { RHL_SeuratObject_nM_sel_TEICHMANNonly[['rnaDiscardedCounts']] <- subset(RHL_SeuratObject_nM_sel_TEICHMANNonly[['rnaDiscardedCounts']], cells = colnames(RHL_SeuratObject_nM_sel_TEICHMANNonly)) }
+
+    RHL_SeuratObject_nM_sel_ROOIJonly = subset(RHL_SeuratObject_merged_noMito_sel, subset = annotation_paper_str == 'vRooij')
+    RHL_SeuratObject_nM_sel_ROOIJonly[['rnaMitoCounts']] <- subset(RHL_SeuratObject_nM_sel_ROOIJonly[['rnaMitoCounts']], cells = colnames(RHL_SeuratObject_nM_sel_ROOIJonly))
+    if (DISCARD_GENE_OPTION) { RHL_SeuratObject_nM_sel_ROOIJonly[['rnaDiscardedCounts']] <- subset(RHL_SeuratObject_nM_sel_ROOIJonly[['rnaDiscardedCounts']], cells = colnames(RHL_SeuratObject_nM_sel_ROOIJonly)) }
+
+    # Save those
+    print('Saving')
+    SaveH5Seurat(object = RHL_SeuratObject_nM_sel_HUonly, overwrite = T,
+        filename = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_HUonly.h5seurat'))
+    SaveH5Seurat(object = RHL_SeuratObject_nM_sel_TEICHMANNonly, overwrite = T,
+        filename = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_TEICHMANNonly.h5seurat'))
+        # RHL_SeuratObject_nM_sel_TEICHMANNonly = LoadH5Seurat(file = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_TEICHMANNonly.h5seurat'))
+    SaveH5Seurat(object = RHL_SeuratObject_nM_sel_ROOIJonly, overwrite = T,
+        filename = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_ROOIJonly.h5seurat'))
+    
+    # Perhaps a more honest comparison between Rooij and Teichmann is to 
+    # select for septal cells.
+    # So let's also create a Teichmann version of the data which only contains its
+    # septal cells
+    # 
+    # Subset
+    RHL_SeuratObject_nM_sel_TEICHMANN.SP.only =
+        subset(RHL_SeuratObject_nM_sel_TEICHMANNonly, annotation_region_str == 'SP')
+    # Save
+    SaveH5Seurat(object = RHL_SeuratObject_nM_sel_TEICHMANN.SP.only, overwrite = T,
+        filename = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_TEICHMANN.SP.only.h5seurat'))
+    
+}
+
+################################################################################
 # To facilitate a full comparison between Rooij and Teichmann, let's also 
 # filter the pooled data sets for septal cells.
 #
@@ -944,153 +931,6 @@ if ('create_septal_all_dataset' %in% desired_command) {
     
 }
 
-# Just for reference, what are the biotypes here?
-if ('create_septal_all_btypSel_dataset' %in% desired_command) {
-    
-    seuratObject_name = paste0('RHL_SeuratObject_nM_sel_','ALL.SP')
-    
-    # load the file
-    current_analysis = list()
-    current_analysis[[seuratObject_name]] =
-        LoadH5Seurat(file = paste0(base_dir,'Rdata/H5_',seuratObject_name,'.h5seurat'))
-    
-    ENSEMBL_VERSION_BIOTYPES=93
-    
-    load(file = paste0(base_dir,'Rdata/gene_biotypes_',ENSEMBL_VERSION_BIOTYPES,'.Rdata'))
-    
-    gnames_spall = rownames(current_analysis[[seuratObject_name]])
-    genes_ALL.SP_ens = sapply(str_split(string = gnames_spall, pattern = ':'), function(x) {x[[1]]})
-    genes_types_ALL.SP_ens = gene_biotypes_XX[genes_ALL.SP_ens]
-    IC_TR_X_genes_idx = !(genes_types_ALL.SP_ens %in% c('antisense','protein_coding','lincRNA'))
-    gnames_spall[IC_TR_X_genes_idx]
-    expressed_genes = rownames(current_analysis[[seuratObject_name]]@assays$RNA@counts)[rowSums(current_analysis[[seuratObject_name]]@assays$RNA@counts)>0]
-    expressed_gene_biotypes = gene_biotypes_XX[sapply(str_split(string = expressed_genes, pattern = ':'), function(x) {x[[1]]})]
-    expresesd_IC_TR_X_genes_idx = !(expressed_gene_biotypes %in% c('antisense','protein_coding','lincRNA'))
-    expressed_genes[expresesd_IC_TR_X_genes_idx]
-    
-    # Pay attention to these genes, as they are now still in our analysis, and
-    # might turn up as DE, but that 'd be artificial
-    # expressed_genes[expresesd_IC_TR_X_genes_idx]
-    #  [1] "ENSG00000233999:IGKV3OR2-268" "ENSG00000211592:IGKC"        
-    #  [3] "ENSG00000239819:IGKV1D-8"     "ENSG00000228325:IGKV3D-7"    
-    #  [5] "ENSG00000231292:IGKV1OR2-108" "ENSG00000227191:TRGC2"       
-    #  [7] "ENSG00000211689:TRGC1"        "ENSG00000211695:TRGV9"       
-    #  [9] "ENSG00000275743:TRBV14"       "ENSG00000211751:TRBC1"       
-    # [11] "ENSG00000211772:TRBC2"        "ENSG00000255569:TRAV1-1"     
-    # [13] "ENSG00000211799:TRAV19"       "ENSG00000211829:TRDC"        
-    # [15] "ENSG00000277734:TRAC"         "ENSG00000211893:IGHG2"       
-    # [17] "ENSG00000253755:IGHGP"        "ENSG00000211895:IGHA1"       
-    # [19] "ENSG00000211896:IGHG1"        "ENSG00000211897:IGHG3"       
-    # [21] "ENSG00000211898:IGHD"         "ENSG00000211899:IGHM"        
-    # [23] "ENSG00000254174:IGHV1-12"     "ENSG00000211950:IGHV1-24"    
-    # [25] "ENSG00000224650:IGHV3-74"     "ENSG00000211642:IGLV10-54"   
-    # [27] "ENSG00000211643:IGLV5-52"     "ENSG00000211644:IGLV1-51"    
-    # [29] "ENSG00000211670:IGLV3-9"      "ENSG00000211677:IGLC2"       
-    # [31] "ENSG00000211679:IGLC3"       
-    # Let's see how much counts they actually have
-    counts_ICTRg = rowSums(current_analysis[[seuratObject_name]]@assays$RNA@counts[expresesd_IC_TR_X_genes_idx,])
-    cellFraction_ICTRg = rowMeans(current_analysis[[seuratObject_name]]@assays$RNA@counts[expresesd_IC_TR_X_genes_idx,])
-    cellFraction_ICTRg*100
-    cellFraction_ICTRg[cellFraction_ICTRg>.001]
-    # There are a few with relatively high expression
-    # cellFraction_ICTRg[cellFraction_ICTRg>.001]
-    # ENSG00000224363:FP700111.1  ENSG00000241767:LINC01324 
-    #               0.061157975                0.002364519 
-    # ENSG00000231519:AC007285.2     ENSG00000260097:SPDYE6 
-    #                0.005591769                0.011087679 
-    # ENSG00000272949:AC093668.2     ENSG00000205238:SPDYE2 
-    #                0.030291411                0.380623722 
-    # ENSG00000205236:AC105052.1 ENSG00000267645:AC105052.3 
-    #                0.031793200                0.298983896 
-    #    ENSG00000173678:SPDYE2B ENSG00000272896:AL355987.3 
-    #                0.019746933                0.002779908 
-    # ENSG00000279073:AL807752.6 ENSG00000229257:AL807752.2 
-    #                0.002076943                0.002779908
-    #
-    # But when I remove them and perform this analysis, nothing seems to really change ..
-    
-    # Create a subset without this biotype
-    current_analysis[[paste0(seuratObject_name,'_btypSel')]] = subset(current_analysis[[seuratObject_name]], features=gnames_spall[!IC_TR_X_genes_idx])
-    current_analysis[[paste0(seuratObject_name,'_btypSel')]][['rnaMitoCounts']] <- subset(current_analysis[[seuratObject_name]][['rnaMitoCounts']], cells = colnames(current_analysis[[paste0(seuratObject_name,'_btypSel')]]))
-
-    # Save it
-    SaveH5Seurat(current_analysis[[paste0(seuratObject_name,'_btypSel')]], filename = paste0(base_dir,'Rdata/H5_',paste0(seuratObject_name,'_btypSel'),'.h5seurat'), overwrite = T)
-        # SaveH5Seurat(current_analysis[[paste0(seuratObject_name,'_btypSel')]], filename = paste0(base_dir,'Rdata/H5_',paste0(seuratObject_name,'_btypSel'),'.h5seurat'))
-        # current_analysis[[seuratObject_name]] = LoadH5Seurat(file = paste0(base_dir,'Rdata/H5_',seuratObject_name,'.h5seurat'))
-    
-    #
-    #     table(expressed_gene_biotypes)
-    # expressed_gene_biotypes
-    #       antisense       IG_C_gene IG_C_pseudogene       IG_V_gene IG_V_pseudogene
-    #            5153               9               1              10               1
-    #         lincRNA  protein_coding       TR_C_gene       TR_V_gene
-    #            6603           19262               6               4
-    # 
-    # For future analysis, might be nice to check consistency, as rooij and hu don't contain the IG_XX and TR_XX biotypes.
-    
-}
-    
-    
-################################################################################
-# Now perform above analysis on the separate datasets, 
-# once with RaceID2-like settings, and once with default settings
-
-if ('split_datasets' %in% desired_command) {
-    
-    # Load all the data
-    print('Loading')
-    
-    seuratObject_name = paste0('RHL_SeuratObject_nM_sel_','ALL.SP','_btypSel')
-    current_analysis[[seuratObject_name]] = LoadH5Seurat(file = paste0(base_dir,'Rdata/H5_',seuratObject_name,'.h5seurat'))
-    
-    # load(file = paste0(base_dir,'Rdata/RHL_SeuratObject_merged_noMito_sel.Rdata'))
-    
-    # Create separate subsets
-    print('Splitting')
-    RHL_SeuratObject_nM_sel_HUonly.sp.bt = subset(current_analysis[[seuratObject_name]], subset = annotation_paper_str == 'Hu')
-    RHL_SeuratObject_nM_sel_HUonly.sp.bt[['rnaMitoCounts']] <- subset(RHL_SeuratObject_nM_sel_HUonly.sp.bt[['rnaMitoCounts']], cells = colnames(RHL_SeuratObject_nM_sel_HUonly.sp.bt))
-    if (DISCARD_GENE_OPTION) { RHL_SeuratObject_nM_sel_HUonly.sp.bt[['rnaDiscardedCounts']] <- subset(RHL_SeuratObject_nM_sel_HUonly.sp.bt[['rnaDiscardedCounts']], cells = colnames(RHL_SeuratObject_nM_sel_HUonly.sp.bt)) }
-    
-    RHL_SeuratObject_nM_sel_TEICHMANNonly.sp.bt = subset(current_analysis[[seuratObject_name]], subset = annotation_paper_str == 'Teichmann')
-    RHL_SeuratObject_nM_sel_TEICHMANNonly.sp.bt[['rnaMitoCounts']] <- subset(RHL_SeuratObject_nM_sel_TEICHMANNonly.sp.bt[['rnaMitoCounts']], cells = colnames(RHL_SeuratObject_nM_sel_TEICHMANNonly.sp.bt))
-    if (DISCARD_GENE_OPTION) { RHL_SeuratObject_nM_sel_TEICHMANNonly.sp.bt[['rnaDiscardedCounts']] <- subset(RHL_SeuratObject_nM_sel_TEICHMANNonly.sp.bt[['rnaDiscardedCounts']], cells = colnames(RHL_SeuratObject_nM_sel_TEICHMANNonly.sp.bt)) }
-
-    RHL_SeuratObject_nM_sel_ROOIJonly.sp.bt = subset(current_analysis[[seuratObject_name]], subset = annotation_paper_str == 'vRooij')
-    RHL_SeuratObject_nM_sel_ROOIJonly.sp.bt[['rnaMitoCounts']] <- subset(RHL_SeuratObject_nM_sel_ROOIJonly.sp.bt[['rnaMitoCounts']], cells = colnames(RHL_SeuratObject_nM_sel_ROOIJonly.sp.bt))
-    if (DISCARD_GENE_OPTION) { RHL_SeuratObject_nM_sel_ROOIJonly.sp.bt[['rnaDiscardedCounts']] <- subset(RHL_SeuratObject_nM_sel_ROOIJonly.sp.bt[['rnaDiscardedCounts']], cells = colnames(RHL_SeuratObject_nM_sel_ROOIJonly.sp.bt)) }
-
-    # Save those
-    print('Saving')
-    SaveH5Seurat(object = RHL_SeuratObject_nM_sel_HUonly.sp.bt, overwrite = T,
-        filename = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_HUonly.sp.bt.h5seurat'))
-    SaveH5Seurat(object = RHL_SeuratObject_nM_sel_TEICHMANNonly.sp.bt, overwrite = T,
-        filename = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_TEICHMANNonly.sp.bt.h5seurat'))
-        # RHL_SeuratObject_nM_sel_TEICHMANNonly.sp.bt = LoadH5Seurat(file = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_TEICHMANNonly.sp.bt.h5seurat'))
-    SaveH5Seurat(object = RHL_SeuratObject_nM_sel_ROOIJonly.sp.bt, overwrite = T,
-        filename = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_ROOIJonly.sp.bt.h5seurat'))
-    
-    # I changed the order of things, so now this needn't be done separtely..
-    # OLD CODE BELOW
-    #
-    # # Perhaps a more honest comparison between Rooij and Teichmann is to 
-    # # select for septal cells.
-    # # So let's also create a Teichmann version of the data which only contains its
-    # # septal cells
-    # # 
-    # # Subset
-    # RHL_SeuratObject_nM_sel_TEICHMANN.SP.only =
-    #     subset(RHL_SeuratObject_nM_sel_TEICHMANNonly, annotation_region_str == 'SP')
-    # # Save
-    # SaveH5Seurat(object = RHL_SeuratObject_nM_sel_TEICHMANN.SP.only, overwrite = T,
-    #     filename = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_TEICHMANN.SP.only.h5seurat'))
-    
-}
-
-
-################################################################################
-
-
-
 ################################################################################
 
 # Note: this can do one of six analysis
@@ -1104,10 +944,6 @@ if ('split_datasets' %in% desired_command) {
 
 # Note to self, to run on the HPC, e.g. use:
 # commands="run_separate-dataset=TEICHMANN-settings=SETTINGS_RID2l"
-
-# current_dataset='ALL.SP_btypSel'
-# current_dataset='ALL.SP'
-# desired_settings='SETTINGS_RID2l'
 
 if ('run_separate' %in% desired_command) {
     
@@ -1125,22 +961,22 @@ if ('run_separate' %in% desired_command) {
     if (desired_settings == 'SETTINGS_RID2l') {
         CURRENT_RUNNAME = paste0(current_dataset,'_RID2l')
         # run RaceID2 like settings
-        current_analysis[[CURRENT_RUNNAME]] = mySeuratAnalysis(current_analysis[[seuratObject_name]],
+        current_analysis[[seuratObject_name]] = mySeuratAnalysis(current_analysis[[seuratObject_name]],
             run_name=CURRENT_RUNNAME,
             normalization.method='RC', scale.factor=median(current_analysis[[seuratObject_name]]$nCount.nMT),
             do.scale=F,do.center=F,scale.max=Inf, features_to_use_choice = 'variable') # variable because otherwise too large calculation ..
     } else {
         CURRENT_RUNNAME = paste0(current_dataset,'_default')
         # run default
-        current_analysis[[CURRENT_RUNNAME]] = mySeuratAnalysis(current_analysis[[seuratObject_name]],
+        current_analysis[[seuratObject_name]] = mySeuratAnalysis(current_analysis[[seuratObject_name]],
             run_name=CURRENT_RUNNAME)
     } 
     
     # create respective plots 
-    mySeuratCommonPlots(current_analysis[[CURRENT_RUNNAME]], run_name = CURRENT_RUNNAME)
+    mySeuratCommonPlots(current_analysis[[seuratObject_name]], run_name = CURRENT_RUNNAME)
     
     # save the file
-    SaveH5Seurat(object = current_analysis[[CURRENT_RUNNAME]], overwrite = T,
+    SaveH5Seurat(object = current_analysis[[seuratObject_name]], overwrite = T,
         filename = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_',CURRENT_RUNNAME,'.h5seurat'))
     
     print('Plotting done')
@@ -1332,11 +1168,10 @@ if ('run_batch_corr_sep_nowplot_and_DE' %in% desired_command) {
 # Refine the cluster analysis on the pooled datasets to get a resolution that 
 # has a desired level of coarse graining
 
-if ('ALL.SP_btypSel_RID2l_ext_cluster_analysis' %in% desired_command) {
+
+if ('ALL.SP_RID2l_ext_cluster_analysis' %in% desired_command) {
     
-    # CURRENT_RUNNAME='ALL.SP_RID2l'
-    CURRENT_RUNNAME='ALL.SP_btypSel_RID2l'
-    CURRENT_RUNNAME_extended = paste0(CURRENT_RUNNAME, '_clExtended')
+    CURRENT_RUNNAME='ALL.SP_RID2l'
     
     current_analysis = list()
     current_analysis[[CURRENT_RUNNAME]] = 
@@ -1344,14 +1179,14 @@ if ('ALL.SP_btypSel_RID2l_ext_cluster_analysis' %in% desired_command) {
         LoadH5Seurat(file = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_',CURRENT_RUNNAME,'.h5seurat'))
     
     # Create the dataset
-    current_analysis[[CURRENT_RUNNAME_extended]]=FindClusters(current_analysis[[CURRENT_RUNNAME]], resolution = seq(.1,1,.1))
+    current_analysis$ALL.SP_RID2l_clExtended=FindClusters(current_analysis$ALL.SP_RID2l, resolution = seq(.1,1,.1))
 
     
     # Export plots
     for (resolution in seq(.1,1,.1)) {
-        p=DimPlot(current_analysis[[CURRENT_RUNNAME_extended]], group.by = paste0('RNA_snn_res.',resolution), label = T, repel = T, label.size = 7/.pt, pt.size=.5)+
+        p=DimPlot(current_analysis$ALL.SP_RID2l_clExtended, group.by = paste0('RNA_snn_res.',resolution), label = T, repel = T, label.size = 7/.pt, pt.size=.5)+
             theme_void()+ggtitle(element_blank())+theme(legend.position = 'none')
-        ggsave(plot=p, filename = paste0(base_dir,'Rplots/',CURRENT_RUNNAME_extended,'_7_Clustering_multiLevels_','RNA_snn_res.',resolution,'.pdf'), 
+        ggsave(plot=p, filename = paste0(base_dir,'Rplots/','ALL.SP_RID2l_clExtended','_7_Clustering_multiLevels_','RNA_snn_res.',resolution,'.pdf'), 
                 height=172/3-4, width=172/3-4, units='mm')
     }
       
@@ -1360,24 +1195,24 @@ if ('ALL.SP_btypSel_RID2l_ext_cluster_analysis' %in% desired_command) {
     
     # First set identities to the custom ones
     # Note that this executes +1 action
-    new_cls=as.numeric(current_analysis[[CURRENT_RUNNAME_extended]]$RNA_snn_res.0.1)
-    current_analysis[[CURRENT_RUNNAME_extended]][['clusters_custom']]=factor(new_cls, levels=min(new_cls):max(new_cls))
+    new_cls=as.numeric(current_analysis$ALL.SP_RID2l_clExtended$RNA_snn_res.0.1)
+    current_analysis$ALL.SP_RID2l_clExtended[['clusters_custom']]=factor(new_cls, levels=min(new_cls):max(new_cls))
 
-    Idents(current_analysis[[CURRENT_RUNNAME_extended]]) <- current_analysis[[CURRENT_RUNNAME_extended]]$clusters_custom
+    Idents(current_analysis$ALL.SP_RID2l_clExtended) <- current_analysis$ALL.SP_RID2l_clExtended$clusters_custom
     
-    p=DimPlot(current_analysis[[CURRENT_RUNNAME_extended]], label = T, repel = T, label.size = 7/.pt, pt.size=.5)+
+    p=DimPlot(current_analysis$ALL.SP_RID2l_clExtended, label = T, repel = T, label.size = 7/.pt, pt.size=.5)+
             theme_void()+ggtitle(element_blank())+theme(legend.position = 'none')
-    ggsave(plot=p, filename = paste0(base_dir,'Rplots/',CURRENT_RUNNAME_extended,'_7_Clustering_multiLevels_','RNA_snn_res.',resolution,'_CHOSEN.pdf'), 
+    ggsave(plot=p, filename = paste0(base_dir,'Rplots/','ALL.SP_RID2l_clExtended','_7_Clustering_multiLevels_','RNA_snn_res.',resolution,'_CHOSEN.pdf'), 
                 height=172/3-4, width=172/3-4, units='mm')
     
     # Now perform clustering
     DE_cluster=list()
-    DE_cluster[[CURRENT_RUNNAME_extended]] =
-        diff_express_clusters(mySeuratObject = current_analysis[[CURRENT_RUNNAME_extended]], mc.cores = MYMCCORES)
+    DE_cluster$ALL.SP_RID2l_clExtended =
+        diff_express_clusters(mySeuratObject = current_analysis$ALL.SP_RID2l_clExtended, mc.cores = MYMCCORES)
     
     # Export results
     DE_out_ALL.SP_RID2l_clExtended = diff_express_clusters_save_results(
-      all_markers = DE_cluster[[CURRENT_RUNNAME_extended]], run_name = CURRENT_RUNNAME_extended, base_dir = base_dir, topX = 30, extendedOutput = T, FC_cutoff = 1.1, pval_cutoff = .05)
+      all_markers = DE_cluster$ALL.SP_RID2l_clExtended, run_name = 'ALL.SP_RID2l_clExtended', base_dir = base_dir, topX = 30, extendedOutput = T, FC_cutoff = 1.1, pval_cutoff = .05)
     
     # Create convenient parameters for later use/export below
     table_topDE = DE_out_ALL.SP_RID2l_clExtended$topHitsPerCluster
@@ -1388,15 +1223,15 @@ if ('ALL.SP_btypSel_RID2l_ext_cluster_analysis' %in% desired_command) {
     # Now save important data for later use
     
     # Save it
-    SaveH5Seurat(object = current_analysis[[CURRENT_RUNNAME_extended]], overwrite = T, 
-                 file = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_',CURRENT_RUNNAME_extended,'.h5seurat'))
-        # current_analysis[[CURRENT_RUNNAME_extended]] = LoadH5Seurat(file = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_',CURRENT_RUNNAME_extended,'.h5seurat'))
+    SaveH5Seurat(object = current_analysis$ALL.SP_RID2l_clExtended, overwrite = T, 
+                 file = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_','ALL.SP_RID2l_clExtended','.h5seurat'))
+        # current_analysis$ALL.SP_RID2l_clExtended = LoadH5Seurat(filename = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_','ALL.SP_RID2l_clExtended','.h5seurat'))
 
     
     # Save differential expression results
-    save(list='DE_cluster', file = paste0(base_dir,'Rdata/DE_cluster__',CURRENT_RUNNAME_extended,'.Rdata'))
-        # load(file = paste0(base_dir,'Rdata/DE_cluster__',CURRENT_RUNNAME_extended,'.Rdata')) # DE_cluster
-    save(list='enriched_genes_lists_clusters_ALL.SP', file = paste0(base_dir,'Rdata/enriched_genes_lists_clusters_ALL.SP__',CURRENT_RUNNAME_extended,'.Rdata'))
+    save(list='DE_cluster', file = paste0(base_dir,'Rdata/DE_cluster__','ALL.SP_RID2l_clExtended','.Rdata'))
+        # load(file = paste0(base_dir,'Rdata/DE_cluster__','ALL.SP_RID2l_clExtended','.Rdata')) # DE_cluster
+    save(list='enriched_genes_lists_clusters_ALL.SP', file = paste0(base_dir,'Rdata/enriched_genes_lists_clusters_ALL.SP__','ALL.SP_RID2l_clExtended','.Rdata'))
         
     
 }    
@@ -1413,9 +1248,8 @@ if ('more_custom_plots' %in% desired_command) {
     # --- load / set up data
     
     # CURRENT_RUNNAME='all_RID2l_VAR'
-    # CURRENT_RUNNAME='ALL.SP_RID2l_clExtended'
-    CURRENT_RUNNAME='ALL.SP_btypSel_RID2l_clExtended'
-
+    CURRENT_RUNNAME='ALL.SP_RID2l_clExtended'
+    
     current_analysis = list()
     current_analysis[[CURRENT_RUNNAME]] = 
         # LoadH5Seurat(file = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_merged_noMito_sel.',CURRENT_RUNNAME,'.h5seurat'))
@@ -1430,9 +1264,9 @@ if ('more_custom_plots' %in% desired_command) {
     current_analysis[[CURRENT_RUNNAME]]$annotation_paper_beatified = factor(
         name_change[current_analysis[[CURRENT_RUNNAME]]$annotation_paper_str], levels=c('HCM','Ctrl1','Ctrl2'))
     # Custom labeling also for patient
-    current_analysis[[CURRENT_RUNNAME]]$annotation_patient_str_beauty = gsub("^R\\.", 'HCM\\.',current_analysis[[CURRENT_RUNNAME]]$annotation_patient_str)
-    current_analysis[[CURRENT_RUNNAME]]$annotation_patient_str_beauty = gsub("^H\\.", 'Ctrl1\\.',current_analysis[[CURRENT_RUNNAME]]$annotation_patient_str_beauty)
-    current_analysis[[CURRENT_RUNNAME]]$annotation_patient_str_beauty = gsub("^T\\.", 'Ctrl2\\.',current_analysis[[CURRENT_RUNNAME]]$annotation_patient_str_beauty)
+    current_analysis$ALL.SP_RID2l_clExtended$annotation_patient_str_beauty = gsub("^R\\.", 'HCM\\.',current_analysis$ALL.SP_RID2l_clExtended$annotation_patient_str)
+    current_analysis$ALL.SP_RID2l_clExtended$annotation_patient_str_beauty = gsub("^H\\.", 'Ctrl1\\.',current_analysis$ALL.SP_RID2l_clExtended$annotation_patient_str_beauty)
+    current_analysis$ALL.SP_RID2l_clExtended$annotation_patient_str_beauty = gsub("^T\\.", 'Ctrl2\\.',current_analysis$ALL.SP_RID2l_clExtended$annotation_patient_str_beauty)
     # Create custom order for annotation
     current_analysis[[CURRENT_RUNNAME]]$annotation_paper_fct = 
         factor(current_analysis[[CURRENT_RUNNAME]]$annotation_paper_str, levels=c("vRooij", "Hu", "Teichmann"))
@@ -1440,8 +1274,8 @@ if ('more_custom_plots' %in% desired_command) {
     # --- end of load / set up data
     
     # Give overview of number of cells (2nd time I do this -- bit redundant -- though here .SP. dataset properly processed)
-    table_per_paper = data.frame(table(current_analysis[[CURRENT_RUNNAME]]$annotation_paper_beatified))
-    table_per_patient = data.frame(table(current_analysis[[CURRENT_RUNNAME]]$annotation_patient_str_beauty))
+    table_per_paper = data.frame(table(current_analysis$ALL.SP_RID2l_clExtended$annotation_paper_beatified))
+    table_per_patient = data.frame(table(current_analysis$ALL.SP_RID2l_clExtended$annotation_patient_str_beauty))
     colnames(table_per_paper) = c('Source', 'Cell_count')
     colnames(table_per_patient) = c('Donor', 'Cell_count')
     openxlsx::write.xlsx(x = list(cellCounts_source=table_per_paper, 
@@ -1486,14 +1320,14 @@ if ('more_custom_plots' %in% desired_command) {
     # library(wesanderson); show_col(wesanderson::wes_palettes$BottleRocket2)
     # TO DO: Maybe put wes anderson here? Because color conflict?
     custom_colors = c('#bd0020','#9d9d9c','#575756')
-    p=ggplot(data.frame( cluster = Idents(current_analysis[[CURRENT_RUNNAME]]),
-                         Donor   = current_analysis[[CURRENT_RUNNAME]]$annotation_paper_beatified))+
+    p=ggplot(data.frame( cluster = Idents(current_analysis$ALL.SP_RID2l_clExtended),
+                         Donor   = current_analysis$ALL.SP_RID2l_clExtended$annotation_paper_beatified))+
         geom_bar(aes(x=cluster, fill=Donor))+theme_bw()+
         xlab('Cluster')+ylab('Number of cells')+
         give_better_textsize_plot(8)+
         theme(legend.position = 'right', legend.key.size = unit(3, "mm"))+
         scale_fill_manual(values = custom_colors)
-    ggsave(filename = paste0(base_dir,'Rplots/',CURRENT_RUNNAME,'_5_Barplot_PatientCluster_distr_Datasets.pdf'), 
+    ggsave(filename = paste0(base_dir,'Rplots/','ALL.SP_RID2l_clExtended','_5_Barplot_PatientCluster_distr_Datasets.pdf'), 
         plot = p, height=172/3-4, width=172/3-4, units='mm', device = cairo_pdf)
     
     # Now create MYH6 separately, also use to add legend
@@ -1515,11 +1349,11 @@ if ('more_custom_plots' %in% desired_command) {
     
     # Then look at how genes that came up during analysis are expressed
     # Load regulon file
-    REGULON_DATASET = 'ROOIJonly.sp.bt_RID2l'
-    if (!(  file.exists(paste0(base_dir,'Rdata/',REGULON_DATASET,'_core_regulons_sorted.Rdata'))  )) {
+    REGULON_DATASET = 'ROOIJonly_RID2l'
+    if (!(  file.exists(paste0(base_dir,'Rplots/',REGULON_DATASET,'_core_regulons_sorted.Rdata'))  )) {
         print('Regulon file doesnt exist yet..') 
     } else { 
-        load(file = paste0(base_dir,'Rdata/',REGULON_DATASET,'_core_regulons_sorted.Rdata')) # core_regulons_sorted 
+        load(file = paste0(base_dir,'Rplots/',REGULON_DATASET,'_core_regulons_sorted.Rdata')) # core_regulons_sorted 
     
         # Box plots
         shorthand_custom_boxplot(seuratObject_list=current_analysis, 
@@ -1536,15 +1370,6 @@ if ('more_custom_plots' %in% desired_command) {
                                  group.by='annotation_paper_beatified', 
                                  group.by2='annotation_patient_fct',
                                  zscore=T) 
-            # To load data at later point:
-            if (F) {
-                REGULON_DATASET = 'ROOIJonly.sp.bt_RID2l'
-                CURRENT_RUNNAME='ALL.SP_btypSel_RID2l_clExtended'
-                group.by='annotation_paper_beatified'; group.by2='annotation_patient_fct'
-                last_list_name = names(core_regulons_sorted)[length(core_regulons_sorted)]
-                df_agr_combined = openxlsx::read.xlsx( paste0(base_dir, 'Rplots/', CURRENT_RUNNAME, '_9_customSummaryMean_ALL-', last_list_name,'-etc_for_',group.by,'_splt2',group.by2,'-data.xlsx'))
-            }
-        
         p=wrap_plots(p_lists$p_violin_list, nrow=1)
         ggsave(filename = paste0(base_dir, 'Rplots/', CURRENT_RUNNAME, '_9_customCOMPOSITE_REG.pdf'), plot = p,
                height=(PANEL_WIDTH*3-4)/length(core_regulons_sorted), width=(PANEL_WIDTH*3-4), units='mm', device=cairo_pdf)
@@ -1568,8 +1393,7 @@ if ('more_custom_plots' %in% desired_command) {
         
         # Also do SCENIC regulons
         # === 
-        ROOIJ_DATASET = 'ROOIJonly.sp.bt_RID2l'
-        load(file=paste0(base_dir,'Rdata/',ROOIJ_DATASET,'__SCENIC_reg_top_genes_sorted_full.Rdata')) # SCENIC_reg_top_genes_sorted_full
+        load(file=paste0(base_dir,'Rdata/','ROOIJonly_RID2l','__SCENIC_reg_top_genes_sorted_full.Rdata')) # SCENIC_reg_top_genes_sorted_full
         
         # Box plots
         shorthand_custom_boxplot(seuratObject_list=current_analysis, 
@@ -1585,34 +1409,6 @@ if ('more_custom_plots' %in% desired_command) {
                                  group.by='annotation_paper_oneletter_fct', 
                                  group.by2='annotation_patient_fct',
                                  zscore=T) 
-            # To load data at later point:
-            if (F) {
-                REGULON_DATASET = 'ROOIJonly.sp.bt_RID2l'
-                CURRENT_RUNNAME='ALL.SP_btypSel_RID2l_clExtended'
-                group.by='annotation_paper_oneletter_fct'; group.by2='annotation_patient_fct'
-                last_list_name = names(SCENIC_reg_top_genes_sorted_full)[length(SCENIC_reg_top_genes_sorted_full)]
-                df_agr_combined_SCENIC = openxlsx::read.xlsx( paste0(base_dir, 'Rplots/', CURRENT_RUNNAME, '_9_customSummaryMean_ALL-', last_list_name,'-etc_for_',group.by,'_splt2',group.by2,'-data.xlsx'))
-                # Stats # label:scenic_HCM_enrich_stats
-                agg2_scenic_out = aggregate(x = df_agr_combined_SCENIC$expression, by=list(df_agr_combined_SCENIC$annotation_paper_oneletter_fct, df_agr_combined_SCENIC$set_name), mean)
-                R_values=agg2_scenic_out[agg2_scenic_out$Group.1=='R',]
-                T_values=agg2_scenic_out[agg2_scenic_out$Group.1=='T',]
-                H_values=agg2_scenic_out[agg2_scenic_out$Group.1=='H',]
-                R_values$x_relative = R_values$x-((H_values$x+T_values$x)/2)
-                R_values$x_compmax = R_values$x - apply(rbind(H_values$x,T_values$x), 2, max)
-                
-                toString(R_values[order(R_values$x_relative, decreasing = T),]$Group.2)
-                toString(R_values[order(R_values$x_compmax, decreasing = T),]$Group.2)
-                sum(R_values$x_relative>0)
-                sum(R_values$x>0)
-                ggplot(R_values, aes(x=Group.2, y=x_relative))+
-                    geom_bar(stat='identity')+
-                    coord_flip()
-                ggplot(R_values, aes(x=Group.2, y=x_compmax))+
-                    geom_bar(stat='identity')+
-                    coord_flip()
-            }
-        
-        
         p=wrap_plots(p_lists$p_violin_list, nrow=5)
         ggsave(filename = paste0(base_dir, 'Rplots/', CURRENT_RUNNAME, '_9_customCOMPOSITE_REG_SCENIC.pdf'), plot = p,
                height=(PANEL_WIDTH*3-4), width=(PANEL_WIDTH*3-4), units='mm', device=cairo_pdf)
@@ -1687,11 +1483,10 @@ if ('more_custom_plots' %in% desired_command) {
     # ROOIJ CLUSTERS
     # Now also check whether the genes in the clusters are enriched in direct comparison of three samples
     # 
-    ANALYSIS_NAME_clExtended = 'ROOIJonly.sp.bt_RID2l_clExtended'
-    if (!(  file.exists(paste0(base_dir,'Rdata/enriched_genes_lists_clusters_ROOIJ__',ANALYSIS_NAME_clExtended,'.Rdata'))  )) {
+    if (!(  file.exists(paste0(base_dir,'Rdata/enriched_genes_lists_clusters_ROOIJ__ROOIJonly_RID2l_clExtended.Rdata'))  )) {
         print('Gene lists custom correlations file doesnt exist yet..') 
     } else { 
-        load(paste0(base_dir,'Rdata/enriched_genes_lists_clusters_ROOIJ__',ANALYSIS_NAME_clExtended,'.Rdata')) # enriched_genes_lists_clusters_ROOIJ
+        load(paste0(base_dir,'Rdata/enriched_genes_lists_clusters_ROOIJ__ROOIJonly_RID2l_clExtended.Rdata')) # enriched_genes_lists_clusters_ROOIJ
     
         enriched_genes_lists_clusters_ROOIJ_=enriched_genes_lists_clusters_ROOIJ
         names(enriched_genes_lists_clusters_ROOIJ_) = paste0('Cl.',names(enriched_genes_lists_clusters_ROOIJ))
@@ -1713,7 +1508,7 @@ if ('more_custom_plots' %in% desired_command) {
         ggsave(filename = paste0(base_dir, 'Rplots/', CURRENT_RUNNAME, '_9_customCOMPOSITE_CL_g2.pdf'), plot = p,
                height=(PANEL_WIDTH*3-4)/length(enriched_genes_lists_clusters_ROOIJ_), width=(PANEL_WIDTH*3-4), units='mm', device=cairo_pdf)
         
-        # enriched genes expr on UMAPs
+        # core regulon expr on UMAPs
         ZOOM_FACTOR=4
         p_list_clusters = lapply(names(enriched_genes_lists_clusters_ROOIJ_), function(cl_name) {
                     shorthand_seurat_custom_expr(seuratObject = current_analysis[[CURRENT_RUNNAME]], 
@@ -1743,16 +1538,15 @@ if ('more_custom_plots' %in% desired_command) {
         # (..) unfinished
         
         # NOMURA OVERLAP LISTS
-        if (file.exists(paste0(base_dir,'Rdata/zcustom__genelist_module2_nomura_overlap.Rdata'))&file.exists(paste0(base_dir,'Rdata/zcustom__genelist_SCENIC.CEBPZ_nomura_overlap.Rdata'))) {
+        if (file.exists(paste0(base_dir,'Rdata/zcustom__genelist_module2_nomura_overlap.Rdata'))&file.exists(paste0(base_dir,'Rdata/zcustom__genelist_SCENIC.FOXN3_nomura_overlap.Rdata'))) {
             
             load(paste0(base_dir,'Rdata/zcustom__genelist_module2_nomura_overlap.Rdata')) # genelist_module2_nomura_overlap
-            load(paste0(base_dir,'Rdata/zcustom__genelist_SCENIC.CEBPZ_nomura_overlap.Rdata')) # genelist_SCENIC.CEBPZ_nomura_overlap
+            load(paste0(base_dir,'Rdata/zcustom__genelist_SCENIC.FOXN3_nomura_overlap.Rdata')) # genelist_SCENIC.FOXN3_nomura_overlap
 
             # module 2 expr on UMAPs
             ZOOM_FACTOR=4
             NR_GENES=10
-            ACTUAL_NR_GENES = min(length(genelist_module2_nomura_overlap), NR_GENES)
-            p_list_nomura1 = lapply(genelist_module2_nomura_overlap[1:ACTUAL_NR_GENES], function(current_gene) {
+            p_list_nomura1 = lapply(genelist_module2_nomura_overlap[1:NR_GENES], function(current_gene) {
                         shorthand_seurat_custom_expr(seuratObject = current_analysis[[CURRENT_RUNNAME]], 
                                          gene_of_interest = current_gene,
                                          textsize = 6*ZOOM_FACTOR, pointsize = .5, custom_title = current_gene, mymargin = .5*ZOOM_FACTOR, zscore = T) 
@@ -1760,21 +1554,20 @@ if ('more_custom_plots' %in% desired_command) {
                 })
             p_nomura1=wrap_plots(p_list_nomura1, nrow=1)
             ggsave(filename = paste0(base_dir, 'Rplots/', CURRENT_RUNNAME, '_9_customUMAPs_Nomura-module2_v3l.png'), plot = p_nomura1,
-               height=(3*PANEL_WIDTH-4)/NR_GENES*ZOOM_FACTOR, width=(3*PANEL_WIDTH-4)*ZOOM_FACTOR*ACTUAL_NR_GENES/10, units='mm', dpi=1200)    
+               height=(3*PANEL_WIDTH-4)/NR_GENES*ZOOM_FACTOR, width=(3*PANEL_WIDTH-4)*ZOOM_FACTOR, units='mm', dpi=1200)    
         
-            # SCENIC CEBPZ expr on UMAPs
+            # SCENIC FOXN3 expr on UMAPs
             ZOOM_FACTOR=4
             NR_GENES=10
-            ACTUAL_NR_GENES = min(length(genelist_SCENIC.CEBPZ_nomura_overlap), NR_GENES)
-            p_list_nomura2 = lapply(genelist_SCENIC.CEBPZ_nomura_overlap[1:ACTUAL_NR_GENES], function(current_gene) {
+            p_list_nomura2 = lapply(genelist_SCENIC.FOXN3_nomura_overlap[1:NR_GENES], function(current_gene) {
                         shorthand_seurat_custom_expr(seuratObject = current_analysis[[CURRENT_RUNNAME]], 
                                          gene_of_interest = current_gene,
                                          textsize = 6*ZOOM_FACTOR, pointsize = .5, custom_title = current_gene, mymargin = .5*ZOOM_FACTOR, zscore = T) 
                                             # note: text size twice as large, because i save at zoom 200%, as trick to reduce point size
                 })
             p_nomura2=wrap_plots(p_list_nomura2, nrow=1)
-            ggsave(filename = paste0(base_dir, 'Rplots/', CURRENT_RUNNAME, '_9_customUMAPs_Nomura-scenicCEBPZ_v3l.png'), plot = p_nomura2,
-               height=(3*PANEL_WIDTH-4)/NR_GENES*ZOOM_FACTOR, width=(3*PANEL_WIDTH-4)*ZOOM_FACTOR*ACTUAL_NR_GENES/10, units='mm', dpi=1200)    
+            ggsave(filename = paste0(base_dir, 'Rplots/', CURRENT_RUNNAME, '_9_customUMAPs_Nomura-scenicFOXN3_v3l.png'), plot = p_nomura2,
+               height=(3*PANEL_WIDTH-4)/NR_GENES*ZOOM_FACTOR, width=(3*PANEL_WIDTH-4)*ZOOM_FACTOR, units='mm', dpi=1200)    
         
                 
         }
@@ -1792,7 +1585,7 @@ if ('more_custom_plots' %in% desired_command) {
 
 if ('more_custom_plots' %in% desired_command) {
     
-    DATASET_NAME='ROOIJonly.sp.bt_RID2l_clExtended'
+    DATASET_NAME='ROOIJonly_RID2l_clExtended'
     # CURRENT_RUNNAME='ALL.SP_RID2l'
     
     if (!exists('current_analysis')) {current_analysis = list()}
@@ -1840,8 +1633,6 @@ if ('more_custom_plots' %in% desired_command) {
                                    manual_expr = current_analysis[[DATASET_NAME]]$percent.mt[colnames(current_analysis[[DATASET_NAME]])],
                                    manual_expr_featname='Mitochondrial percentage', type='violin', custom_ylim=c(0,100),
                                    custom_ylab = 'Mitochondrial percentage', custom_title=element_blank())
-    print(paste0('mean mito pct all cells: ', mean(current_analysis[[DATASET_NAME]]$percent.mt[colnames(current_analysis[[DATASET_NAME]])])))
-    print(paste0('sd mito pct all cells: ', sd(current_analysis[[DATASET_NAME]]$percent.mt[colnames(current_analysis[[DATASET_NAME]])])))
     
     # For comparison
     HU_DATASET = 'HUonly_RID2l'
@@ -1859,10 +1650,10 @@ if ('more_custom_plots' %in% desired_command) {
                                custom_title=element_blank(), custom_ylim=c(0,100))
     
     # Now distribution of read counts
-    current_analysis[[DATASET_NAME]]$nCount_rnaMitoCounts[1:10]
-    current_analysis[[DATASET_NAME]]$n_counts
-    current_analysis[[DATASET_NAME]]$nCount.nMT[1:10]
-    ggplot(data.frame(count=log10(.1+current_analysis[[DATASET_NAME]]$nCount.nMT)), aes(x=count))+
+    current_analysis$ROOIJonly_RID2l_clExtended$nCount_rnaMitoCounts[1:10]
+    current_analysis$ROOIJonly_RID2l_clExtended$n_counts
+    current_analysis$ROOIJonly_RID2l_clExtended$nCount.nMT[1:10]
+    ggplot(data.frame(count=log10(.1+current_analysis$ROOIJonly_RID2l_clExtended$nCount.nMT)), aes(x=count))+
         geom_histogram(binwidth = .1)
 
 
@@ -1922,10 +1713,3 @@ if (F) {
         # NOTE: RHL_SeuratObject_merged_noMito_sel.Rdata contains data that isn't normalized properly
     
 }
-
-
-
-
-
-
-

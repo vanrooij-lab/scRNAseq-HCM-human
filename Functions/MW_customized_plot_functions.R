@@ -119,7 +119,7 @@ shorthand_cutname_table = function(gene_table, PART1OR2=2) {
 
 # function to plot expression of a gene
 # textsize=8; pointsize=1; mypercentile=0.03; custom_title=NULL;mymargin=0.1;zscore=F;myFamily='Arial'; add_box=F
-shorthand_seurat_custom_expr = function(seuratObject, gene_of_interest, textsize=8, pointsize=1, mypercentile=0.03, custom_title=NULL,mymargin=0.1,zscore=F,myFamily='Arial', add_box=F) {
+shorthand_seurat_custom_expr = function(seuratObject, gene_of_interest, textsize=8, pointsize=1, mypercentile=0.03, custom_title=NULL,mymargin=0.1,zscore=F,myFamily='Arial', add_box=F, parse_annot=T) {
     
     if (length(gene_of_interest)>1){
       print('You gave >1 genes, assuming you want composite expression.')  
@@ -166,7 +166,7 @@ shorthand_seurat_custom_expr = function(seuratObject, gene_of_interest, textsize
         geom_point(size = pointsize, stroke = 0, shape = 16)+
         scale_color_gradientn(colours=rainbow_colors, limits=c(0,expr_limits[2]), oob=squish)+
         #+ggtitle(gene_of_interest)+
-        annotate("text", -Inf, Inf, label = mytitle, hjust = 0-boxpad, vjust = 1+textsize*boxpad, size=textsize / .pt, family = myFamily)+
+        annotate("text", -Inf, Inf, label = mytitle, hjust = 0-boxpad, vjust = 1+textsize*boxpad, size=textsize / .pt, family = myFamily, parse=T)+
         theme_void()+
         #give_better_textsize_plot(textsize)+
         theme(legend.position = 'none', plot.margin = margin(mymargin,mymargin,0,0,'mm'))
@@ -209,7 +209,10 @@ shorthand_seurat_fullgenename_faster = function(seuratObject, gene_names, return
   names(lookupframe) = unique_shortnames
   
   if (!return_NA) {
-    if (!all(gene_names %in% names(lookupframe))) {print(paste0('Supplied list: ',gene_names)); stop('Couldn\'t find all genes in lookuptable.')}
+    if (!all(gene_names %in% names(lookupframe))) {
+      print(paste0('Supplied list: ',gene_names)); 
+      print(paste0('Genes not found: ',toString(gene_names[!(gene_names %in% names(lookupframe))])))
+      stop('Couldn\'t find all genes in lookuptable.')}
   }
   
   # Now return the full names

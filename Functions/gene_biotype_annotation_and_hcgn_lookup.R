@@ -13,6 +13,7 @@
 library(biomaRt)
         
 ########################################################################
+# BIOPTYPE table
 
 # mart <- useMart(biomart = "ensembl", dataset = "hsapiens_gene_ensembl", version="93")
 
@@ -61,6 +62,7 @@ names(ens_to_sym_conv_table__XX_v2) = ens_to_sym_conv_table_$ensembl_gene_id
   
 # Now save as v2, since another script perviously generated this file
 save(list='ens_to_sym_conv_table__XX_v2', file = paste0(base_dir,'Rdata/ens_to_sym_conv_table__',ENSEMBL_VERSION_BIOTYPES,'_v2.Rdata')) 
+# load(file = paste0(base_dir,'Rdata/ens_to_sym_conv_table__','93','_v2.Rdata'))  # ens_to_sym_conv_table__XX_v2
 
 ########################################################################
 
@@ -97,4 +99,44 @@ ens_to_sym_conv_table__XX_v2["ENSG00000166398"]
 
 
 ########################################################################
+
+if (F) {
+  
+  # Let's do for latest version ()
+  # Which is 105 currently speaking
+  
+  listEnsemblArchives()
+  
+  mart_latest <- useEnsembl(biomart = "ensembl", 
+                     dataset = "hsapiens_gene_ensembl") 
+                     # version = paste0(ENSEMBL_VERSION_BIOTYPES))
+  
+  ens_to_sym_conv_table_latest_ <- getBM(
+    attributes=c("ensembl_gene_id", 'hgnc_symbol'), # "hgnc_symbol",
+    mart = mart_latest 
+    )
+  
+  ens_to_sym_conv_table__latest_v2 = ens_to_sym_conv_table_latest_$hgnc_symbol
+  names(ens_to_sym_conv_table__latest_v2) = ens_to_sym_conv_table_latest_$ensembl_gene_id
+    
+  
+  ens_to_sym_conv_table__XX_v2['ENSG00000047578']
+  # ENSG00000047578 
+  #      "KIAA0556" 
+  ens_to_sym_conv_table__latest_v2['ENSG00000047578']
+  # ENSG00000047578 
+  #        "KATNIP"
+  
+  # And NIBAN/FAM
+  ens_to_sym_conv_table__latest_v2['ENSG00000135842']
+  # ENSG00000135842 
+  #        "NIBAN1" 
+  ens_to_sym_conv_table__XX_v2['ENSG00000135842']
+  # ENSG00000135842 
+  #       "FAM129A"
+  
+  # So this is probably where the name discrepancy (a problem that is now fixed) came from ..
+
+}
+
 

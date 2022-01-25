@@ -9,11 +9,11 @@ source('/Users/m.wehrens/Documents/git_repos/SCS_Joep/Functions/functions_mw_cop
 
 ################################################################################
 
-ANALYSIS_NAME='ROOIJonly_RID2l'
+ANALYSIS_NAME='ROOIJonly.sp.bt_RID2l'
 if (!exists('current_analysis')) {current_analysis = list()}
 current_analysis[[ANALYSIS_NAME]] =
     LoadH5Seurat(file = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_',ANALYSIS_NAME,'.h5seurat'))
-ANALYSIS_NAME = 'ROOIJonly_RID2l_clExtended'
+ANALYSIS_NAME = 'ROOIJonly.sp.bt_RID2l_clExtended'
 current_analysis[[ANALYSIS_NAME]] =
     LoadH5Seurat(file = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_',ANALYSIS_NAME,'.h5seurat'))
 
@@ -21,7 +21,7 @@ current_analysis[[ANALYSIS_NAME]] =
 
 # Generating background tables for LISA and HOMER, symbol format
 
-ANALYSIS_NAME = 'ROOIJonly_RID2l_clExtended'
+ANALYSIS_NAME = 'ROOIJonly.sp.bt_RID2l_clExtended'
 
 # Background treshold: at least 1% of all cells 
 # Strict treshold
@@ -56,12 +56,12 @@ write.table(x = background_genes, file = paste0(base_dir,'GeneLists/',ANALYSIS_N
 # Run GO analyses for Rooij clusters
 if (F) {
          
-    ANALYSIS_NAME = 'ROOIJonly_RID2l_clExtended'
-    load(paste0(base_dir,'Rdata/enriched_genes_lists_clusters_ROOIJ__ROOIJonly_RID2l_clExtended.Rdata')) # loads enriched_genes_lists_clusters_ROOIJ
+    ANALYSIS_NAME = 'ROOIJonly.sp.bt_RID2l_clExtended'
+    load(paste0(base_dir,'Rdata/enriched_genes_lists_clusters_ROOIJ__ROOIJonly.sp.bt_RID2l_clExtended.Rdata')) # loads enriched_genes_lists_clusters_ROOIJ
     
     # Sanity check
-    # load(file = paste0(base_dir,'Rdata/DE_cluster__','ROOIJonly_RID2l_clExtended','.Rdata')) # DE_cluster
-    # enriched1_check_DE = rownames(DE_cluster$ROOIJonly_RID2l_clExtended$'1'[order(DE_cluster$ROOIJonly_RID2l_clExtended$'1'$avg_log2FC, decreasing = T),])[1:10]
+    # load(file = paste0(base_dir,'Rdata/DE_cluster__','ROOIJonly.sp.bt_RID2l_clExtended','.Rdata')) # DE_cluster
+    # enriched1_check_DE = rownames(DE_cluster$ROOIJonly.sp.bt_RID2l_clExtended$'1'[order(DE_cluster$ROOIJonly.sp.bt_RID2l_clExtended$'1'$avg_log2FC, decreasing = T),])[1:10]
     # enriched1_check_en = enriched_genes_lists_clusters_ROOIJ$`1`[1:10]
     # enriched1_check_DE==enriched1_check_en
  
@@ -102,7 +102,7 @@ if (F) {
     save(list = 'GO_all_clusters', file = paste0(base_dir,'Rdata/',ANALYSIS_NAME,'__GO_all_clusters.Rdata'))
     
     # Now create a summary parameter that we'll use for plotting
-    TOPX=5
+    TOPX=25
     GO_clusters_summary_list = lapply(names(GO_all_clusters), function(n) {x=GO_all_clusters[[n]]; x$regulon=n; return(x[1:TOPX,])})
     GO_clusters_summary = Reduce(f = rbind, x= GO_clusters_summary_list)
     max_str_length = median(nchar(GO_clusters_summary$Term)*2)
@@ -226,8 +226,10 @@ if (F) {
 if (F) {
          
     # Load necessary data
-    ANALYSIS_NAME = 'ALL.SP_RID2l_clExtended'
-    load(paste0(base_dir,'Rdata/enriched_genes_lists_clusters_ALL.SP__ALL.SP_RID2l_clExtended.Rdata'))
+    # DE_cluster__ALL.SP_btypSel_RID2l_clExtended.Rdata
+    # enriched_genes_lists_clusters_ALL.SP__ALL.SP_btypSel_RID2l_clExtended.Rdata
+    ANALYSIS_NAME = 'ALL.SP_btypSel_RID2l_clExtended'
+    load(paste0(base_dir,'Rdata/enriched_genes_lists_clusters_ALL.SP__',ANALYSIS_NAME,'.Rdata'))
  
     if (!exists('current_analysis')) {current_analysis = list()}
     current_analysis[[ANALYSIS_NAME]] =
@@ -253,7 +255,7 @@ if (F) {
 if (F) {
         
     # Load necessary data
-    ANALYSIS_NAME = 'ALL.SP_RID2l_clExtended'
+    ANALYSIS_NAME = 'ALL.SP_btypSel_RID2l_clExtended'
     load(paste0(base_dir,'Rdata/enriched_genes_lists_clusters_ALL.SP__ALL.SP_RID2l_clExtended.Rdata'))
     load(paste0(base_dir,'Rplots/GO_analysis__',ANALYSIS_NAME,'__background_genes.Rdata')) # background_genes
     
@@ -278,7 +280,7 @@ if (F) {
     save(list = 'GO_all_clusters_ALL.SP', file = paste0(base_dir,'Rdata/',ANALYSIS_NAME,'__GO_all_clusters.Rdata'))
     
     # Now create a summary parameter that we'll use for plotting
-    TOPX=5
+    TOPX=25
     GO_clusters_summary_list_ALL.SP = lapply(names(GO_all_clusters_ALL.SP), function(n) {x=GO_all_clusters_ALL.SP[[n]]; x$cluster=n; return(x[1:TOPX,])})
     GO_clusters_summary_ALL.SP = Reduce(f = rbind, x= GO_clusters_summary_list_ALL.SP)
     max_str_length = median(nchar(GO_clusters_summary_ALL.SP$Term)*2)
@@ -302,6 +304,12 @@ if (F) {
 ################################################################################
 # GO analysis on the SCENIC regulons
 
+# Note that this analysis eventually identifies regulons that are specific
+# to the Van Rooij HCM data, but to create input data, technically, 
+# the "ALL.SP_btypSel_RID2l_clExtended" dataset is used.
+
+ANALYSIS_NAME_pooled = 'ALL.SP_btypSel_RID2l_clExtended'
+
 if (F) {
 
     # Requires above to be partially run
@@ -314,7 +322,7 @@ if (F) {
     # Analysis
     config_GO=list(geneIdentifierType='ensembl_id', species='human')
     SCENIC_regulons_core_genes_sel__ = lapply(SCENIC_regulons_core_genes_sel, function(X) {
-        shorthand_seurat_fullgenename_faster(seuratObject = current_analysis$ROOIJonly_RID2l, gene_names = X)})
+        shorthand_seurat_fullgenename_faster(seuratObject = current_analysis$ROOIJonly.sp.bt_RID2l, gene_names = X)})
     SCENIC_regulons_core_genes_sel_ = shorthand_cutname_table( SCENIC_regulons_core_genes_sel__ , PART1OR2 = 1 )
     termGSCnFRAME = generate_termGSCnFrame(config_GO, includeChildTerms=F)
     
@@ -328,11 +336,12 @@ if (F) {
     })
     names(GO_all_scenic_regs)=names(SCENIC_regulons_core_genes_sel)
     
-    save(list = 'GO_all_scenic_regs', file = paste0(base_dir,'Rdata/',ANALYSIS_NAME,'__GO_all_scenic_regs.Rdata'))
+    save(list = 'GO_all_scenic_regs', file = paste0(base_dir,'Rdata/',ANALYSIS_NAME_pooled,'__GO_all_scenic_regs.Rdata'))
+        # load(file = paste0(base_dir,'Rdata/',ANALYSIS_NAME_pooled,'__GO_all_scenic_regs.Rdata')) # GO_all_scenic_regs
     
     # Now create a summary parameter that we'll use for plotting
-    TOPX=5
-    GO_scenic_regs_summary_list = lapply(names(GO_all_scenic_regs), function(n) {x=GO_all_scenic_regs[[n]]; x$regulon=n; return(x[1:TOPX,])})
+    TOPX=100
+    GO_scenic_regs_summary_list = lapply(names(GO_all_scenic_regs), function(n) {x=GO_all_scenic_regs[[n]]; x$regulon=n; return(x[1:min(TOPX,dim(x)[1]),])})
     GO_scenic_regs_summary = Reduce(f = rbind, x= GO_scenic_regs_summary_list)
     max_str_length = median(nchar(GO_scenic_regs_summary$Term)*2)
     GO_scenic_regs_summary$Term_short =
@@ -348,11 +357,17 @@ if (F) {
     #GO_collected_top_terms_scenic_regs = lapply(GO_scenic_regs_summary_list, function(X) {data.frame(Term=X$Term, pval=paste0('10^-',round(-log10(X$Pvalue),1)))})
     #GO_collected_top_terms_scenic_regs$overview = rbind(rep(c('TR', 'p-val'), length(GO_scenic_regs_summary_list)), GO_collected_top_terms_scenic_regs$overview)
     #colnames(GO_collected_top_terms_scenic_regs$overview)=rep(gsub('\\(\\+\\)','',names(GO_scenic_regs_summary_list)),each=2)
-    GO_collected_top_terms_scenic_regs = lapply(GO_scenic_regs_summary_list, function(X) {data.frame(Line=paste0('(p=10^-',round(-log10(X$Pvalue),1),') ',X$Term))})
+    GO_collected_top_terms_scenic_regs = lapply(GO_scenic_regs_summary_list, function(X) {
+        rbind(data.frame(Line=paste0('(p=10^-',round(-log10(X$Pvalue),1),') ',X$Term)),
+              data.frame(Line=rep('', TOPX-dim(X)[1]))) # manual padding
+        })
     GO_collected_top_terms_scenic_regs$overview = Reduce(cbind, GO_collected_top_terms_scenic_regs)
     colnames(GO_collected_top_terms_scenic_regs$overview)=gsub('\\(\\+\\)','',names(GO_scenic_regs_summary_list))
     # save to xlsx
-    openxlsx::write.xlsx(x = GO_collected_top_terms_scenic_regs, file = paste0(base_dir,'Rplots/',ANALYSIS_NAME,'__GO_all_scenic_regs_summarized.xlsx'), overwrite = T)
+    openxlsx::write.xlsx(x = GO_collected_top_terms_scenic_regs, file = paste0(base_dir,'Rplots/',ANALYSIS_NAME_pooled,'__GO_all_scenic_regs_summarized.xlsx'), overwrite = T)
+    
+    library(beepr)
+    beepr::beep()
 }    
 
 
@@ -361,12 +376,14 @@ if (F) {
 
 if (F) {
 
+    ANALYSIS_NAME_ROOIJ = 'ROOIJonly.sp.bt_RID2l'
+    
     # Requires above to be partially run
     
     #load(file = paste0(base_dir,'Rdata/SCENIC_regulons_core_genes_sel'))
     load(file=paste0(base_dir,'Rplots/GO_analysis__background_genes.Rdata'))
         # background_genes
-    load(file = paste0(base_dir,'Rplots/',ANALYSIS_NAME,'_core_regulons_sorted.Rdata'))
+    load(file = paste0(base_dir,'Rdata/',ANALYSIS_NAME_ROOIJ,'_core_regulons_sorted.Rdata'))
         # core_regulons_sorted
     
     # Repetition of above
@@ -386,7 +403,7 @@ if (F) {
     })
     names(GO_all_custom_regs)=names(CUSTOM_regulons_core_genes_sel_)
     
-    save(list = 'GO_all_custom_regs', file = paste0(base_dir,'Rdata/',ANALYSIS_NAME,'__GO_all_custom_regs.Rdata')) # GO_all_custom_regs
+    save(list = 'GO_all_custom_regs', file = paste0(base_dir,'Rdata/',ANALYSIS_NAME_ROOIJ,'__GO_all_custom_regs.Rdata')) # GO_all_custom_regs
     
     # Now create a summary parameter that we'll use for plotting
     TOPX=5
@@ -410,7 +427,10 @@ if (F) {
     GO_collected_top_terms_custom_regs$overview = Reduce(cbind, GO_collected_top_terms_custom_regs)
     colnames(GO_collected_top_terms_custom_regs$overview)=gsub('\\(\\+\\)','',names(GO_custom_regs_summary_list))
     # save to xlsx
-    openxlsx::write.xlsx(x = GO_collected_top_terms_custom_regs, file = paste0(base_dir,'Rplots/',ANALYSIS_NAME,'__GO_all_custom_regs_summarized.xlsx'), overwrite = T)
+    openxlsx::write.xlsx(x = GO_collected_top_terms_custom_regs, file = paste0(base_dir,'Rplots/',ANALYSIS_NAME_ROOIJ,'__GO_all_custom_regs_summarized.xlsx'), overwrite = T)
+    
+    library(beepr)
+    beepr::beep()
 }    
 
 
