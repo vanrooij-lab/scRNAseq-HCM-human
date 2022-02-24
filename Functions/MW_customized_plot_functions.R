@@ -232,7 +232,7 @@ shorthand_seurat_fullgenename_faster = function(seuratObject, gene_names, return
 # current_analysis$ROOIJonly_RID2l$dummyXX = round(runif(length(current_analysis$ROOIJonly_RID2l$annotation_paper_fct))*2)
 #
 # shorthand_custom_boxplot(seuratObject_list, gene_lists, seuratObjectNameToTake, group.by='annotation_paper_fct', topX=10, mylimits=.01)
-shorthand_custom_boxplot = function(seuratObject_list, gene_lists, seuratObjectNameToTake, group.by='annotation_paper_fct', topX=10, mylimits=.01, show=F) {
+shorthand_custom_boxplot = function(seuratObject_list, gene_lists, seuratObjectNameToTake, group.by='annotation_paper_fct', topX=10, mylimits=.01, show=F, SUBDIR='') {
     
     for (current_list_name in names(gene_lists)) {
       
@@ -280,18 +280,18 @@ shorthand_custom_boxplot = function(seuratObject_list, gene_lists, seuratObjectN
         p 
         
         # Save
-        ggsave(filename = paste0(base_dir, 'Rplots/', seuratObjectNameToTake, '_9_customBoxplotGenes_', current_list_name,'.pdf'), plot = p,
+        ggsave(filename = paste0(base_dir, 'Rplots/', SUBDIR, seuratObjectNameToTake, '_9_customBoxplotGenes_', current_list_name,'.pdf'), plot = p,
                height=42, width=42, units='mm', device=cairo_pdf)
         
         # Save with extra limits
         p=p+ylim(c(max(-3,mylims[1]),min(3,mylims[2])))
-        ggsave(filename = paste0(base_dir, 'Rplots/', seuratObjectNameToTake, '_9_customBoxplotGenes_', current_list_name,'.pdf'), plot = p,
+        ggsave(filename = paste0(base_dir, 'Rplots/', SUBDIR, seuratObjectNameToTake, '_9_customBoxplotGenes_', current_list_name,'.pdf'), plot = p,
                height=42, width=42, units='mm', device=cairo_pdf)
         
         # If 1st plot, also print legend for reference
         if (current_list_name == names(gene_lists)[1]) {
         p=p+theme(legend.position='right')
-        ggsave(filename = paste0(base_dir, 'Rplots/', seuratObjectNameToTake, '_9_customBoxplotGenes_',current_list_name,'_LEGEND.pdf'), plot = p,
+        ggsave(filename = paste0(base_dir, 'Rplots/', SUBDIR, seuratObjectNameToTake, '_9_customBoxplotGenes_',current_list_name,'_LEGEND.pdf'), plot = p,
                height=42, width=4.2*min(length(current_genes), topX)+18, units='mm', device=cairo_pdf)      
         }
         
@@ -306,7 +306,7 @@ shorthand_custom_boxplot = function(seuratObject_list, gene_lists, seuratObjectN
             ylim(c(min(df_agr$expression)-.1,max(df_agr$expression)+.5))
         # p
         # Save
-        ggsave(filename = paste0(base_dir, 'Rplots/', seuratObjectNameToTake, '_9_customBarplotGenes_', current_list_name,'.pdf'), plot = p,
+        ggsave(filename = paste0(base_dir, 'Rplots/', SUBDIR, seuratObjectNameToTake, '_9_customBarplotGenes_', current_list_name,'.pdf'), plot = p,
                height=42, width=42, units='mm', device=cairo_pdf)
         
         # 3rd style
@@ -321,12 +321,12 @@ shorthand_custom_boxplot = function(seuratObject_list, gene_lists, seuratObjectN
             labs(fill = element_blank())+
             facet_grid(cols=vars(gene))
         
-        ggsave(filename = paste0(base_dir, 'Rplots/', seuratObjectNameToTake, '_9_customBoxplotGenes_v3_', current_list_name,'.pdf'), plot = p,
-               height=172/6, width=172/3*2/10*length(current_genes), units='mm', device=cairo_pdf)
+        ggsave(filename = paste0(base_dir, 'Rplots/', SUBDIR, seuratObjectNameToTake, '_9_customBoxplotGenes_v3_', current_list_name,'.pdf'), plot = p,
+               height=172/6, width=172/3*2/10*min(length(current_genes), topX), units='mm', device=cairo_pdf)
         
         # Now also save the data for stat. analysis
         # save(list = 'df_agr', file=paste0(base_dir, 'Rplots/', seuratObjectNameToTake, '_9_customBoxplotGenes-PerPat-data_', current_list_name,'.Rdata'))
-        openxlsx::write.xlsx(x = df, file=paste0(base_dir, 'Rplots/', seuratObjectNameToTake, '_9_customBoxplotGenes-data_', current_list_name,'.xlsx'), overwrite = T)
+        openxlsx::write.xlsx(x = df, file=paste0(base_dir, 'Rplots/', SUBDIR, seuratObjectNameToTake, '_9_customBoxplotGenes-data_', current_list_name,'.xlsx'), overwrite = T)
         
     }
   
@@ -415,7 +415,7 @@ shorthand_custom_boxplot_perpatient = function(seuratObject_list, gene_lists, se
 ##########
 
 # zscore=T; myfontsize=6; custom_legend=NULL; mymargin=2; mypointsize=.25
-shorthand_custom_compositeplot = function(seuratObject_list, gene_lists, seuratObjectNameToTake, group.by='annotation_paper_fct', group.by2=NULL, zscore=T, myfontsize=6, custom_legend=NULL, mymargin=2, mypointsize=.25) {
+shorthand_custom_compositeplot = function(seuratObject_list, gene_lists, seuratObjectNameToTake, group.by='annotation_paper_fct', group.by2=NULL, zscore=T, myfontsize=6, custom_legend=NULL, mymargin=2, mypointsize=.25, SUBDIR="") {
     
   print('Note: this function assumes input names are long format.')
   
@@ -471,7 +471,7 @@ shorthand_custom_compositeplot = function(seuratObject_list, gene_lists, seuratO
         df_agr_list[[current_list_name]] = df_agr
         
         # Now export excel file, to do statistics (Note: later will also export joined one)
-        openxlsx::write.xlsx(x = df_agr, file = paste0(base_dir, 'Rplots/', seuratObjectNameToTake, '_9_customSummaryMean_', current_list_name,'_for_',group.by,'_splt2',group.by2,'-data.xlsx'), overwrite = T)
+        openxlsx::write.xlsx(x = df_agr, file = paste0(base_dir, 'Rplots/', SUBDIR, seuratObjectNameToTake, '_9_customSummaryMean_', current_list_name,'_for_',group.by,'_splt2',group.by2,'-data.xlsx'), overwrite = T)
 
         # Abbreviate dataset names
         # abbreviations=c('vRooij'='R', 'Hu'='H', 'Teichmann'='T')
@@ -490,7 +490,7 @@ shorthand_custom_compositeplot = function(seuratObject_list, gene_lists, seuratO
             ylab('Expression')
         # p
         p_violin_list[[current_list_name]]=p
-        ggsave(filename = paste0(base_dir, 'Rplots/', seuratObjectNameToTake, '_9_customSummaryComposite_', current_list_name,'_for_',group.by,'.pdf'), plot = p,
+        ggsave(filename = paste0(base_dir, 'Rplots/', SUBDIR, seuratObjectNameToTake, '_9_customSummaryComposite_', current_list_name,'_for_',group.by,'.pdf'), plot = p,
                height=26.5, width=26.5, units='mm', device=cairo_pdf)
         
         # Plot boxplot (simmilar plot as earlier)
@@ -504,7 +504,7 @@ shorthand_custom_compositeplot = function(seuratObject_list, gene_lists, seuratO
         if (nrow(df)<100) {p=p+geom_jitter()}
         # p
         p_boxplot_list[[current_list_name]]=p
-        ggsave(filename = paste0(base_dir, 'Rplots/', seuratObjectNameToTake, '_9_customSummaryCompositeBoxPlot_', current_list_name,'_for_',group.by,'.pdf'), plot = p,
+        ggsave(filename = paste0(base_dir, 'Rplots/', SUBDIR, seuratObjectNameToTake, '_9_customSummaryCompositeBoxPlot_', current_list_name,'_for_',group.by,'.pdf'), plot = p,
                height=26.5, width=26.5, units='mm', device=cairo_pdf)
         
         # Now plot bars
@@ -520,7 +520,7 @@ shorthand_custom_compositeplot = function(seuratObject_list, gene_lists, seuratO
         p_bar_list[[current_list_name]]=p
         # p 
         
-        ggsave(filename = paste0(base_dir, 'Rplots/', seuratObjectNameToTake, '_9_customSummaryMean_', current_list_name,'_for_',group.by,'.pdf'), plot = p,
+        ggsave(filename = paste0(base_dir, 'Rplots/', SUBDIR, seuratObjectNameToTake, '_9_customSummaryMean_', current_list_name,'_for_',group.by,'.pdf'), plot = p,
                height=26.5, width=26.5, units='mm', device=cairo_pdf)
         
         # If 1st plot, also print legend for reference
@@ -528,7 +528,7 @@ shorthand_custom_compositeplot = function(seuratObject_list, gene_lists, seuratO
         p=p+theme(legend.position='right', legend.key.size = unit(3, "mm"))
         #if (group.by==group.by=='annotation_paper_str') {p=p+scale_fill_discrete(name = "Set")}
         if (!is.null(custom_legend)) {p=p+scale_fill_discrete(name = custom_legend)}
-        ggsave(filename = paste0(base_dir, 'Rplots/', seuratObjectNameToTake, '_9_customSummaryMean_LEGEND_', current_list_name,'_for_',group.by,'.pdf'), plot = p,
+        ggsave(filename = paste0(base_dir, 'Rplots/', SUBDIR, seuratObjectNameToTake, '_9_customSummaryMean_LEGEND_', current_list_name,'_for_',group.by,'.pdf'), plot = p,
                height=26.5, width=26.5, units='mm', device=cairo_pdf)
         
         }
@@ -546,7 +546,7 @@ shorthand_custom_compositeplot = function(seuratObject_list, gene_lists, seuratO
               #ylim(c(min(df$expression),mylims[2]))
               #ylim(c(max(-3,mylims[1]),min(3,mylims[2])))
           p_bar_list_g2[[current_list_name]]=p
-          ggsave(filename = paste0(base_dir, 'Rplots/', seuratObjectNameToTake, '_9_customSummaryMean_SPLIT2_', current_list_name,'_for_',group.by,'.pdf'), plot = p,
+          ggsave(filename = paste0(base_dir, 'Rplots/', SUBDIR, seuratObjectNameToTake, '_9_customSummaryMean_SPLIT2_', current_list_name,'_for_',group.by,'.pdf'), plot = p,
                height=26.5, width=26.5, units='mm', device=cairo_pdf)
           
         }
@@ -555,7 +555,7 @@ shorthand_custom_compositeplot = function(seuratObject_list, gene_lists, seuratO
     
     # Now export all composite data
     df_agr_combined = Reduce(f = rbind, df_agr_list)
-    openxlsx::write.xlsx(x = df_agr_combined, file = paste0(base_dir, 'Rplots/', seuratObjectNameToTake, '_9_customSummaryMean_ALL-', current_list_name,'-etc_for_',group.by,'_splt2',group.by2,'-data.xlsx'), overwrite = T)
+    openxlsx::write.xlsx(x = df_agr_combined, file = paste0(base_dir, 'Rplots/', SUBDIR, seuratObjectNameToTake, '_9_customSummaryMean_ALL-', current_list_name,'-etc_for_',group.by,'_splt2',group.by2,'-data.xlsx'), overwrite = T)
     
     return(list(p_violin_list=p_violin_list, p_bar_list=p_bar_list, p_bar_list_g2=p_bar_list_g2, p_boxplot_list=p_boxplot_list))
         

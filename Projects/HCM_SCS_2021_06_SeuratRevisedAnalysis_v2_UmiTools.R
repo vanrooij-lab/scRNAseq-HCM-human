@@ -1585,7 +1585,11 @@ if ('more_custom_plots' %in% desired_command) {
                                  group.by='annotation_paper_oneletter_fct', 
                                  group.by2='annotation_patient_fct',
                                  zscore=T) 
-            # To load data at later point:
+        
+            # Comparison of which SCENIC regulons show most enrichement 
+            # in the HCM data compared to our data.
+            # 
+            # Posisble to load data at later point
             if (F) {
                 REGULON_DATASET = 'ROOIJonly.sp.bt_RID2l'
                 CURRENT_RUNNAME='ALL.SP_btypSel_RID2l_clExtended'

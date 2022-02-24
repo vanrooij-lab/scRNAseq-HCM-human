@@ -5,10 +5,13 @@
 ################################################################################
 library(pheatmap)
 
+filename_data = 'qPCR Raw_shared regulon 2_topgenes_MWe_vClean.xlsx' 
+  # will be made available as supp dataset.
+
 ################################################################################
 
 qPCR_Data_Maya =
-    openxlsx::read.xlsx('/Users/m.wehrens/Data/_2019_02_HCM_SCS/2021_HPC_analysis.3b/qPCR/qPCR Raw_shared regulon 2_topgenes_MWe.xlsx', sheet = 'relevant_data_CT')
+    openxlsx::read.xlsx(paste0('/Users/m.wehrens/Data/_2019_02_HCM_SCS/2021_HPC_analysis.3b/qPCR/',filename_data), sheet = 'relevant_data_CT')
 
 # Little preprocessing
 qPCR_Data_Maya$metadata_type = NA
@@ -220,7 +223,7 @@ core_regulons_sorted_shortname$s.R.2[1:20] %in% gene_names_all*1
 
 # Processing qPCR data to check correlations
 qPCR_Data_Maya_rawCT =
-    openxlsx::read.xlsx('/Users/m.wehrens/Data/_2019_02_HCM_SCS/2021_HPC_analysis.3/qPCR/qPCR Raw_shared regulon 2_topgenes_MWe.xlsx', sheet = 'raw_data')
+    openxlsx::read.xlsx(paste0('/Users/m.wehrens/Data/_2019_02_HCM_SCS/2021_HPC_analysis.3b/qPCR/',filename_data), sheet = 'raw_data')
 
 # Little preprocessing
 qPCR_Data_Maya_rawCT$metadata_type = NA
