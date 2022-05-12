@@ -21,7 +21,7 @@ mySeuratAnalysis = function(mySeuratObject, run_name,
         print(paste0('Genes removed: ', sum(gene_in_cell_count<5))) 
         print(paste0('Genes kept: ', sum(gene_in_cell_count>4))) 
     }
-
+    
     # Collect some info
     all_genes = rownames(mySeuratObject)
     
@@ -40,9 +40,17 @@ mySeuratAnalysis = function(mySeuratObject, run_name,
     plot2 <- LabelPoints(plot = plot1, points = top30, repel = TRUE, xnudge=0, ynudge=0)
     ggsave(filename = paste0(base_dir,subdir,run_name,'_1_VariableFeatures_labeled.png'), plot = plot2, width=15, height=15)
 
+    # A custom hybrid method to determine which genes to take along in the analysis
+    VariableFeatures_mySeuratObject = VariableFeatures(mySeuratObject)
+    FeatureMeans = rowMeans(mySeuratObject@assays$RNA@counts)
+    HighestMeanFeatures = names(FeatureMeans)[order(FeatureMeans, decreasing = T)][1:100]
+    # venn_simple_plot_mw(list(HighestMeanFeatures=HighestMeanFeatures,VariableFeatures_mySeuratObject=VariableFeatures_mySeuratObject))
+    VariableOrHighMeanFeatures = unique(c(VariableFeatures_mySeuratObject, HighestMeanFeatures))
+    
     # Determine which features to use
     features_to_use = if (features_to_use_choice=='all') { all_genes
-                            } else {VariableFeatures(mySeuratObject)}
+                            } else if (features_to_use_choice=='hybrid') { VariableOrHighMeanFeatures
+                            } else {VariableFeatures_mySeuratObject}
 
     # scale the data
     mySeuratObject <- ScaleData(mySeuratObject, features = features_to_use, do.scale=do.scale, do.center=do.center, scale.max=scale.max) # features = all_variable_features is default
@@ -55,6 +63,19 @@ mySeuratAnalysis = function(mySeuratObject, run_name,
     
     return(mySeuratObject)
     
+}
+
+myVarMeanPlot = function(mySeuratObject) {
+    
+    print('Warning, with large matrices, this takes ages due to use of apply function')
+ 
+    geneSd    = apply( mySeuratObject@assays$RNA@counts , 1, sd)
+    geneMean  = rowMeans( mySeuratObject@assays$RNA@counts )
+    
+    p=ggplot(data.frame(log10.count.sd=log10(geneSd), log10.count.mean=log10(.1+geneMean)),aes(x=log10.count.mean, y=log10.count.sd))+
+        geom_point()+theme_bw()+give_better_textsize_plot(8)
+    ggsave(plot = p, filename = paste0(base_dir,'Rplots/0_custom_SdVsMean_genes.png'), height=172/3-4, width=172/3-4, units='mm')
+       
 }
 
 mySeuratAnalysis_verybasic_part2only = function(mySeuratObject,

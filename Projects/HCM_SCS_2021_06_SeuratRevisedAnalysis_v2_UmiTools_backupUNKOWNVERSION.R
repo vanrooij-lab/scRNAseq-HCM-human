@@ -182,12 +182,7 @@ source(paste0(script_dir,'Functions/MW_customized_plot_functions.R'))
 
 # Some colors
 library(RColorBrewer)
-rainbow_colors = rev(  brewer.pal(n = 11, name = "Spectral") )
-colors_gradient_BrBG = brewer.pal(n=11, name = 'BrBG')
-colors_gradient_RdBu = brewer.pal(n=11, name = 'RdBu')
-colors_gradient_RdYlBu = brewer.pal(n=11, name = 'RdYlBu')
-colors_viridis_turbo = viridis_pal(alpha = 1, option = 'turbo')(11)
-colors_viridis = viridis_pal(alpha = 1)(11)
+rainbow_colors = rev( brewer.pal(n = 11, name = "Spectral") )
 qual_col_pals = brewer.pal.info[brewer.pal.info$category == 'qual',]
 col_vector_60 = unlist(mapply(brewer.pal, qual_col_pals$maxcolors, rownames(qual_col_pals)))
 colors_distinguishable = c('#e6194B', '#3cb44b', '#ffe119', '#4363d8', '#f58231', '#911eb4', '#42d4f4', '#f032e6', '#bfef45', '#fabed4', '#469990', '#dcbeff', '#9A6324', '#fffac8', '#800000', '#aaffc3', '#808000', '#ffd8b1', '#000075', '#a9a9a9', '#ffffff', '#000000')
@@ -1581,7 +1576,7 @@ if ('more_custom_plots' %in% desired_command) {
         
         # Box plots
         shorthand_custom_boxplot(seuratObject_list=current_analysis, 
-                                 gene_lists=SCENIC_reg_top_genes_sorted_full, 
+                                 gene_lists=SCENIC_reg_top_genes_sorted_full, ≠
                                  seuratObjectNameToTake=CURRENT_RUNNAME, 
                                  group.by='annotation_paper_oneletter_fct', 
                                  topX=10, mylimits=.01) 

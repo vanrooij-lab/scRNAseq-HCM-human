@@ -119,7 +119,8 @@ shorthand_cutname_table = function(gene_table, PART1OR2=2) {
 
 # function to plot expression of a gene
 # textsize=8; pointsize=1; mypercentile=0.03; custom_title=NULL;mymargin=0.1;zscore=F;myFamily='Arial'; add_box=F
-shorthand_seurat_custom_expr = function(seuratObject, gene_of_interest, textsize=8, pointsize=1, mypercentile=0.03, custom_title=NULL,mymargin=0.1,zscore=F,myFamily='Arial', add_box=F, parse_annot=T) {
+shorthand_seurat_custom_expr = function(seuratObject, gene_of_interest, textsize=8, pointsize=1, mypercentile=0.03, 
+                                        custom_title=NULL,mymargin=0.1,zscore=F,myFamily='Arial', add_box=F, parse_annot=T,myColors=NULL) {
     
     if (length(gene_of_interest)>1){
       print('You gave >1 genes, assuming you want composite expression.')  
@@ -142,6 +143,7 @@ shorthand_seurat_custom_expr = function(seuratObject, gene_of_interest, textsize
     }
     
     if (length(gene_of_interest_fullname)==0) { return(NA) }
+    if (is.null(myColors)) {myColors = rainbow_colors}
     
     # retrieve current expression
     current_expr = as.matrix(seuratObject@assays$RNA@data[gene_of_interest_fullname,])
@@ -164,7 +166,7 @@ shorthand_seurat_custom_expr = function(seuratObject, gene_of_interest, textsize
                       expr=current_expr),
             mapping = aes(x=UMAP_1, y=UMAP_2, color=expr))+
         geom_point(size = pointsize, stroke = 0, shape = 16)+
-        scale_color_gradientn(colours=rainbow_colors, limits=c(0,expr_limits[2]), oob=squish)+
+        scale_color_gradientn(colours=myColors, limits=c(0,expr_limits[2]), oob=squish)+
         #+ggtitle(gene_of_interest)+
         annotate("text", -Inf, Inf, label = mytitle, hjust = 0-boxpad, vjust = 1+textsize*boxpad, size=textsize / .pt, family = myFamily, parse=T)+
         theme_void()+
@@ -256,7 +258,7 @@ shorthand_custom_boxplot = function(seuratObject_list, gene_lists, seuratObjectN
         rownames(current_exprs) = shorthand_cutname(rownames(current_exprs))
          
         df_ = data.frame(t(current_exprs))
-        df_[[group.by]] = as.factor(current_analysis[[seuratObjectNameToTake]][[group.by, drop=T]])
+        df_[[group.by]] = as.factor(seuratObject_list[[seuratObjectNameToTake]][[group.by, drop=T]])
         df = reshape2::melt(data = df_, id.vars = group.by, value.name = 'expression', variable.name='gene')
         
         agr_list=list(df[[group.by]], df$gene); names(agr_list) = c(group.by, 'gene')
@@ -358,8 +360,8 @@ shorthand_custom_boxplot_perpatient = function(seuratObject_list, gene_lists, se
         rownames(current_exprs) = shorthand_cutname(rownames(current_exprs))
          
         df_ = data.frame(t(current_exprs))
-        df_[[group.by]]   = as.factor(current_analysis[[seuratObjectNameToTake]][[group.by, drop=T]])
-        df_[[aggr.by]]  = as.factor(current_analysis[[seuratObjectNameToTake]][[aggr.by, drop=T]])
+        df_[[group.by]]   = as.factor(seuratObject_list[[seuratObjectNameToTake]][[group.by, drop=T]])
+        df_[[aggr.by]]  = as.factor(seuratObject_list[[seuratObjectNameToTake]][[aggr.by, drop=T]])
         
         df = reshape2::melt(data = df_, id.vars = list(group.by,aggr.by), value.name = 'expression', variable.name='gene')
         
@@ -457,8 +459,8 @@ shorthand_custom_compositeplot = function(seuratObject_list, gene_lists, seuratO
         
         # Plotting data frames
         df = data.frame(expression=current_expr)
-        df[[group.by]] = as.factor(current_analysis[[seuratObjectNameToTake]][[group.by, drop=T]])
-        if (!is.null(group.by2)) {df[[group.by2]] = as.factor(current_analysis[[seuratObjectNameToTake]][[group.by2, drop=T]])}
+        df[[group.by]] = as.factor(seuratObject_list[[seuratObjectNameToTake]][[group.by, drop=T]])
+        if (!is.null(group.by2)) {df[[group.by2]] = as.factor(seuratObject_list[[seuratObjectNameToTake]][[group.by2, drop=T]])}
         
         # Calculate mean, take 2nd group into account if desired
         if (!is.null(group.by2)) { 

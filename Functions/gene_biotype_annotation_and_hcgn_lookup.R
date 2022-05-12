@@ -140,3 +140,79 @@ if (F) {
 }
 
 
+
+
+################################################################################
+
+
+if (F) {
+  
+  ENSEMBL_VERSION_BIOTYPES = 75
+  
+  mart <- useEnsembl(biomart = "ensembl", 
+                     dataset = "hsapiens_gene_ensembl", 
+                     version = paste0(ENSEMBL_VERSION_BIOTYPES))
+  
+  ens_to_sym_conv_table_ <- getBM(
+    attributes=c("ensembl_gene_id", 'hgnc_symbol'), # "hgnc_symbol",
+    mart = mart 
+    )
+  head(ens_to_sym_conv_table_)
+  
+  ens_to_sym_conv_table__XX_v2 = ens_to_sym_conv_table_$hgnc_symbol
+  names(ens_to_sym_conv_table__XX_v2) = ens_to_sym_conv_table_$ensembl_gene_id
+    
+  # Now save as v2, since another script perviously generated this file
+  save(list='ens_to_sym_conv_table__XX_v2', file = paste0(base_dir,'Rdata/ens_to_sym_conv_table__',ENSEMBL_VERSION_BIOTYPES,'_v2.Rdata')) 
+  # load(file = paste0(base_dir,'Rdata/ens_to_sym_conv_table__','93','_v2.Rdata'))  # ens_to_sym_conv_table__XX_v2
+  
+}
+
+
+################################################################################
+
+
+if (F) {
+  
+  ENSEMBL_VERSION_BIOTYPES = 98
+  
+  mart <- useEnsembl(biomart = "ensembl", 
+                     dataset = "hsapiens_gene_ensembl", 
+                     version = paste0(ENSEMBL_VERSION_BIOTYPES))
+  
+  ens_to_sym_conv_table_ <- getBM(
+    attributes=c("ensembl_gene_id", 'hgnc_symbol'), # "hgnc_symbol",
+    mart = mart 
+    )
+  head(ens_to_sym_conv_table_)
+  
+  ens_to_sym_conv_table__XX_v2 = ens_to_sym_conv_table_$hgnc_symbol
+  names(ens_to_sym_conv_table__XX_v2) = ens_to_sym_conv_table_$ensembl_gene_id
+    
+  # Now save as v2, since another script perviously generated this file
+  save(list='ens_to_sym_conv_table__XX_v2', file = paste0(base_dir,'Rdata/ens_to_sym_conv_table__',ENSEMBL_VERSION_BIOTYPES,'_v2.Rdata')) 
+  # load(file = paste0(base_dir,'Rdata/ens_to_sym_conv_table__','93','_v2.Rdata'))  # ens_to_sym_conv_table__XX_v2
+  
+}
+
+################################################################################
+# 82
+
+# A different approach (for hg19)
+
+if (F) {
+  
+  # What about hg19 v.82 & v.84??
+  
+  # library(EnsDb.Hsapiens.v86)
+  # # BiocManager::install("EnsDb.Hsapiens.v82")
+  # # BiocManager::install("EnsDb.Hsapiens.v86")
+  #   
+  # ens_to_sym_conv_table__XX_v2 = ens_to_sym_conv_table_$hgnc_symbol
+  # names(ens_to_sym_conv_table__XX_v2) = ens_to_sym_conv_table_$ensembl_gene_id
+  #   
+  # # Now save as v2, since another script perviously generated this file
+  # save(list='ens_to_sym_conv_table__XX_v2', file = paste0(base_dir,'Rdata/ens_to_sym_conv_table__',ENSEMBL_VERSION_BIOTYPES,'_v2.Rdata')) 
+  # # load(file = paste0(base_dir,'Rdata/ens_to_sym_conv_table__','93','_v2.Rdata'))  # ens_to_sym_conv_table__XX_v2
+  # 
+}
