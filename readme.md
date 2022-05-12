@@ -14,6 +14,8 @@ Contact me (m.wehrens@hubrecht.eu) if you would like to take a look at the data 
 
 The most central file in this analysis is `Projects/HCM_SCS_2021_06_SeuratRevisedAnalysis_v2_UmiTools.R`, you can start exploring these scripts there.
 
+*More explanation will be added.*
+
 Send an e-mail to m.wehrens@hubrecht.eu if you have any questions.
 
 
