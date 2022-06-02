@@ -18,6 +18,18 @@ The most central file in this analysis is `Projects/HCM_SCS_2021_06_SeuratRevise
 
 Send an e-mail to m.wehrens@hubrecht.eu if you have any questions.
 
+# Notes about libraries etc. 
+
+The scripts involving the Litvinukova data were executed on a high performance computing cluster.
+
+The necessary software and libraries were installed using Conda.
+
+Four separate environments were created, "base" (default), "MARGE", "LISA", "pyscenic". The base environment was
+used for all analysis, except for the MARGE, Lisa and SCENIC analyses. 
+A list of installed libraries can be found in the text file "libraries_environments_information.txt", 
+this also includes a separate list of all packages that were installed "inside" R.
+
+
 
 
 

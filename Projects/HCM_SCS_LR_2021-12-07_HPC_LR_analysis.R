@@ -5,7 +5,7 @@
 
 # Note:
 # HPC command to get access to node manually
-# srun --nodes=1 -c 1 --mem=50G --time=1:00:00 --pty bash -i
+# srun --nodes=1 -c 1 --mem=100G --time=4:00:00 --pty bash -i
 
 ################################################################################
 
@@ -15,6 +15,8 @@ print(paste0('myargs=',myargs))
 
 # Activate code from the main script
 script_dir = '/hpc/hub_oudenaarden/mwehrens/scripts/SCS_HCM_analysis/'; desired_command='dummy'; source(paste0(script_dir, 'HCM_SCS_2021_06_SeuratRevisedAnalysis_v2_UmiTools.R')); rm('desired_command')
+base_dir_original = base_dir
+base_dir = '/hpc/hub_oudenaarden/mwehrens/data/HCM_SCS_allcells_TR/'
 
 # Process the commands
 if (length(myargs)==0) { 
@@ -32,10 +34,11 @@ if (F) { # manually executed
     Teichmann_all <- LoadH5Seurat('/hpc/hub_oudenaarden/mwehrens/data/Teichmann/Litvinukova_global_raw.h5seurat')
     
     # We can also load our own data easily
-    HCM_DATASET_NAME='ROOIJonly_RID2l_clExtended'
+    #HCM_DATASET_NAME='ROOIJonly_RID2l_clExtended'
+    HCM_DATASET_NAME='ROOIJonly.sp.bt_RID2l_clExtended'
     if (!exists('current_analysis')) {current_analysis = list()}
     current_analysis[[HCM_DATASET_NAME]] =
-        LoadH5Seurat(file = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_',HCM_DATASET_NAME,'.h5seurat'))
+        LoadH5Seurat(file = paste0(base_dir_original,'Rdata/H5_RHL_SeuratObject_nM_sel_',HCM_DATASET_NAME,'.h5seurat'))
 }
 
 
@@ -65,7 +68,11 @@ if (F) { # manually executed
     rownames(Teichmann_all@assays$RNA@counts) = paste0(ensembl_IDs_check,':',hgnc_names_Teich)
     
     # now save this updated data frame
-    SaveH5Seurat(object = Teichmann_all, filename = '/hpc/hub_oudenaarden/mwehrens/data/Teichmann/Litvinukova_global_raw_MW.h5seurat')
+    SaveH5Seurat(object = Teichmann_all, filename = '/hpc/hub_oudenaarden/mwehrens/data/Teichmann/temp_Litvinukova_global_raw_MW.h5seurat')
+        # Teichmann_all = LoadH5Seurat(file = '/hpc/hub_oudenaarden/mwehrens/data/Teichmann/temp_Litvinukova_global_raw_MW.h5seurat')
+    
+    # Note: there was a bug earlier where I used the wrong hcgn version names for gene symbols; but this is fixed now
+    # I performed a quick sanity check by checking the gene "FAM129A" aka "NIBAN1", which should in both datasets be referred to as FAM129A.
 
 }
     
@@ -79,10 +86,11 @@ if (F) { # manually executed
     
     # Perform the merge
     dataset_TeichAll_Rooij_merged <- merge(x = Teichmann_all, y = current_analysis[[HCM_DATASET_NAME]], add.cell.ids = c('T','R'), project = "LigRec")
-    object_size(RHL_SeuratObject_merged)
+    object_size(dataset_TeichAll_Rooij_merged)
     
-    # Save the raw merged dataset
-    SaveH5Seurat(object = dataset_TeichAll_Rooij_merged, file = '/hpc/hub_oudenaarden/mwehrens/data/Teichmann/dataset_TeichAll_Rooij_merged_raw.h5seurat')
+    # Save the raw merged dataset (since this script requires loads of memory, convenient to save intermediate state now and then)
+    SaveH5Seurat(object = dataset_TeichAll_Rooij_merged, file = '/hpc/hub_oudenaarden/mwehrens/data/Teichmann/temp_dataset_TeichAll_Rooij_merged_raw.h5seurat')
+        # file.exists('/hpc/hub_oudenaarden/mwehrens/data/Teichmann/temp_dataset_TeichAll_Rooij_merged_raw.h5seurat')
     
     # Then add annotation
     
@@ -100,7 +108,7 @@ if (F) { # manually executed
     # Define sample annotation
     TaR_annotation_samples=rep(NA, length(TaR_annotation_prelim))
     TaR_annotation_samples[TaR_annotation_prelim=='T']=paste0('T.',dataset_TeichAll_Rooij_merged@meta.data$sample[TaR_annotation_prelim=='T'])
-    TaR_annotation_samples[TaR_annotation_prelim=='R']=paste0('R.',current_analysis$ROOIJonly_RID2l_clExtended$annotation_sample_str)
+    TaR_annotation_samples[TaR_annotation_prelim=='R']=paste0('R.',current_analysis[[HCM_DATASET_NAME]]$annotation_sample_str)
     # unique(TaR_annotation_samples)
     # Determine annotation for from which paper a cell comes
     TaR_annotation_paper = rep(NA, length(TaR_annotation_prelim))
@@ -113,7 +121,7 @@ if (F) { # manually executed
     # Get patient information for our data and Teichmann's
     TaR_annotation_patients=rep(NA, length(TaR_annotation_prelim))
     TaR_annotation_patients[TaR_annotation_prelim=='T'] = paste0('T.',dataset_TeichAll_Rooij_merged@meta.data$donor)[TaR_annotation_prelim=='T']
-    TaR_annotation_patients[TaR_annotation_prelim=='R'] = current_analysis$ROOIJonly_RID2l_clExtended$annotation_patient_str
+    TaR_annotation_patients[TaR_annotation_prelim=='R'] = current_analysis[[HCM_DATASET_NAME]]$annotation_patient_str
     # Now also retrieve the "region" data for the Teichmann data, which correspond for the vCMs to AX, SP, LV, RV (apex, septum, left ventricle, right v)
     # For our data, we only have septal cells
     TaR_annotation_region=TaR_annotation_prelim
@@ -132,8 +140,8 @@ if (F) { # manually executed
     dataset_TeichAll_Rooij_merged[["annotation_region_str"]]     <- TaR_annotation_region
     
     # Add celltype with our cells annotated (this was added later, so not saved)
-    dataset_TeichAll_Rooij_merged_noMt_sel$celltype_inclR = dataset_TeichAll_Rooij_merged_noMt_sel$cell_type
-    dataset_TeichAll_Rooij_merged_noMt_sel$celltype_inclR[TaR_annotation_prelim=='R'] = 'hCM_Rooij'
+    dataset_TeichAll_Rooij_merged$celltype_inclR = dataset_TeichAll_Rooij_merged$cell_type
+    dataset_TeichAll_Rooij_merged$celltype_inclR[TaR_annotation_prelim=='R'] = 'hCM_Rooij'
     
     # Count mitochondrial reads
     # checking whether we take the right genes:
@@ -146,7 +154,7 @@ if (F) { # manually executed
     dataset_TeichAll_Rooij_merged[['rnaMitoCounts']] <- CreateAssayObject(counts = dataset_TeichAll_Rooij_merged@assays$RNA@counts[mito_genes,])
     
     # Save the updated file
-    SaveH5Seurat(object = dataset_TeichAll_Rooij_merged, file = '/hpc/hub_oudenaarden/mwehrens/data/Teichmann/dataset_TeichAll_Rooij_merged_annotated.h5seurat')
+    SaveH5Seurat(object = dataset_TeichAll_Rooij_merged, file = '/hpc/hub_oudenaarden/mwehrens/data/Teichmann/temp_dataset_TeichAll_Rooij_merged_annotated.h5seurat')
     
     # Then, subset the RNA assay (note: "noMito" is historic name, earlier only mito genes removed, now many more)
     dataset_TeichAll_Rooij_merged_noMt =
@@ -180,22 +188,24 @@ if (F) { # manually executed
 ################################################################################
 # Now perform first a "standard" Seurat analysis
 
+# First move "dataset_TeichAll_Rooij_merged_noMt_sel.h5seurat" from Teichmann folder to 
 
 if ('run_LigRec_stAnalysis' %in% cmd$desired_command) {
     
     CURRENT_RUNNAME='TeichAll_Rooij_dflt'
     
-    dataset_TeichAll_Rooij_merged_noMt_sel = LoadH5Seurat(file = paste0(base_dir,'LR_analysis/dataset_TeichAll_Rooij_merged_noMt_sel.h5seurat'))
+    dataset_TeichAll_Rooij_merged_noMt_sel = LoadH5Seurat(file = paste0(base_dir,'Rdata/dataset_TeichAll_Rooij_merged_noMt_sel.h5seurat'))
 
     # Analysis    
-    dataset_TeichAll_Rooij_merged_noMt_sel_dflt = mySeuratAnalysis(dataset_TeichAll_Rooij_merged_noMt_sel, run_name = CURRENT_RUNNAME, subdir='LR_analysis/')
+    dataset_TeichAll_Rooij_merged_noMt_sel_dflt = mySeuratAnalysis(dataset_TeichAll_Rooij_merged_noMt_sel, run_name = CURRENT_RUNNAME, subdir='Rplots/')
     
     # Save the analysis
     SaveH5Seurat(object = dataset_TeichAll_Rooij_merged_noMt_sel_dflt, overwrite = T,
-        filename = paste0(base_dir,'LR_analysis/',CURRENT_RUNNAME,'.h5seurat'))
+        filename = paste0(base_dir,'Rdata/',CURRENT_RUNNAME,'.h5seurat'))
+        # dataset_TeichAll_Rooij_merged_noMt_sel_dflt = LoadH5Seurat(file = paste0(base_dir,'Rdata/',CURRENT_RUNNAME,'.h5seurat'))
     
     # Create plots
-    mySeuratCommonPlots(dataset_TeichAll_Rooij_merged_noMt_sel_dflt, run_name = CURRENT_RUNNAME, subdir='LR_analysis/')
+    mySeuratCommonPlots(dataset_TeichAll_Rooij_merged_noMt_sel_dflt, run_name = CURRENT_RUNNAME, subdir='Rplots/')
     
 }    
 
@@ -209,7 +219,7 @@ if ('run_LigRec_stAnalysis' %in% cmd$desired_command) {
 # current_analysis$TeichAll_Rooij_dflt$celltype_inclR[TaR_annotation_prelim=='R'] = 'hCM_Rooij'
 #
 # 
-# SaveH5Seurat(object = current_analysis[[CURRENT_RUNNAME]], overwrite = T, filename = paste0(base_dir,'LR_analysis/',CURRENT_RUNNAME,'.h5seurat'))
+# SaveH5Seurat(object = current_analysis[[CURRENT_RUNNAME]], overwrite = T, filename = paste0(base_dir,'Rdata/',CURRENT_RUNNAME,'.h5seurat'))
     
 
 ################################################################################
@@ -221,7 +231,7 @@ if ('LigRec_customMaps' %in% cmd$desired_command) {
     # Load dataset
     CURRENT_RUNNAME='TeichAll_Rooij_dflt'
     current_analysis=list()
-    current_analysis[[CURRENT_RUNNAME]] = LoadH5Seurat(file = paste0(base_dir, 'LR_analysis/', CURRENT_RUNNAME, '.h5seurat'))
+    current_analysis[[CURRENT_RUNNAME]] = LoadH5Seurat(file = paste0(base_dir, 'Rdata/', CURRENT_RUNNAME, '.h5seurat'))
     
     
     #shorthand_seurat_custom_expr(seuratObject = current_analysis[[CURRENT_RUNNAME]], 
@@ -234,26 +244,26 @@ if ('LigRec_customMaps' %in% cmd$desired_command) {
     p=DimPlot(current_analysis[[CURRENT_RUNNAME]], group.by = 'annotation_paper_fct', cols = col_vector_60, label = T, repel = T, label.size = 7/.pt, pt.size = NULL)+
         theme_void()+ggtitle(element_blank())+theme(legend.position = 'none')
     # test
-    ggsave(plot = p, filename = paste0(base_dir,'LR_analysis/',CURRENT_RUNNAME,'_sourcePaper.png'), height=172/3*2-4, width=172/3*2-4, units='mm')
+    ggsave(plot = p, filename = paste0(base_dir,'Rplots/',CURRENT_RUNNAME,'_sourcePaper.png'), height=172/3*2-4, width=172/3*2-4, units='mm')
     
     # Another overview plot with patients
     p=DimPlot(current_analysis[[CURRENT_RUNNAME]], group.by = 'annotation_patient_fct', cols = col_vector_60, label = T, repel = T, label.size = 7/.pt, pt.size = NULL)+
         theme_void()+ggtitle(element_blank())+theme(legend.position = 'none')
     # test
-    ggsave(plot = p, filename = paste0(base_dir,'LR_analysis/',CURRENT_RUNNAME,'_sourcePatient.png'), height=172/3*2-4, width=172/3*2-4, units='mm')
+    ggsave(plot = p, filename = paste0(base_dir,'Rplots/',CURRENT_RUNNAME,'_sourcePatient.png'), height=172/3*2-4, width=172/3*2-4, units='mm')
     
     
     # Make a plot per cell type
     p=DimPlot(current_analysis[[CURRENT_RUNNAME]], group.by = 'cell_type_inclR', cols = col_vector_60, label = T, repel = T, label.size = 7/.pt, pt.size = NULL)+
         theme_void()+ggtitle(element_blank())+theme(legend.position = 'none')
     # test
-    ggsave(plot = p, filename = paste0(base_dir,'LR_analysis/',CURRENT_RUNNAME,'_celltypes.png'), height=172/3*2-4, width=172/3*2-4, units='mm')
+    ggsave(plot = p, filename = paste0(base_dir,'Rplots/',CURRENT_RUNNAME,'_celltypes.png'), height=172/3*2-4, width=172/3*2-4, units='mm')
     
     # Make a plot per cell type (with legend)
     p=DimPlot(current_analysis[[CURRENT_RUNNAME]], group.by = 'cell_type_inclR', cols = col_vector_60, label = T, repel = T, label.size = 7/.pt, pt.size = NULL)+
         theme_void()+ggtitle(element_blank())
     # test
-    ggsave(plot = p, filename = paste0(base_dir,'LR_analysis/',CURRENT_RUNNAME,'_celltypes_wLegend.png'), height=172/3*2-4, width=172/3*3-4, units='mm')
+    ggsave(plot = p, filename = paste0(base_dir,'Rplots/',CURRENT_RUNNAME,'_celltypes_wLegend.png'), height=172/3*2-4, width=172/3*3-4, units='mm')
        
 }
 
@@ -272,7 +282,7 @@ if ('LigRec_Expr' %in% cmd$desired_command) {
     DATASET_NAME2='TeichAll_Rooij_dflt' 
     current_analysis=list()
     current_analysis[[DATASET_NAME]] = 
-        LoadH5Seurat(file = paste0(base_dir, 'LR_analysis/', DATASET_NAME, '.h5seurat'))
+        LoadH5Seurat(file = paste0(base_dir, 'Rdata/', DATASET_NAME, '.h5seurat'))
     date()
     
     # Load L-R of interest
@@ -309,8 +319,8 @@ if ('LigRec_Expr' %in% cmd$desired_command) {
     #                                    group.by1=group.by1, group.by2=group.by2, fontsize=3, only_return_max = T))
     listp = shorthand_heatmap_feature_aggr(current_analysis=current_analysis, analysis=DATASET_NAME, 
                                         feature_list=feature_list, feature_list_annotation=feature_list_annotation, 
-                                        group.by1=group.by1, group.by2=group.by2, fontsize=3, savepath = paste0(base_dir, 'LR_analysis/',DATASET_NAME,'__HCM_up__heatmap_feature_aggr.Rdata'))
-    load(paste0(base_dir, 'LR_analysis/',DATASET_NAME,'__HCM_up__heatmap_feature_aggr.Rdata')) # data_LR_expression
+                                        group.by1=group.by1, group.by2=group.by2, fontsize=3, savepath = paste0(base_dir, 'Rplots/',DATASET_NAME,'__HCM_up__heatmap_feature_aggr.Rdata'))
+    load(paste0(base_dir, 'Rplots/',DATASET_NAME,'__HCM_up__heatmap_feature_aggr.Rdata')) # data_LR_expression
     print(paste0('Done -- ',date()))
     
     # Functions to quickly look up related ligands
@@ -328,8 +338,8 @@ if ('LigRec_Expr' %in% cmd$desired_command) {
     listp_Ronly = shorthand_heatmap_feature_aggr(current_analysis=current_analysis, analysis=DATASET_NAME, 
                                         feature_list=feature_list_Ronly, feature_list_annotation=feature_list_annotation_Ronly, 
                                         group.by1=group.by1, group.by2=group.by2, fontsize=3, 
-                                        savepath = paste0(base_dir, 'LR_analysis/',DATASET_NAME,'__HCM_up__heatmap_feature_aggr_Ronly.Rdata'))
-    load(paste0(base_dir, 'LR_analysis/',DATASET_NAME,'__HCM_up__heatmap_feature_aggr_Ronly.Rdata')) # data_LR_expression
+                                        savepath = paste0(base_dir, 'Rplots/',DATASET_NAME,'__HCM_up__heatmap_feature_aggr_Ronly.Rdata'))
+    load(paste0(base_dir, 'Rplots/',DATASET_NAME,'__HCM_up__heatmap_feature_aggr_Ronly.Rdata')) # data_LR_expression
     print(paste0('Done -- ',date()))
     
     
@@ -346,8 +356,8 @@ if ('LigRec_Expr' %in% cmd$desired_command) {
     listp_Ronly = shorthand_heatmap_feature_aggr(current_analysis=current_analysis, analysis=DATASET_NAME2, 
                                         feature_list=feature_list_Lonly, feature_list_annotation=feature_list_annotation_Lonly, 
                                         group.by1=group.by1, group.by2=group.by2, fontsize=3, 
-                                        savepath = paste0(base_dir, 'LR_analysis/',DATASET_NAME2,'__HCM_up__heatmap_feature_aggr_Lonly.Rdata'))
-    load(paste0(base_dir, 'LR_analysis/',DATASET_NAME2,'__HCM_up__heatmap_feature_aggr_Lonly.Rdata')) # data_LR_expression
+                                        savepath = paste0(base_dir, 'Rplots/',DATASET_NAME2,'__HCM_up__heatmap_feature_aggr_Lonly.Rdata'))
+    load(paste0(base_dir, 'Rplots/',DATASET_NAME2,'__HCM_up__heatmap_feature_aggr_Lonly.Rdata')) # data_LR_expression
     print(paste0('Done -- ',date()))
     
     ################################################################################
@@ -376,16 +386,16 @@ if ('LigRec_Expr' %in% cmd$desired_command) {
                                        manual_zlims = manual_zlims)
         
         # Save Z-score plots
-        ggsave(plot = listp$p1_Z, filename = paste0(base_dir,'LR_analysis/',DATASET_NAME,'_LR_Intrx_Z_',HCM_UP_smpl_name,'_extended.png'), height=PANEL_HEIGHT*3-4, width=172-4, units='mm')
-        ggsave(plot = listp$p2_Z, filename = paste0(base_dir,'LR_analysis/',DATASET_NAME,'_LR_Intrx_Z_',HCM_UP_smpl_name,'_collapsed.png'), height=PANEL_HEIGHT*3-4, width=172-4, units='mm')
+        ggsave(plot = listp$p1_Z, filename = paste0(base_dir,'Rplots/',DATASET_NAME,'_LR_Intrx_Z_',HCM_UP_smpl_name,'_extended.png'), height=PANEL_HEIGHT*3-4, width=172-4, units='mm')
+        ggsave(plot = listp$p2_Z, filename = paste0(base_dir,'Rplots/',DATASET_NAME,'_LR_Intrx_Z_',HCM_UP_smpl_name,'_collapsed.png'), height=PANEL_HEIGHT*3-4, width=172-4, units='mm')
         
         # Save expr score plots
-        ggsave(plot = listp$p1_x, filename = paste0(base_dir,'LR_analysis/',DATASET_NAME,'_LR_Intrx_expr_',HCM_UP_smpl_name,'_extended.png'), height=PANEL_HEIGHT*3-4, width=172-4, units='mm')
-        ggsave(plot = listp$p2_x, filename = paste0(base_dir,'LR_analysis/',DATASET_NAME,'_LR_Intrx_expr_',HCM_UP_smpl_name,'_collapsed.png'), height=PANEL_HEIGHT*3-4, width=172-4, units='mm')
+        ggsave(plot = listp$p1_x, filename = paste0(base_dir,'Rplots/',DATASET_NAME,'_LR_Intrx_expr_',HCM_UP_smpl_name,'_extended.png'), height=PANEL_HEIGHT*3-4, width=172-4, units='mm')
+        ggsave(plot = listp$p2_x, filename = paste0(base_dir,'Rplots/',DATASET_NAME,'_LR_Intrx_expr_',HCM_UP_smpl_name,'_collapsed.png'), height=PANEL_HEIGHT*3-4, width=172-4, units='mm')
         
         # Save fraction expressed heatmaps
-        ggsave(plot = listp$p1_f, filename = paste0(base_dir,'LR_analysis/',DATASET_NAME,'_LR_Intrx_fracCells_',HCM_UP_smpl_name,'_extended.png'), height=PANEL_HEIGHT*3-4, width=172-4, units='mm')
-        ggsave(plot = listp$p2_f, filename = paste0(base_dir,'LR_analysis/',DATASET_NAME,'_LR_Intrx_fracCells_',HCM_UP_smpl_name,'_collapsed.png'), height=PANEL_HEIGHT*3-4, width=172-4, units='mm')
+        ggsave(plot = listp$p1_f, filename = paste0(base_dir,'Rplots/',DATASET_NAME,'_LR_Intrx_fracCells_',HCM_UP_smpl_name,'_extended.png'), height=PANEL_HEIGHT*3-4, width=172-4, units='mm')
+        ggsave(plot = listp$p2_f, filename = paste0(base_dir,'Rplots/',DATASET_NAME,'_LR_Intrx_fracCells_',HCM_UP_smpl_name,'_collapsed.png'), height=PANEL_HEIGHT*3-4, width=172-4, units='mm')
         
     }
     
@@ -394,8 +404,8 @@ if ('LigRec_Expr' %in% cmd$desired_command) {
 
     ################################################################################
     
-    load(paste0(base_dir, 'LR_analysis/',DATASET_NAME2,'__HCM_up__heatmap_feature_aggr_Ronly.Rdata')) # data_LR_expression
-    load(paste0(base_dir, 'LR_analysis/',DATASET_NAME2,'__HCM_up__heatmap_feature_aggr_Lonly.Rdata')) # data_LR_expression
+    load(paste0(base_dir, 'Rplots/',DATASET_NAME2,'__HCM_up__heatmap_feature_aggr_Ronly.Rdata')) # data_LR_expression
+    load(paste0(base_dir, 'Rplots/',DATASET_NAME2,'__HCM_up__heatmap_feature_aggr_Lonly.Rdata')) # data_LR_expression
     
     data_LR_expression$matrix_expr_x_g2collapse[is.na(data_LR_expression$matrix_expr_x_g2collapse)]=-1
     pheatmap(data_LR_expression$matrix_expr_x_g2collapse)
@@ -458,8 +468,8 @@ if ('LigRec_Expr' %in% cmd$desired_command) {
     p=pheatmap(data_LR_expression$matrix_expr_Z_g2collapse[,max_R_Z_forEach>1.5&max_R_fraction_forEach>.4&colsNoNa3], 
                                annotation_col = annot_col3[max_R_Z_forEach>1.5&max_R_fraction_forEach>.4&colsNoNa3,], 
                                fontsize = 7)
-    ggsave(plot = p, filename = paste0(base_dir,'LR_analysis/',DATASET_NAME,'_LR_Intrx_heatmap1.png'), height=150, width=300, units='mm', dpi = 600)
-    # ggsave(plot = p, filename = paste0(base_dir,'LR_analysis/',DATASET_NAME,'_LIGAND_heatmap1.png'), height=150, width=300, units='mm', dpi = 600)
+    ggsave(plot = p, filename = paste0(base_dir,'Rplots/',DATASET_NAME,'_LR_Intrx_heatmap1.png'), height=150, width=300, units='mm', dpi = 600)
+    # ggsave(plot = p, filename = paste0(base_dir,'Rplots/',DATASET_NAME,'_LIGAND_heatmap1.png'), height=150, width=300, units='mm', dpi = 600)
     
     ################################################################################
     # Now also create some UMAPs

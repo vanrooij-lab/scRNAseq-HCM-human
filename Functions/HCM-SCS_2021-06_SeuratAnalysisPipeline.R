@@ -132,10 +132,10 @@ mySeuratCommonPlots = function(mySeuratObject,
     for (current_annotation in c('annotation_sample_str','annotation_patient_str','annotation_paper_str','annotation_region_str','ident','Seurat_Clusters_plus1', add_custom_fields)) {
         
         # create labeled and unlabeled version
-        p=DimPlot(mySeuratObject, group.by = current_annotation, cols = rep(col_vector_60,2), label = T, repel = T, label.size = 7/.pt, pt.size = mypointsize)+
+        p=DimPlot(mySeuratObject, group.by = current_annotation, cols = rep(col_vector_60,4), label = T, repel = T, label.size = 7/.pt, pt.size = mypointsize)+
             theme_void()+ggtitle(element_blank())+theme(legend.position = 'none')
         # p
-        p_nl=DimPlot(mySeuratObject, group.by = current_annotation, cols = rep(col_vector_60,2))
+        p_nl=DimPlot(mySeuratObject, group.by = current_annotation, cols = rep(col_vector_60,4))
         # remove legend if it's too large (prevents errors)
         if(!(current_annotation=='ident')) {if (dim(unique(mySeuratObject[[current_annotation]]))[1]>30) {
          p=p+theme(legend.position = 'none') # now redundant
@@ -151,7 +151,7 @@ mySeuratCommonPlots = function(mySeuratObject,
         
         # More customized/stylized version, specific size
         if(!(current_annotation=='ident')) {current_annotation='Seurat_Clusters_plus1'}
-        p=DimPlot(mySeuratObject, group.by = current_annotation, cols = rep(col_vector_60,2), label = T, repel = T, label.size = 6/.pt, pt.size = 1, label.box=T)+
+        p=DimPlot(mySeuratObject, group.by = current_annotation, cols = rep(col_vector_60,4), label = T, repel = T, label.size = 6/.pt, pt.size = 1, label.box=T)+
                 theme_void()+ggtitle(element_blank())+theme(legend.position = 'none')
         # p
         ggsave(plot = p, filename = paste0(base_dir,subdir,run_name,'_2_umapLabeled_by_',current_annotation,'_morecustomized.pdf'), height=172/3-4, width=172/3-4, units='mm', device = cairo_pdf)

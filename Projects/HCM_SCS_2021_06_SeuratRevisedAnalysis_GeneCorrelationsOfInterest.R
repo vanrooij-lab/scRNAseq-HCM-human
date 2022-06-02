@@ -83,6 +83,7 @@ if (T) {
     OBJECTS_TO_ANALYZE=OBJECTS_TO_ANALYZE # defined above; this is just a reminder
     GENES_OF_INTEREST_ = c('TTN','NPPA','CMYA5','XIRP2')
     # GENES_OF_INTEREST_ = c('NPPA','XIRP2') # 'TTN','CMYA5'
+    # GENES_OF_INTEREST_ = c('MYL2','ARID1A')
     
     # let's assume the genes of interest are among the features in each dataset 
     GENES_OF_INTEREST = shorthand_seurat_fullgenename(seuratObject = current_analysis[[ROOIJ_ANALYSIS]], gene_names = GENES_OF_INTEREST_)
@@ -207,10 +208,13 @@ OBJECTS_TO_ANALYZE = c("ROOIJonly.sp.bt_RID2l",     "HUonly.sp.bt_RID2l",       
 
 if (F) {
     
+    GENES_OF_INTEREST = c('ENSG00000155657:TTN', 'ENSG00000175206:NPPA', "ENSG00000163092:XIRP2", "ENSG00000164309:CMYA5")
+    # GENES_OF_INTEREST = c('ENSG00000111245:MYL2', 'ENSG00000117713:ARID1A')
+    
     #load(paste0(base_dir,'Rdata/Volcano_df_collection__for_all.Rdata'))
     Volcano_df_collection = list()
     for (CURRENT_DATASET in OBJECTS_TO_ANALYZE) {
-        for (CURRENT_GENE in c('ENSG00000155657:TTN', 'ENSG00000175206:NPPA', "ENSG00000163092:XIRP2", "ENSG00000164309:CMYA5")) {
+        for (CURRENT_GENE in GENES_OF_INTEREST) {
             load(file = paste0(base_dir,'Rdata/Volcano_df_gene_pt__',CURRENT_GENE,'_',CURRENT_DATASET,'.Rdata'))
             Volcano_df_collection[[CURRENT_GENE]][[CURRENT_DATASET]] = Volcano_df_gene_pt[[CURRENT_GENE]][[CURRENT_DATASET]]
         }
@@ -220,7 +224,7 @@ if (F) {
     # Pretty comparison plots
     df_corr_collection = list()
     for (CURRENT_DATASET in OBJECTS_TO_ANALYZE) {
-        for (CURRENT_GENE in c('ENSG00000155657:TTN', 'ENSG00000175206:NPPA', "ENSG00000163092:XIRP2", "ENSG00000164309:CMYA5")) {
+        for (CURRENT_GENE in GENES_OF_INTEREST) {
     
         # CURRENT_DATASET = 'ROOIJonly_RID2l'; CURRENT_GENE = 'ENSG00000155657:TTN'
         # CURRENT_DATASET = 'ROOIJonly_RID2l'; CURRENT_GENE = 'ENSG00000175206:NPPA'
@@ -419,6 +423,8 @@ OBJECTS_TO_ANALYZE = c("ROOIJonly.sp.bt_RID2l",     "HUonly.sp.bt_RID2l",   "TEI
 
 CUSTOM_PATIENT_ORDER = c('R.P1', 'R.P2', 'R.P3', 'R.P4', 'R.P5', 'H.N1', 'H.N2', 'H.N3', 'H.N4', 'H.N5', 'H.N13', 'H.N14', 'T.D1', 'T.D2', 'T.D3', 'T.D4', 'T.D5', 'T.D6', 'T.D7', 'T.D11', 'T.H2', 'T.H3', 'T.H4', 'T.H5', 'T.H6', 'T.H7')
 REFERENCE_DATASET = 'ROOIJonly.sp.bt_RID2l'
+DATASET_ID = 'R'
+# REFERENCE_DATASET = 'TEICHMANNonly.sp.bt_RID2l'; DATASET_ID = 'T'
 
 # Similar to above, but slightly adjusted
 
@@ -435,6 +441,8 @@ if (F) {
         # CURRENT_GENE='ENSG00000155657:TTN'
         # CURRENT_GENE="ENSG00000164309:CMYA5"
         # CURRENT_GENE="ENSG00000163092:XIRP2"
+        # CURRENT_GENE = "ENSG00000111245:MYL2"   
+        # CURRENT_GENE = "ENSG00000117713:ARID1A"
         # First collect shared names (between the patients)
         #all_rownames = lapply(Volcano_df_collection[[REFERENCE_DATASET]][[CURRENT_GENE]][sel_idx], rownames)
         #shared_genes = Reduce(intersect, all_rownames) 
@@ -470,13 +478,15 @@ if (F) {
         # Calculate Rooij-specific significance counts and mean corr values
         # pval counts
         pval.adj.sign_temp = df_melted$pval.adj.sign
-        pval.adj.sign_temp[!(df_melted$donor %in% paste0('R.P',1:5))]=0
-        df_correlations_mean$sign.donors_rooij = 
+        pval.adj.sign_temp[!grepl(paste0(DATASET_ID,'\\.'),df_melted$donor)]=0
+            # pval.adj.sign_temp[!(df_melted$donor %in% paste0('R.P',1:5))]=0
+        df_correlations_mean$donors_referenceset = 
             aggregate(pval.adj.sign_temp, by=list(gene_name=df_melted$gene_name), sum)$x
         # mean corrs
         corr_temp = df_melted$corr
-        corr_temp[!(df_melted$donor %in% paste0('R.P',1:5))]=NA
-        df_correlations_mean$corr_rooij = 
+        corr_temp[!grepl(paste0(DATASET_ID,'\\.'),df_melted$donor)]=NA
+            # corr_temp[!(df_melted$donor %in% paste0('R.P',1:5))]=NA
+        df_correlations_mean$corr_reference_set = 
             aggregate(corr_temp, by=list(gene_name=df_melted$gene_name), mean, na.rm=T)$x
         
         
@@ -494,21 +504,21 @@ if (F) {
         df_correlations_SE_subset$gene=shorthand_cutname(df_correlations_SE_subset$gene_name)
         
         # Create gene of interest lists
-        TOPX=25
+        TOPX=25 # TOPX=50
         # Split for pos and neg corr, selection at least 2 sign rooij donors
-        df_correlations_mean_Rpos = df_correlations_mean[df_correlations_mean$corr_rooij>0&df_correlations_mean$gene_name!=CURRENT_GENE&
-                                                         df_correlations_mean$sign.donors_rooij>2,]
-        df_correlations_mean_Rneg = df_correlations_mean[df_correlations_mean$corr_rooij<0&
-                                                         df_correlations_mean$sign.donors_rooij>2,]
+        df_correlations_mean_Rpos = df_correlations_mean[df_correlations_mean$corr_reference_set>0&df_correlations_mean$gene_name!=CURRENT_GENE&
+                                                         df_correlations_mean$donors_referenceset>2,]
+        df_correlations_mean_Rneg = df_correlations_mean[df_correlations_mean$corr_reference_set<0&
+                                                         df_correlations_mean$donors_referenceset>2,]
         # Sort appropriately
         df_correlations_mean_Rpos_sorted = 
             Reduce(rbind, lapply(5:0,
-                   function(x) {df_=df_correlations_mean_Rpos[df_correlations_mean_Rpos$sign.donors_rooij==x,]
-                                df_[order(df_$corr_rooij, decreasing = T),]}))
+                   function(x) {df_=df_correlations_mean_Rpos[df_correlations_mean_Rpos$donors_referenceset==x,]
+                                df_[order(df_$corr_reference_set, decreasing = T),]}))
         df_correlations_mean_Rneg_sorted = 
             Reduce(rbind, lapply(5:0,
-                   function(x) {df_=df_correlations_mean_Rneg[df_correlations_mean_Rneg$sign.donors_rooij==x,]
-                                df_[order(abs(df_$corr_rooij), decreasing = T),]}))
+                   function(x) {df_=df_correlations_mean_Rneg[df_correlations_mean_Rneg$donors_referenceset==x,]
+                                df_[order(abs(df_$corr_reference_set), decreasing = T),]}))
         # 
         selected_genes_correlated=list()
         selected_genes_correlated$pos = df_correlations_mean_Rpos_sorted$gene_name[1:min(TOPX,nrow(df_correlations_mean_Rpos_sorted))]
@@ -585,7 +595,7 @@ if (F) {
             # extra selection if necessary (because some plots show MANY genes)
             #if (nrow_effective>100) {
             #    df_melted_sel_sel=df_melted_sel[
-            #        df_melted_sel$gene_name %in% df_correlations_mean[order(df_correlations_mean$sign.donors_rooij, decreasing = T),][1:100,]$gene_name,]
+            #        df_melted_sel$gene_name %in% df_correlations_mean[order(df_correlations_mean$donors_referenceset, decreasing = T),][1:100,]$gene_name,]
             #    nrow_effective=length(unique(df_melted_sel_sel$gene_name_short))
             #} else {df_melted_sel_sel=df_melted_sel}
             p=ggplot(df_melted_sel2, aes(x=factor(donor, levels=CUSTOM_PATIENT_ORDER), y=factor(gene_name_short, levels=rev(gene_order_short)), fill=corr, color=pval.adj.sign)) +
@@ -669,7 +679,9 @@ if (F) {
         }
 
     }
-    
+
+    # CUSTOMSUFFIX='MYL2only'
+    # save(list = 'gene_lists_customcorrelated', file = paste0(base_dir,'Rdata/gene_lists_customcorrelated__',CUSTOMSUFFIX,'__Rooijbased.Rdata'))
     save(list = 'gene_lists_customcorrelated', file = paste0(base_dir,'Rdata/gene_lists_customcorrelated__Rooijbased.Rdata'))
 }
 

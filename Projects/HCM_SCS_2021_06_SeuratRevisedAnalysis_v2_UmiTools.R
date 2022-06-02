@@ -168,6 +168,8 @@ library(reshape2)
 
 library(pheatmap)
 
+library(pals) # install.packages('pals')
+
 # also required:
 # package manager: mutoss, openxlsx
 # biocmanager: biomart, multtest, limma, GOstats, org.Mm.eg.db, org.Hs.eg.db

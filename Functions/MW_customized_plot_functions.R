@@ -223,6 +223,64 @@ shorthand_seurat_fullgenename_faster = function(seuratObject, gene_names, return
     
 }
 
+################################################################################
+
+shorthand_seurat_custom_umap_groupby = function(seuratObject, textsize=8, pointsize=1, my.group.by = NULL,
+                                        custom_title=NULL,mymargin=0.1,myFamily='Arial', add_box=F, parse_annot=T,myColors=NULL,
+                                        central_marker_size=2) {
+    
+  if(is.null(my.group.by)) {stop('Set my.group.by')}
+  
+    if (is.null(custom_title)) {
+      mytitle = my.group.by
+    } else { mytitle = custom_title }
+  
+    if (is.null(myColors)) {myColors = pals::alphabet2(); names(myColors)=NULL} 
+    
+    
+    df_plot = data.frame(
+      umap_1 = seuratObject@reductions$umap@cell.embeddings[,1],
+      umap_2 = seuratObject@reductions$umap@cell.embeddings[,2])
+    df_plot[[my.group.by]] = as.factor(seuratObject[[my.group.by]][,1])
+  
+    mylist=list(df_plot[[my.group.by]])
+    names(mylist)=my.group.by
+    df_annotation = aggregate(x = df_plot[,c('umap_1','umap_2')], by=mylist, FUN=mean)
+    
+    if (add_box) {boxpad=.1} else {boxpad=0}
+    p=ggplot(df_plot,
+            mapping = aes_string(x='umap_1', y='umap_2', color=my.group.by))+
+        geom_point(size = pointsize, stroke = 0, shape = 16)+
+        scale_color_manual(values =myColors)+
+        scale_fill_manual(values =myColors)+
+        #annotate("text", -Inf, Inf, label = mytitle, hjust = 0-boxpad, vjust = 1+textsize*boxpad, size=textsize / .pt, family = myFamily, parse=T)+
+        theme_void()+
+        #give_better_textsize_plot(textsize)+
+        theme(legend.position = 'none', plot.margin = margin(mymargin,mymargin,0,0,'mm'))
+    
+    # p
+    
+    # add markers to indicate center of groups
+    if (central_marker_size>0) {
+      p=p+geom_point(data=df_annotation, aes_string(fill=my.group.by), color='black', size=3, shape = 22) # color='grey50',
+      # p=p+geom_point(data=df_annotation, color='grey50', size=3, shape = 15) 
+    }
+    
+    # code not tested
+    if (add_box) {
+      p=p+theme(panel.border = element_rect(colour = "black", fill=NA, size=.5))
+    }
+    
+    # Add text annotation last to get order right
+    p=p+geom_text_repel(data=df_annotation, aes_string(label=my.group.by),color='black', 
+                        size = textsize/.pt, max.overlaps = Inf, min.segment.length = 0)
+        
+    
+    return(p)
+        
+        
+}
+
 
 ################################################################################
 
@@ -725,3 +783,28 @@ shorthand_heatmap_feature_aggr = function(current_analysis, analysis, feature_li
     
 }
 
+
+
+
+
+# code from earlier function: regulon_overlap_heatmap (in "regulon" script)
+geneset_overlap_heatmap = function(gene_sets, myfontsize=8) { #, makeallheatmaps=T, cutree_k=NULL, saveplots=T) {
+    
+    # Create pairs to compare
+    df_compare = tidyr::expand_grid(x=names(gene_sets), y=names(gene_sets))
+    
+    # Calculate overlaps
+    df_compare$overlap = sapply(1:dim(df_compare)[1], function(X) { 
+        sum(gene_sets[[df_compare$x[X]]] %in% gene_sets[[df_compare$y[X]]]) /
+            min(length(gene_sets[[df_compare$x[X]]]), length(gene_sets[[df_compare$y[X]]]))
+        })
+    
+    # Create matrix
+    matrix_compare <- reshape2::acast(df_compare, x~y, value.var="overlap")
+    
+    # Show heatmap
+    p0=pheatmap(matrix_compare, clustering_method = 'ward.D2')
+    
+    return(list(plot=p0, matrix_compare=matrix_compare))
+
+}
