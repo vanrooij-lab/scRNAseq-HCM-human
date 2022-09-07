@@ -129,13 +129,29 @@ if (exists('config')) {
 
 # Local  use
 if (exists('LOCAL')) {
-    script_dir = '/Users/m.wehrens/Documents/git_repos/SCS_More_analyses/'
-    base_dir = '/Users/m.wehrens/Data/_2019_02_HCM_SCS/2021_HPC_analysis.3b/'
-    
-    data_dir1 = '/Users/m.wehrens/Data/_2019_02_HCM_SCS/2021_UmiTools_CountTables_Wang_HCMSCS/ROOIJ/' # NULL
-    data_dir2 = '/Users/m.wehrens/Data/_2019_02_HCM_SCS/2021_UmiTools_CountTables_Wang_HCMSCS/HU/'
+    if (LOCAL == 1) {
+        warning('LOCAL=1 --> base_dir, data_dir1, data_dir2 have been set to SCS HCM analyses paths..')
+        
+        script_dir = '/Users/m.wehrens/Documents/git_repos/SCS_More_analyses/'
+        base_dir = '/Users/m.wehrens/Data/_2019_02_HCM_SCS/2021_HPC_analysis.3b/'
+        
+        data_dir1 = '/Users/m.wehrens/Data/_2019_02_HCM_SCS/2021_UmiTools_CountTables_Wang_HCMSCS/ROOIJ/' # NULL
+        data_dir2 = '/Users/m.wehrens/Data/_2019_02_HCM_SCS/2021_UmiTools_CountTables_Wang_HCMSCS/HU/'
+    }
+    else {
+       script_dir = '/Users/m.wehrens/Documents/git_repos/SCS_More_analyses/'
+       base_dir   = NA
+        
+       data_dir1  = NA
+       data_dir2  = NA
+       
+       warning('Please set base_dir, data_dir1, data_dir2 .. (script_dir updated).')
+    }
         # '/Users/m.wehrens/Data/_2019_02_HCM_SCS/2021_Wang_Counttables/'
 } else {
+    
+    warning('To do: change such that dirs aren\'t automatically set..')
+    
     script_dir = '/hpc/hub_oudenaarden/mwehrens/scripts/SCS_HCM_analysis/'
     base_dir = '/hpc/hub_oudenaarden/mwehrens/data/HCM_SCS_RHL.3b/'
     

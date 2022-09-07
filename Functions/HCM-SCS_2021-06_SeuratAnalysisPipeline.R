@@ -15,7 +15,7 @@ mySeuratAnalysis = function(mySeuratObject, run_name,
     
     # First remove genes that are only in <5 cells
     if (remove_genes) {
-        gene_in_cell_count = rowSums(mySeuratObject@assays$RNA@counts>0)
+        gene_in_cell_count = rowSums(mySeuratObject@assays[[mySeuratObject@active.assay]]@counts>0)
         sel_genes = names(gene_in_cell_count)[gene_in_cell_count>4]
         mySeuratObject = subset(mySeuratObject, features= sel_genes)
         print(paste0('Genes removed: ', sum(gene_in_cell_count<5))) 
@@ -26,7 +26,8 @@ mySeuratAnalysis = function(mySeuratObject, run_name,
     all_genes = rownames(mySeuratObject)
     
     # Normalize data
-    mySeuratObject <- NormalizeData(mySeuratObject, normalization.method = normalization.method, scale.factor = scale.factor) # values are defaults
+    mySeuratObject <- NormalizeData(mySeuratObject, 
+                                    normalization.method = normalization.method, scale.factor = scale.factor) # values are defaults
     
     # Find variable features
     # We won't necessarily use them for all of the analyses
@@ -42,7 +43,7 @@ mySeuratAnalysis = function(mySeuratObject, run_name,
 
     # A custom hybrid method to determine which genes to take along in the analysis
     VariableFeatures_mySeuratObject = VariableFeatures(mySeuratObject)
-    FeatureMeans = rowMeans(mySeuratObject@assays$RNA@counts)
+    FeatureMeans = rowMeans(mySeuratObject@assays[[mySeuratObject@active.assay]]@counts)
     HighestMeanFeatures = names(FeatureMeans)[order(FeatureMeans, decreasing = T)][1:100]
     # venn_simple_plot_mw(list(HighestMeanFeatures=HighestMeanFeatures,VariableFeatures_mySeuratObject=VariableFeatures_mySeuratObject))
     VariableOrHighMeanFeatures = unique(c(VariableFeatures_mySeuratObject, HighestMeanFeatures))
@@ -69,8 +70,8 @@ myVarMeanPlot = function(mySeuratObject) {
     
     print('Warning, with large matrices, this takes ages due to use of apply function')
  
-    geneSd    = apply( mySeuratObject@assays$RNA@counts , 1, sd)
-    geneMean  = rowMeans( mySeuratObject@assays$RNA@counts )
+    geneSd    = apply( mySeuratObject@assays[[mySeuratObject@active.assay]]@counts , 1, sd)
+    geneMean  = rowMeans( mySeuratObject@assays[[mySeuratObject@active.assay]]@counts )
     
     p=ggplot(data.frame(log10.count.sd=log10(geneSd), log10.count.mean=log10(.1+geneMean)),aes(x=log10.count.mean, y=log10.count.sd))+
         geom_point()+theme_bw()+give_better_textsize_plot(8)
@@ -83,7 +84,7 @@ mySeuratAnalysis_verybasic_part2only = function(mySeuratObject,
     
     assayType = if ('integrated' %in% names(mySeuratObject@assays)) {'integrated'} else {'RNA'}
     
-    features_to_use = if (features_to_use_choice=='all') { rownames(mySeuratObject@assays$RNA@data)
+    features_to_use = if (features_to_use_choice=='all') { rownames(mySeuratObject@assays[[mySeuratObject@active.assay]]@data)
         } else {VariableFeatures(mySeuratObject)}
     
     if (!skip_scaling) {
