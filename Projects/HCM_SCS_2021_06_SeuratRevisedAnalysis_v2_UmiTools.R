@@ -1640,6 +1640,15 @@ if ('more_custom_plots' %in% desired_command) {
                 ggplot(R_values, aes(x=Group.2, y=x_compmax))+
                     geom_bar(stat='identity')+
                     coord_flip()
+                
+                R_values$Group.2_fctCustom = factor(x = R_values$Group.2, levels = R_values$Group.2[order(R_values$x_compmax, decreasing = F)])
+                ggplot(R_values, aes(x=Group.2_fctCustom, y=x_compmax))+
+                    geom_bar(stat='identity')+theme_bw()+
+                    coord_flip()+ggtitle('Difference with nearest-value other condition')+give_better_textsize_plot(10)
+                
+                R_values_ordered=R_values[order(R_values$x_compmax, decreasing = T),]
+                toString(R_values_ordered$Group.2[R_values_ordered$x_compmax>.2])
+                toString(R_values_ordered$Group.2)
             }
         
         

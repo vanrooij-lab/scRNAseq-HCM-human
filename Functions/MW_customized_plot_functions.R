@@ -98,6 +98,105 @@ shorthand_plotViolinBox_custom = function(myseuratobjectlist, analysis_name, cat
     
 }
 
+shorthand_plotFreqPoly_custom = function(myseuratobjectlist, analysis_name, cat_by='seurat_clusters', 
+    cat_name = 'category', gene_of_interest=NULL,base_dir, percentile=.02, 
+    myfontsize=8, manual_expr=NULL,manual_expr_featname=NULL,custom_ylab=NULL, custom_title=NULL, custom_ylim=NULL, custom_colors = c('#bd0020','#9d9d9c','#575756')) {
+  # TO DO: rename gene_of_interest to feature_of_interest
+    
+    # create df for plotting
+    #plot_df = data.frame(count=numeric(), cat=character(), gene=character())
+    #for (gene in gene_of_interest_fullname) {
+        # retrieve current expression
+        #current_expr = myseuratobjectlist[[analysis_name]]@assays$RNA@data[gene,]
+        #expr_limits=calc_limits(current_expr, percentile = .03)
+
+        #plot_df = rbind(plot_df, data.frame(count=current_expr, cat=myseuratobjectlist[[analysis_name]][[cat_by]], gene=gene))
+    #}
+    
+    # retrieve expression
+    if (is.null(manual_expr)) {
+      
+      # get full gene names
+      gene_of_interest_fullname = rownames(myseuratobjectlist[[analysis_name]])[grepl(paste0(paste0(':',gene_of_interest,'$'),collapse='|'),rownames(myseuratobjectlist[[analysis_name]]))]
+      # retrieve expression
+      print(paste0('Retrieved gene ',gene_of_interest_fullname))
+      current_expr = myseuratobjectlist[[analysis_name]]@assays$RNA@data[gene_of_interest_fullname,] 
+      
+    }else{ print('Using manually supplied expression'); current_expr=manual_expr; gene_of_interest_fullname = 'manual'; gene_of_interest = manual_expr_featname }
+    
+    
+    # create dataframe to plot
+    plot_df = data.frame(count=current_expr, cat=myseuratobjectlist[[analysis_name]][[cat_by]], gene=gene_of_interest_fullname)
+    colnames(plot_df) = c('count',cat_name)
+    
+    # decide on limits
+    # per group, determine where 2% percentile lies to set that as maximum to the plot
+    my_max_limit=max(sapply(unique(plot_df[[cat_name]]), function(x) { calc_limits(current_expr[plot_df[[cat_name]]==x], percentile = .02)[2] } ))
+
+    # start plotting w/ desired options
+    p=ggplot(plot_df, aes(x=count, after_stat(density)))+
+        geom_freqpoly(aes_string(color=cat_name), bins=50, )+
+        #geom_bar(aes_string(y='count', fill=as.factor(cat_name)),stat='summary',fun='mean',fill='grey',color='black')+
+        #geom_boxplot(alpha=0)+
+        ggtitle(if(is.null(custom_title)){gene_of_interest}else{custom_title})+theme_bw()+
+        theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
+        xlab('UMI count')+ylab('PDF')+
+        give_better_textsize_plot(myfontsize)+scale_color_manual(values = custom_colors)
+    # p
+    
+    # # save 1
+    # ggsave(plot = p,filename = paste0(base_dir, 'Rplots/',analysis_name,'_6_',type,'_by-', cat_name, '_',gene_of_interest,'.pdf'), width = 4, height= 6, units='cm', device=cairo_pdf)
+    # ggsave(plot = p,filename = paste0(base_dir, 'Rplots/',analysis_name,'_6_',type,'_by-', cat_name, '_',gene_of_interest,'_172mm.pdf'), width = 172/3-4, height= 172/3-4, units='mm', device=cairo_pdf)
+    # 
+    # # add ylim and save 2
+    # p=p+ylim(c(0,my_max_limit))
+    # ggsave(plot = p,filename = paste0(base_dir, 'Rplots/',analysis_name,'_6_',type,'_ylim98_by-', cat_name, '_',gene_of_interest,'.pdf'), width = 4, height= 6, units='cm', device=cairo_pdf)
+    # ggsave(plot = p,filename = paste0(base_dir, 'Rplots/',analysis_name,'_6_',type,'_ylim98_by-', cat_name, '_',gene_of_interest,'_172mm.pdf'), width = 172/3-4, height= 172/3-4, units='mm', device=cairo_pdf)
+    
+    # return plot
+    return(p)
+    
+}
+
+# myseuratobjectlist=current_analysis
+# analysis_name='ALL.SP_btypSel_RID2l_clExtended'
+# gene_of_interest = 'SRF'
+# cat_by='annotation_paper_beatified'
+# cat_name = 'Dataset'
+# myfillcolor='#bd001f'
+shorthand_plotPercentageCellsHighForGene = function(myseuratobjectlist, analysis_name, gene_of_interest, cat_by, cat_name, myfillcolor='#bd001f', PERCENTILE=.5, myfontsize=8) {
+    
+    # retrieve expression
+    # get full gene names
+    gene_of_interest_fullname = rownames(myseuratobjectlist[[analysis_name]])[grepl(paste0(paste0(':',gene_of_interest,'$'),collapse='|'),rownames(myseuratobjectlist[[analysis_name]]))]
+    # retrieve expression
+    print(paste0('Retrieved gene ',gene_of_interest_fullname))
+    current_expr = myseuratobjectlist[[analysis_name]]@assays$RNA@data[gene_of_interest_fullname,] 
+  
+    # create dataframe to plot
+    summary_df = data.frame(count=current_expr, cat=myseuratobjectlist[[analysis_name]][[cat_by]], gene=gene_of_interest_fullname)
+    colnames(summary_df) = c('count',cat_name)
+    
+    cutoff_value = calc_limits(summary_df$count, PERCENTILE)[1] # .5 = median
+    
+    summary_df$detected = summary_df$count>cutoff_value
+    
+    
+    cat_list = list(item=summary_df[[cat_name]])
+    names(cat_list) = cat_name
+    plot_df = aggregate(list(perc_above=summary_df$detected), cat_list, FUN=mean)
+    
+    p1=ggplot(plot_df, aes_string(x=cat_name, y='perc_above')) + 
+        geom_bar(stat='identity', fill=myfillcolor)+
+        theme_bw()+
+        theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
+        ylab('Percentage cells high')+give_better_textsize_plot(myfontsize)+
+        ggtitle(paste0(gene_of_interest,'>',round(cutoff_value,2)))
+    
+    return(p1)
+
+}
+
 shorthand_cutname = function(gene_names, PART1OR2=2) {
     
   # if something to be split

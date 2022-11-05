@@ -27,6 +27,9 @@ load(paste0(base_dir,'Rdata/ROOIJonly.sp.bt_RID2l_clExtended_core_regulons_sorte
     # core_regulons_sorted
     # core_regulons
 
+    # Later addition: I think this file can also be used:
+    # load(paste0(base_dir,'Rdata/ROOIJonly.sp.bt_RID2l_core_regulons_sorted.Rdata'))
+    
 
 
 # Load index data

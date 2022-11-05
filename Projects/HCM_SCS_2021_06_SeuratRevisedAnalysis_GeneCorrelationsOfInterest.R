@@ -206,6 +206,7 @@ SAVEPLOT=F # SAVEPLOT=T
 
 OBJECTS_TO_ANALYZE = c("ROOIJonly.sp.bt_RID2l",     "HUonly.sp.bt_RID2l",        paste0("TEICHMANNonly.sp.bt_RID2l"))
 
+# Loading of previously produced data
 if (F) {
     
     GENES_OF_INTEREST = c('ENSG00000155657:TTN', 'ENSG00000175206:NPPA', "ENSG00000163092:XIRP2", "ENSG00000164309:CMYA5")
@@ -221,6 +222,11 @@ if (F) {
     }
     rm('Volcano_df_gene_pt')
     
+}
+
+# Now create plots
+if (F) {
+    
     # Pretty comparison plots
     df_corr_collection = list()
     for (CURRENT_DATASET in OBJECTS_TO_ANALYZE) {
@@ -228,6 +234,7 @@ if (F) {
     
         # CURRENT_DATASET = 'ROOIJonly_RID2l'; CURRENT_GENE = 'ENSG00000155657:TTN'
         # CURRENT_DATASET = 'ROOIJonly_RID2l'; CURRENT_GENE = 'ENSG00000175206:NPPA'
+        # CURRENT_DATASET = 'ROOIJonly.sp.bt_RID2l'; CURRENT_GENE = 'ENSG00000175206:NPPA'
         # CURRENT_DATASET = 'TEICHMANNonly.sp.bt_RID2l'
         # CURRENT_DATASET = 'HUonly.sp.bt_RID2l'
         
@@ -385,8 +392,8 @@ if (F) {
     
     # Make a plot
     TOPX=10
-    gene_name = 'ENSG00000175206:NPPA'
-    gene_name = 'ENSG00000163092:XIRP2'
+    # gene_name = 'ENSG00000175206:NPPA'; current_force=1000
+    # gene_name = 'ENSG00000163092:XIRP2'
     analysis_name='ROOIJonly.sp.bt_RID2l'
     current_patient='Rpooled'
     
