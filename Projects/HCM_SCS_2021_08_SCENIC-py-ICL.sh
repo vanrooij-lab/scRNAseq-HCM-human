@@ -50,6 +50,16 @@ if [[ 0 -eq 1 ]]; then
 fi
 
 # ==============================================================================
+# Note added later on how to install scenic
+
+# conda create -y -n pyscenic python=3.10
+# conda activate pyscenic
+#
+# pip install pyscenic
+
+# See also: https://pyscenic.readthedocs.io/en/latest/installation.html
+
+# ==============================================================================
 # Actual script
 
 # prepare script

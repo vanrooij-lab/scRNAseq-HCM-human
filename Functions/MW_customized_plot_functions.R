@@ -1,7 +1,7 @@
 
 
 # For convenience, little fn to change text size ggplot in one go
-give_better_textsize_plot <- function(TEXTSIZE, myFamily='Arial'){
+give_better_textsize_plot <- function(TEXTSIZE, myFamily='Arial',suppressmessage=F){
   
   if (is.null(myFamily)) {
     theme(#legend.position="none",
@@ -9,11 +9,13 @@ give_better_textsize_plot <- function(TEXTSIZE, myFamily='Arial'){
           axis.text = element_text(size=TEXTSIZE),
           plot.title = element_text(size=TEXTSIZE))
   } else {
+    if(!suppressmessage){print('Set to Arial')}
     theme(#legend.position="none",
           text = element_text(size=TEXTSIZE, family=myFamily),
           axis.text = element_text(size=TEXTSIZE, family=myFamily),
           plot.title = element_text(size=TEXTSIZE, family=myFamily))
   }
+
 }
 
 theme_void_extramw_removeTickText = function() {
@@ -326,7 +328,7 @@ shorthand_seurat_fullgenename_faster = function(seuratObject, gene_names, return
 
 shorthand_seurat_custom_umap_groupby = function(seuratObject, textsize=8, pointsize=1, my.group.by = NULL,
                                         custom_title=NULL,mymargin=0.1,myFamily='Arial', add_box=F, parse_annot=T,myColors=NULL,
-                                        central_marker_size=2) {
+                                        central_marker_size=2, annotate_clusters=T) {
     
   if(is.null(my.group.by)) {stop('Set my.group.by')}
   
@@ -360,7 +362,7 @@ shorthand_seurat_custom_umap_groupby = function(seuratObject, textsize=8, points
     # p
     
     # add markers to indicate center of groups
-    if (central_marker_size>0) {
+    if (central_marker_size>0 & annotate_clusters) {
       p=p+geom_point(data=df_annotation, aes_string(fill=my.group.by), color='black', size=3, shape = 22) # color='grey50',
       # p=p+geom_point(data=df_annotation, color='grey50', size=3, shape = 15) 
     }
@@ -371,9 +373,10 @@ shorthand_seurat_custom_umap_groupby = function(seuratObject, textsize=8, points
     }
     
     # Add text annotation last to get order right
-    p=p+geom_text_repel(data=df_annotation, aes_string(label=my.group.by),color='black', 
+    if (annotate_clusters) {
+      p=p+geom_text_repel(data=df_annotation, aes_string(label=my.group.by),color='black', 
                         size = textsize/.pt, max.overlaps = Inf, min.segment.length = 0)
-        
+    }  
     
     return(p)
         

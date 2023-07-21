@@ -52,7 +52,7 @@ current_analysis[[DATASET_NAME]] =
 
 # load the clExtended manually, if desired (ie parts were already done)
 if (F) {
-  
+  # current_analysis=list()
   current_analysis[[ANALYSIS_NAME_clExtended]] =
     LoadH5Seurat(file = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_',ANALYSIS_NAME_clExtended,'.h5seurat'))
 }

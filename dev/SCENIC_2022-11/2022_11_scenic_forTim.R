@@ -12,6 +12,7 @@
 # Libs
 
 library(loomR)
+library(ggplot2)
 
 ########################################################################
 # Forget about this
@@ -33,6 +34,15 @@ dataTim_colVars = readRDS('/Users/m.wehrens/Data/_2019_02_HCM_SCS/2022_Data_Tim/
 dataTim_exprMat = readRDS('/Users/m.wehrens/Data/_2019_02_HCM_SCS/2022_Data_Tim/exprMat.Rds') # expr matrix
     # dim(dataTim_exprMat)
 
+cell_count = apply(dataTim_exprMat>0, 1, sum)
+ggplot(data.frame(cell_count=cell_count), aes(x=log10(.1+cell_count)))+
+    geom_histogram()+theme_bw()
+
+# Subselection of matrix, genes that are expressed in at least 20% of cells
+min_hits_treshold = dim(dataTim_exprMat)[2]*.2
+dataTim_exprMat_sel = dataTim_exprMat[cell_count>min_hits_treshold,]
+    # dim(dataTim_exprMat_sel)
+
 ########################################################################
 # Export the loom file
 
@@ -41,16 +51,41 @@ dataTim_cellInfo_matched = dataTim_cellInfo[colnames(dataTim_exprMat), ]
     
 # Creating a loom file
 lfile <- loomR::create(filename = paste0(base_dir, 'Ldata/', 'dataTim_exprMat', '.loom'), 
-                       data = dataTim_exprMat, overwrite = T, 
+                       data = dataTim_exprMat_sel, overwrite = T, 
                        cell.attrs = dataTim_cellInfo_matched) 
                        #feature.attrs = list(gene_info=), 
                        #cell.attrs = list(cell=colnames(current_analysis$R.P1RID2l@assays$RNA@data)))
 
+lfile <- loomR::create(filename = paste0(base_dir, 'Ldata/', 'dataTim_exprMat_all', '.loom'), 
+                       data = dataTim_exprMat, overwrite = T, 
+                       cell.attrs = dataTim_cellInfo_matched) 
+
 ########################################################################
-# Now continue with the shell script..
+# Now continue with the shell script to run SCENIC..
 
 
 # (..)
+
+
+
+
+
+########################################################################
+
+# Now look at the results
+
+lfile_output =
+    loomR::connect(filename = '/Users/m.wehrens/Data/_2019_02_HCM_SCS/2022_Data_Tim/SCENIC/dataTim_exprMat/output/SCENIC_out_dataTim_exprMat.loom')
+
+df_loomout_Tim = as.data.frame(lfile_output$row.attrs$Regulons[])
+row.names(df_loomout_Tim)=lfile_output$row.attrs$Gene[]
+    
+scenic_regulons_collected_Tim = 
+    lapply(1:ncol(df_loomout_Tim), function(reg_idx) {rownames(df_loomout_Tim)[df_loomout_Tim[,reg_idx]==1]})
+names(scenic_regulons_collected_Tim) = colnames(df_loomout_Tim) # paste0(CURRENT_PATIENT,'.',colnames(df_loomout_Tim))
+
+readr::write_rds(x = scenic_regulons_collected_Tim, file = '/Users/m.wehrens/Data/_2019_02_HCM_SCS/2022_Data_Tim/output/scenic_regulons_collected_Tim.Rds')
+
 
 
 

@@ -33,7 +33,7 @@ if (F) {
     write.table(x = mouse_human_genes_df_reOrganized, file = 
                     paste0('/Users/m.wehrens/Documents/git_repos/Resources_bioinf_RNAseq/data_tsv/','mouse_human_genes_df_reOrganized__custom_rerganized_jax.tsv'))
 
-)
+}
 
 ################################################################################
 
@@ -42,14 +42,30 @@ if (F) {
 #
 # This links ensembl IDs of human with those of mice
 
+# From tutorial at https://www.ensembl.info/2009/01/21/how-to-get-all-the-orthologous-genes-between-two-species/
+# 1. Go to: http://www.ensembl.org/biomart/martview
+# 2. Choose “Ensembl 52”
+# 3. Choose “Homo sapiens genes (NCBI36)”
+# 4. Click on “Filters” in the left menu
+# 5. Unfold the “MULTI SPECIES COMPARISONS” box, tick the “Homolog filters” option and choose 
+# “Orthologous Mouse Genes” from the drop-down menu.
+# 6. Click on “Attributes” in the left menu
+# 7. Click on “Homologs”
+# 8. Unfold the “MOUSE ORTHOLOGS” box and select the data you want to get (most probably the gene ID and maybe the orthology type as well).
+# 9. Click on the “Results” button (top left)
+# 10. Choose your favorite output
+
+
+
 mouse_human_conversion_ensmanual_df =
-    read.table('/Users/m.wehrens/Desktop/gene_conversion/ensembl_biomart_manual_conversion__GRCh38.p13.tsv', sep = '\t', header = 1)
+    read.table('/Users/m.wehrens/Documents/git_repos/Resources_bioinf_RNAseq/data_tsv/ensembl_biomart_manual_conversion__v.107__GRCh38.p13.tsv', sep = '\t', header = 1)
 
 convert_enshuman_to_ensmouse_lookup = mouse_human_conversion_ensmanual_df$Mouse.gene.stable.ID
 names(convert_enshuman_to_ensmouse_lookup) = mouse_human_conversion_ensmanual_df$Gene.stable.ID
 
 # ps. note that there is also annotation for human symbols from the same source, but it's probably
 # easier to use earlier generated tables for this..
+
 
 if (F) {
     conversion_ens_sym_107manual_df =

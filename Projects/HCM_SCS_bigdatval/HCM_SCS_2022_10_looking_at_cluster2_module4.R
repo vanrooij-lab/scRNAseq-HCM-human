@@ -14,9 +14,11 @@
 # Let's retrieve list of cluster 2 and module 4 genes;
 load('/Users/m.wehrens/Data/_2019_02_HCM_SCS/2021_HPC_analysis.3b/Rdata/ROOIJonly.sp.bt_RID2l_core_regulons_sorted.Rdata') 
     # core_regulons_sorted
-load('/Users/m.wehrens/Data/_2019_02_HCM_SCS/2021_HPC_analysis.3b/Rdata/DE_cluster_ROOIJonly.sp.bt_RID2l.Rdata')
+#load('/Users/m.wehrens/Data/_2019_02_HCM_SCS/2021_HPC_analysis.3b/Rdata/DE_cluster_ROOIJonly.sp.bt_RID2l.Rdata')
+    # Note that this doesn't appear to be the correct file; it has too many clusters.
+load('/Users/m.wehrens/Data/_2019_02_HCM_SCS/2021_HPC_analysis.3b/Rdata/DE_cluster__ROOIJonly.sp.bt_RID2l_clExtended.Rdata')
     # DE_cluster$ROOIJonly.sp.bt_RID2l$`2`
-    genes_DE_cluster2 = DE_cluster$ROOIJonly.sp.bt_RID2l$`2`
+    genes_DE_cluster2 = DE_cluster$ALL.SP_btypSel_RID2l_clExtended$`2`
 load('/Users/m.wehrens/Data/_2019_02_HCM_SCS/2021_HPC_analysis.3b/Rdata/ROOIJonly.sp.bt_RID2l__SCENIC_reg_top_genes_sorted_full.Rdata')
     
 # Module 4, TFs or ligands
@@ -45,6 +47,14 @@ all(rownames(genes_DE_cluster2_pos)[1:10] %in% core_regulons_sorted$s.R.4)
 
 # joint top 10:
 toString(shorthand_cutname( unique(c(core_regulons_sorted$s.R.4[1:10], rownames(genes_DE_cluster2_pos)[1:10])) ))
+
+########################################################################
+# Which of the Module 4 genes are actually TFs?
+
+toString(
+shorthand_cutname(core_regulons_sorted$s.R.4)[ 
+    shorthand_cutname( core_regulons_sorted$s.R.4 , PART1OR2 = 1) %in% human_TFs_ens 
+    ])
 
 ########################################################################
 # Comparison with Alejandro's genes
@@ -115,11 +125,24 @@ if (F){
 }
 
 
+##########
+
+subset_exprdata_mod4 = 
+    current_analysis$ROOIJonly.sp.bt_RID2l@assays$RNA@data[
+        rownames(current_analysis$ROOIJonly.sp.bt_RID2l@assays$RNA@data) %in% core_regulons_sorted$s.R.4,]
+dim(subset_exprdata_mod4)
+
+cormat_mod4 = cor(t(as.matrix(subset_exprdata_mod4)))
+rownames(cormat_mod4) = shorthand_cutname( rownames(cormat_mod4) )
+colnames(cormat_mod4) = shorthand_cutname( colnames(cormat_mod4) )
+
+pheatmap(cormat_mod4)
 
 
+#########
 
+# Checking some random genes
 
-
-
-
+sapply(DE_cluster$ALL.SP_btypSel_RID2l_clExtended, function(X) {'CCN2' %in% shorthand_cutname(rownames(X))})
+sapply(core_regulons_sorted, function(X) {'CCN2' %in% shorthand_cutname(X)})
 

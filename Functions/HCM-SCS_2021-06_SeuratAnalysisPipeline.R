@@ -7,7 +7,7 @@
 # To test:
 # mySeuratObject = RHL_SeuratObject_merged_noMito_sel
 
-mySeuratAnalysis = function(mySeuratObject, run_name,
+mySeuratAnalysis = function(mySeuratObject, run_name, base_dir,
     normalization.method='LogNormalize', scale.factor=10000,
     do.scale=T,do.center=T,scale.max=10,features_to_use_choice='variable',
     remove_genes=T, cluster_resolution=1, subdir='Rplots/') {
@@ -118,7 +118,9 @@ mySeuratCommonPlots = function(mySeuratObject,
     run_name,
     mymarkers = c('MALAT1', 'TTN', 'MYH7', 'MYH6', 'NPPA', 'NPPB', 'ACTA1','MYL2','SORBS2','CSRP3','NDUFA4','CRYAB','HSPB1', 'KCNQ1OT1'),
     mypointsize=NULL,
+    ANNOTATION_FIELDS=c('annotation_sample_str','annotation_patient_str','annotation_paper_str','annotation_region_str','ident','Seurat_Clusters_plus1'),
     add_custom_fields=NULL,
+    base_dir,
     subdir='Rplots/') {    
     
     mymarkers_ext = mySeurat_genenames(mySeuratObject, mymarkers)
@@ -130,7 +132,7 @@ mySeuratCommonPlots = function(mySeuratObject,
     mySeuratObject[['Seurat_Clusters_plus1']] = plyr::revalue(Idents(mySeuratObject), clusterplus1mapping)
     
     # Show umap with annotations
-    for (current_annotation in c('annotation_sample_str','annotation_patient_str','annotation_paper_str','annotation_region_str','ident','Seurat_Clusters_plus1', add_custom_fields)) {
+    for (current_annotation in c(ANNOTATION_FIELDS, add_custom_fields)) {
         
         # create labeled and unlabeled version
         p=DimPlot(mySeuratObject, group.by = current_annotation, cols = rep(col_vector_60,4), label = T, repel = T, label.size = 7/.pt, pt.size = mypointsize)+
