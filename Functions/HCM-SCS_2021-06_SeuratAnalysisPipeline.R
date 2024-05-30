@@ -27,11 +27,14 @@ mySeuratAnalysis = function(mySeuratObject, run_name, base_dir,
     
     # Normalize data
     mySeuratObject <- NormalizeData(mySeuratObject, 
-                                    normalization.method = normalization.method, scale.factor = scale.factor) # values are defaults
+                                    normalization.method = normalization.method, 
+                                    scale.factor = scale.factor) # values are defaults
     
     # Find variable features
     # We won't necessarily use them for all of the analyses
-    mySeuratObject <- FindVariableFeatures(mySeuratObject, selection.method = "vst", nfeatures = 2000)
+    mySeuratObject <- FindVariableFeatures(mySeuratObject, 
+                                           selection.method = "vst", 
+                                           nfeatures = 2000)
 
     # Identify the 10 most highly variable genes
     top30 <- head(VariableFeatures(mySeuratObject), 30)
@@ -121,7 +124,8 @@ mySeuratCommonPlots = function(mySeuratObject,
     ANNOTATION_FIELDS=c('annotation_sample_str','annotation_patient_str','annotation_paper_str','annotation_region_str','ident','Seurat_Clusters_plus1'),
     add_custom_fields=NULL,
     base_dir,
-    subdir='Rplots/') {    
+    subdir='Rplots/',
+    my.pt.size=1) {    
     
     mymarkers_ext = mySeurat_genenames(mySeuratObject, mymarkers)
     
@@ -147,17 +151,22 @@ mySeuratCommonPlots = function(mySeuratObject,
         
         # test
         ggsave(plot = p, filename = paste0(base_dir,subdir,run_name,'_2_umapLabeled_by_',current_annotation,'_style3.pdf'), height=172/3-4, width=172/3-4, units='mm')
+        # Bigger
+        ggsave(plot = p, filename = paste0(base_dir,subdir,run_name,'_2_umapLabeled_by_',current_annotation,'_style3bigger.pdf'), height=172/3*2-4, width=172/3*2-4, units='mm')
         
         # Save files
         ggsave(plot = p, filename = paste0(base_dir,subdir,run_name,'_2_umapLabeled_by_',current_annotation,'.pdf'), height=5.5, width=5.5, units='cm')
         ggsave(plot = p_nl, filename = paste0(base_dir,subdir,run_name,'_2_umap_by_',current_annotation,'.pdf'), height=7, width=7, units='cm')
         
         # More customized/stylized version, specific size
-        if(!(current_annotation=='ident')) {current_annotation='Seurat_Clusters_plus1'}
-        p=DimPlot(mySeuratObject, group.by = current_annotation, cols = rep(col_vector_60,4), label = T, repel = T, label.size = 6/.pt, pt.size = 1, label.box=T)+
+        if((current_annotation=='ident')) {current_annotation='Seurat_Clusters_plus1'}
+        p=DimPlot(mySeuratObject, group.by = current_annotation, cols = rep(col_vector_60,4), 
+                  label = T, repel = T, label.size = 6/.pt, pt.size = 1, label.box=T)+
                 theme_void()+ggtitle(element_blank())+theme(legend.position = 'none')
         # p
         ggsave(plot = p, filename = paste0(base_dir,subdir,run_name,'_2_umapLabeled_by_',current_annotation,'_morecustomized.pdf'), height=172/3-4, width=172/3-4, units='mm', device = cairo_pdf)
+        # p x3 size
+        ggsave(plot = p, filename = paste0(base_dir,subdir,run_name,'_2_umapLabeled_by_',current_annotation,'_morecustomized_3x.pdf'), height=172-4, width=172-4, units='mm', device = cairo_pdf)
         
     }
     
@@ -168,19 +177,20 @@ mySeuratCommonPlots = function(mySeuratObject,
         # marker = 'ENSG00000120937:NPPB'
         
         # marker projection on umaps
-        p_cm = FeaturePlot(mySeuratObject, features = marker, cols = rainbow_colors)+theme_void()+ggtitle(element_blank())+theme(legend.position = 'none')
-        ggsave(filename = paste0(base_dir,subdir,run_name,'_2_umap_markers_',marker,'.png'), plot = p_cm, height=5, width=5)
+        p_cm = FeaturePlot(mySeuratObject, features = marker, cols = rainbow_colors, pt.size = my.pt.size)+
+            theme_void()+ggtitle(element_blank())+theme(legend.position = 'none')
+        ggsave(filename = paste0(base_dir,subdir,run_name,'_2_umap_markers_',marker,'.png'), plot = p_cm, height=8, width=8, units='cm')
         
         # Violins
         pViol_m = VlnPlot(object = mySeuratObject, features = marker, group.by = 'annotation_paper_str') #, group.by = 'from_paper')
-        ggsave(filename = paste0(base_dir,subdir,run_name,'_4_Violin_markers_',marker,'.png'), plot = pViol_m, height=7.5, width=7.5)
+        ggsave(filename = paste0(base_dir,subdir,run_name,'_4_Violin_markers_',marker,'.png'), plot = pViol_m, height=8, width=8, units='cm')
 
         # Also create histograms
         pHist=ggplot(data.frame(expression=mySeuratObject@assays[[mySeuratObject@active.assay]]@data[marker,], 
                                 source=mySeuratObject$annotation_paper_fct))+
             geom_histogram(aes(x=expression, fill=source, after_stat(density)))+
             facet_grid(rows='source')+theme_bw()+theme(legend.position = 'none', )+ggtitle(marker)+give_better_textsize_plot(10)
-        ggsave(filename = paste0(base_dir,subdir,run_name,'_4_histogram_markers_',marker,'.png'), plot = pHist, height=10, width=7.5, units='cm')
+        ggsave(filename = paste0(base_dir,subdir,run_name,'_4_histogram_markers_',marker,'.png'), plot = pHist, height=10, width=8, units='cm')
         
         # More complicated histogram, split, x-lims @98% of data, such that shape of curve is visible in case of outliers
         currentlims=list()

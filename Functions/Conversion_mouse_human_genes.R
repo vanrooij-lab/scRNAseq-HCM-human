@@ -63,6 +63,11 @@ mouse_human_conversion_ensmanual_df =
 convert_enshuman_to_ensmouse_lookup = mouse_human_conversion_ensmanual_df$Mouse.gene.stable.ID
 names(convert_enshuman_to_ensmouse_lookup) = mouse_human_conversion_ensmanual_df$Gene.stable.ID
 
+# Also inverted
+convert_ensmouse_to_enshuman_lookup = mouse_human_conversion_ensmanual_df$Gene.stable.ID
+names(convert_ensmouse_to_enshuman_lookup) = mouse_human_conversion_ensmanual_df$Mouse.gene.stable.ID
+
+
 # ps. note that there is also annotation for human symbols from the same source, but it's probably
 # easier to use earlier generated tables for this..
 

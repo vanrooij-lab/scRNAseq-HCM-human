@@ -491,7 +491,8 @@ overlapping_scores_regulons_Rooij =
         rsize_per_patient=apply(upset_df_tf, 2, sum)
         effective_max_hits = min(sort(rsize_per_patient[rsize_per_patient>0])[1:3]) 
             # OVERLAP IS DETERMINED IN SLIGHTLY SOPHISTICATED WAY
-            # rationale: if we were to have a regulon present in 4 patients, and one of those patient-regulons is very small, but the others are big,
+            # rationale: if we were to have a regulon present in 4 patients, and one of those patient-regulons is very small, 
+            # but the others are big,
             # i'd like to only compare overlap for the three biggest ones
             # for now, something that happens in 3 patients is considered above the magic treshold
         current_overlap = min(1, sum(apply(upset_df_tf, 1, sum)>=3)/effective_max_hits)

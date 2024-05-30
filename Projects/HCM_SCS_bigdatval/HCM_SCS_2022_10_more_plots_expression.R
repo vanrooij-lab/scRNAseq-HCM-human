@@ -41,6 +41,10 @@ if (F) {
     
     # --- end of load / set up data
     
+    # Conversion added later
+    # saveRDS(object = current_analysis[[CURRENT_RUNNAME]], file = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_',CURRENT_RUNNAME,'.Rds'))
+    # current_analysis[[CURRENT_RUNNAME]] = readRDS(paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_',CURRENT_RUNNAME,'.Rds'))
+    
 }
 
 ########################################################################

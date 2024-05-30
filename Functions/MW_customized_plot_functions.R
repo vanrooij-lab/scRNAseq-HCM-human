@@ -199,13 +199,20 @@ shorthand_plotPercentageCellsHighForGene = function(myseuratobjectlist, analysis
 
 }
 
-shorthand_cutname = function(gene_names, PART1OR2=2) {
+shorthand_cutname = function(gene_names, PART1OR2=2, returnempty=F) {
     
   # if something to be split
   if (any(grepl(gene_names, pattern = ':'))) {
-    # split, also for genes w/o 2nd annotation, just return 1st part instead
-    return(sapply(str_split(gene_names, pattern = ':'), function(Y) { if (Y[[2]]=="") {Y[[1]]} else {Y[[PART1OR2]]} }))
-  } else {return(gene_names)}
+    # split, also for genes w/o 2nd annotation, just return 1st part instead, unless returnempty=T
+    return(sapply(str_split(gene_names, pattern = ':'), function(Y) { 
+      if (Y[[2]]=="") 
+        { if (!returnempty) {Y[[1]]} else {return("")} } 
+      else 
+        {Y[[PART1OR2]]} 
+      }))
+  } else {
+    return(gene_names)
+  }
     
 }
 
@@ -300,8 +307,10 @@ shorthand_seurat_fullgenename = function(seuratObject, gene_names) {
     
 }
 
-shorthand_seurat_fullgenename_faster = function(seuratObject, gene_names, return_NA=F) {
+shorthand_seurat_fullgenename_faster = function(seuratObject, gene_names, return_NA=F, discard_NA = F) {
     
+  if (discard_NA) {return_NA = T; print('discard_NA set, assuming return_NA = T.')}
+  
   all_short_names = shorthand_cutname(rownames(seuratObject))
   unique_selection = !(all_short_names %in% all_short_names[duplicated(all_short_names)])
   
@@ -319,9 +328,17 @@ shorthand_seurat_fullgenename_faster = function(seuratObject, gene_names, return
   }
   
   # Now return the full names
-  return(lookupframe[gene_names])        
+  if (discard_NA) {
+    gene_names_full = lookupframe[gene_names]
+    if (any(is.na(gene_names_full))) {
+      warning('Not all genes found')
+      print(paste0('Not found: ',toString(gene_names[is.na(gene_names_full)])  ))
+    }
+    return(gene_names_full[!is.na(gene_names_full)])        
+  } else {
+    return(lookupframe[gene_names])        
+  }
 
-    
 }
 
 ################################################################################
