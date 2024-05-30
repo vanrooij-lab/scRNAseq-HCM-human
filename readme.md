@@ -10,6 +10,11 @@ There are Rdata and h5seurat files that contain the backbone processed data of t
 I'll be looking to put those online somewhere too, but currently haven't done that yet.
 Contact me (m.wehrens@hubrecht.eu) if you would like to take a look at the data using these files.
 
+## Easy use of this data for Van Rooij lab members
+
+See the script 
+`./Projects/howtousedata_HCMSCS/example-load-plot-data.R` and the folder `srv-lnx-varo1:/opt/backup_wehrens/data/Wehrens2022/Rdata-important` to make some plots using this data.
+
 # About the scripts
 
 The most central file in this analysis is `Projects/HCM_SCS_2021_06_SeuratRevisedAnalysis_v2_UmiTools.R`, you can start exploring these scripts there.
