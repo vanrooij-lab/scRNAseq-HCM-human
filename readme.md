@@ -102,11 +102,6 @@ ERP123138
  
 This Seurat object was used to generate the figures in the paper.
 
-## Easy use of this data for Van Rooij lab members
-
-See the script 
-`./Projects/howtousedata_HCMSCS/example-load-plot-data.R` and the folder `srv-lnx-varo1:/opt/backup_wehrens/data/Wehrens2022/Rdata-important` to make some plots using this data.
-
 ## About the scripts
 
 The most central file in this analysis is `Projects/HCM_SCS_2021_06_SeuratRevisedAnalysis_v2_UmiTools.R`, you can start exploring these scripts there.
@@ -114,6 +109,11 @@ The most central file in this analysis is `Projects/HCM_SCS_2021_06_SeuratRevise
 *More explanation will be added.*
 
 Send an e-mail to m.wehrens@hubrecht.eu if you have any questions.
+
+### Easy use of this data for Van Rooij lab members
+
+See the script 
+`./Projects/howtousedata_HCMSCS/example-load-plot-data.R` and the folder `srv-lnx-varo1:/opt/backup_wehrens/data/Wehrens2022/Rdata-important` to make some plots using this data.
 
 ## Notes about libraries etc. 
 
