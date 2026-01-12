@@ -4,7 +4,7 @@
 
 These scripts contain Seurat analysis for the publication "Single-cell transcriptomics provides insights into hypertrophic cardiomyopathy" by Wehrens et al. published in Cell Reports (2022), DOI: [https://doi.org/10.1016/j.celrep.2022.110809](https://doi.org/10.1016/j.celrep.2022.110809).
 
-# Data repositories
+# Where to find data files
 
 - The raw FASTQ files can be found on GEO, using accession ID [GSE138262](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE138262).
 - The count tables, Seurat objects on which plots are based, and FACS metadata, can be found via:
