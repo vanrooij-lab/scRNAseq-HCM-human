@@ -4,6 +4,7 @@
 # These are available locally at:
 # srv-lnx-varo1:/opt/backup_wehrens/data/Wehrens2022/Rdata-important
 # (to do: make them available online)
+# (note to self: these data are on my local laptop at: /Users/m.wehrens/Data/_2019_02_HCM_SCS/2021_HPC_analysis.3b/Rdata-important)
 
 # LIST OF DATA FILES
 # 
@@ -27,7 +28,7 @@
 ################################################################################
 # Example of how to load and use the data
 
-data_dir = '/Users/m.wehrens/Data/_2019_02_HCM_SCS/2021_HPC_analysis.3b/Rdata-important/'
+data_dir = '/Users/m.wehrens/Data_Hubrecht/_2019_02_HCM_SCS/2021_HPC_analysis.3b/Rdata-important/'
 
 # Load the data
 Seurat_RooijOnly = readRDS(paste0(data_dir, 'H5_RHL_SeuratObject_nM_sel_ROOIJonly.sp.bt_RID2l_clExtended.Rds'))
@@ -43,6 +44,8 @@ rownames(Seurat_RooijOnly)[    grepl('NFE2L1',rownames(Seurat_RooijOnly))    ]
 FeaturePlot(object = Seurat_RooijOnly, features = 'ENSG00000082641:NFE2L1')
 
 ################################################################################
+
+seurat_alldata = readRDS('/Users/m.wehrens/Data/_2019_02_HCM_SCS/2024_datasharing/H5_RHL_SeuratObject_nM_sel_ALL.SP_btypSel_RID2l_clExtended.Rds')
 
 
 

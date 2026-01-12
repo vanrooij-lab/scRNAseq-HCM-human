@@ -30,7 +30,7 @@
 # script_dir = '/hpc/hub_oudenaarden/mwehrens/scripts/SCS_HCM_analysis/'; desired_command='dummy'; source(paste0(script_dir, 'HCM_SCS_2021_06_SeuratRevisedAnalysis_v2_UmiTools.R')); rm('desired_command')
 #
 # Local:
-# LOCAL=1; script_dir = '/Users/m.wehrens/Documents/git_repos/SCS_More_analyses/Projects/'; desired_command='dummy'; source(paste0(script_dir, 'HCM_SCS_2021_06_SeuratRevisedAnalysis_v2_UmiTools.R')); rm('desired_command')
+# LOCAL=1; script_dir = '/Users/m.wehrens/Documents/git_repos/_Hubrecht-n-before/SCS_More_analyses/Projects/'; desired_command='dummy'; source(paste0(script_dir, 'HCM_SCS_2021_06_SeuratRevisedAnalysis_v2_UmiTools.R')); rm('desired_command')
 
 ########################################################################
 
@@ -132,11 +132,11 @@ if (exists('LOCAL')) {
     if (LOCAL == 1) {
         warning('LOCAL=1 --> base_dir, data_dir1, data_dir2 have been set to SCS HCM analyses paths..')
         
-        script_dir = '/Users/m.wehrens/Documents/git_repos/SCS_More_analyses/'
-        base_dir = '/Users/m.wehrens/Data/_2019_02_HCM_SCS/2021_HPC_analysis.3b/'
+        script_dir = '/Users/m.wehrens/Documents/git_repos/_Hubrecht-n-before/SCS_More_analyses/'
+        base_dir = '/Users/m.wehrens/Data_Hubrecht/_2019_02_HCM_SCS/2021_HPC_analysis.3b/'
         
-        data_dir1 = '/Users/m.wehrens/Data/_2019_02_HCM_SCS/2021_UmiTools_CountTables_Wang_HCMSCS/ROOIJ/' # NULL
-        data_dir2 = '/Users/m.wehrens/Data/_2019_02_HCM_SCS/2021_UmiTools_CountTables_Wang_HCMSCS/HU/'
+        data_dir1 = '/Users/m.wehrens/Data_Hubrecht/_2019_02_HCM_SCS/2021_UmiTools_CountTables_Wang_HCMSCS/ROOIJ/' # NULL
+        data_dir2 = '/Users/m.wehrens/Data_Hubrecht/_2019_02_HCM_SCS/2021_UmiTools_CountTables_Wang_HCMSCS/HU/'
     }
     else {
        script_dir = '/Users/m.wehrens/Documents/git_repos/SCS_More_analyses/'
@@ -292,6 +292,8 @@ Rooij_conversion_pts = c('JE01'='R.P1', 'JE02'='R.P1', 'JE03'='R.P1', 'JE04'='R.
                         'MW05'='R.P3', 'MW06'='R.P3', 'MW07'='R.P3', 'MW08'='R.P3',
                         'JE10'='R.P4', 'JE11'='R.P4',
                         'AL01'='R.P5', 'AL02'='R.P5')
+                        # Visualizing data annotation
+                        # data.frame(sample = Rooij_conversion_pts)
 
 ########################################################################
 

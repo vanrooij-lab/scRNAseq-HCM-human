@@ -55,6 +55,9 @@ if (F) {
   # current_analysis=list()
   current_analysis[[ANALYSIS_NAME_clExtended]] =
     LoadH5Seurat(file = paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_',ANALYSIS_NAME_clExtended,'.h5seurat'))
+  
+  # (added later) now also save this as Rds
+  # saveRDS(object = current_analysis[[ANALYSIS_NAME_clExtended]], file=paste0(base_dir,'Rdata/H5_RHL_SeuratObject_nM_sel_',ANALYSIS_NAME_clExtended,'.Rds'))
 }
 
 ####################################################################################################
