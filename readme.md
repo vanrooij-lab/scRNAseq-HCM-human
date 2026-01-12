@@ -6,9 +6,12 @@ These scripts contain Seurat analysis for the publication "Single-cell transcrip
 
 # Where to find data files
 
-- The raw FASTQ files can be found on GEO, using accession ID [GSE138262](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE138262).
-- The count tables, Seurat objects on which plots are based, and FACS metadata, can be found via:
-[https://doi.org/10.5281/zenodo.18206553](https://doi.org/10.5281/zenodo.18206553).
+#### The count tables, Seurat objects and FACS metadata
+These can be found via [https://doi.org/10.5281/zenodo.18206553](https://doi.org/10.5281/zenodo.18206553).
+Please note that the count tables deposited at the GEO (see below) are older versions, which were not used in the paper.
+
+#### Raw FASTQ files 
+These can be found on the GEO, using accession ID [GSE138262](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE138262).
 
 ## Information about the pre-processed files
 
